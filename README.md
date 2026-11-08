@@ -12,6 +12,8 @@ Windows x64 **未签名** NSIS 测试安装包。它不是私有开发仓库的�
   `vendor/`、`python/`、`scripts/`、`patches/` 及完整锁文件
 - 已排除 `.agents/`、`snapshots/`、`docs/`、`website/`、`benchmarks/`、私有 `.github/`
   工作流、内部代理说明、会话记录与内部发布脚本
+- 依赖上述会话快照或文档站的测试/文档脚本未纳入，以避免发布快照内容；Windows 打包
+  所需的源码、锁文件和工作流保持完整
 - 已移除插件测试种子中的 `.env`，以及包含私人绝对路径的插件集成文档
 - 公有快照中的 Suiyi 默认 OIDC issuer 已改为保留域名
   `https://login.example.invalid/realms/identity`；私有源未被修改
@@ -40,7 +42,7 @@ artifact 上传成功后，才表示打包成功。**
 
 - 运行器：`windows-2025`
 - Node.js `24`
-- pnpm `11`
+- pnpm `11.28.5`（由根 `package.json` 的 `packageManager` 锁定）
 - 依赖安装：`pnpm install --frozen-lockfile`
 - 预检：`pnpm run package:desktop:win:x64:unsigned --check --build-version <version>`
 - 构建：`pnpm run package:desktop:win:x64:unsigned --build-version <version>`
