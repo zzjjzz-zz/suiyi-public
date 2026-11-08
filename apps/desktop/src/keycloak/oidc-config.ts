@@ -1,7 +1,7 @@
 /** Build-selected Suiyi identity-center configuration; public client, no secrets. */
 
 /** Issuer of the unified Suiyi identity center; strictly matched during discovery. */
-export const SUIYI_OIDC_ISSUER = 'https://login.example.invalid/realms/identity'
+export const SUIYI_OIDC_ISSUER = 'https://sso.zzjjzz.top/realms/identity'
 
 /** Public OIDC client id registered in the identity center; no client secret is shipped. */
 export const SUIYI_OIDC_CLIENT_ID = 'suiyi-desktop'

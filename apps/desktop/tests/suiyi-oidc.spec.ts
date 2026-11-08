@@ -499,6 +499,10 @@ describe('loopback authorization-code login over real TCP', () => {
 })
 
 describe('issuer configuration fallback', () => {
+  it('ships the configured HTTPS identity center rather than an invalid placeholder', () => {
+    expect(SUIYI_OIDC_ISSUER).toBe('https://sso.zzjjzz.top/realms/identity')
+  })
+
   it('uses the packaged default when the override file is missing', async () => {
     const result = await resolveSuiyiOidcIssuer('/tmp', async () => {
       const error = new Error('no such file') as NodeJS.ErrnoException

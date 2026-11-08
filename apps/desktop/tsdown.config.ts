@@ -32,6 +32,7 @@ if (clientVersion === undefined) throw new Error('desktop build: the client envi
 
 /** Inline the one public build value the Node entry reads; every other variable stays a runtime lookup. */
 const clientVersionDefine = { 'process.env.DSH_CLIENT_VERSION': JSON.stringify(clientVersion),
+  'process.env.DSH_CLIENT_BUILD_PROFILE': JSON.stringify(clientEnvironment.DSH_CLIENT_BUILD_PROFILE ?? 'local'),
   'process.env.DSH_DESKTOP_FLAVOR': JSON.stringify(resolveDesktopIdentity(process.env.DSH_DESKTOP_FLAVOR).flavor) }
 
 export default defineConfig([

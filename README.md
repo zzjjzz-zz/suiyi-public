@@ -15,8 +15,8 @@ Windows x64 **未签名** NSIS 测试安装包。它不是私有开发仓库的�
 - 依赖上述会话快照或文档站的测试/文档脚本未纳入，以避免发布快照内容；Windows 打包
   所需的源码、锁文件和工作流保持完整
 - 已移除插件测试种子中的 `.env`，以及包含私人绝对路径的插件集成文档
-- 公有快照中的 Suiyi 默认 OIDC issuer 已改为保留域名
-  `https://login.example.invalid/realms/identity`；私有源未被修改
+- 遂意公开版默认 OIDC 身份中心标识为
+  `https://sso.zzjjzz.top/realms/identity`；此地址为公开服务元数据，不包含认证密钥
 - 根许可 `LICENSE` 与第三方许可原文保留；未声称全部第三方许可已完成法律审核
 
 ## 下载测试包
@@ -52,7 +52,7 @@ artifact 上传成功后，才表示打包成功。**
 - `DSH_DESKTOP_WINDOWS_PACK_CONCURRENCY=2`
 - `DSH_DESKTOP_WINDOWS_COMPRESSION_LEVEL=3`
 - `DSH_TELEMETRY_DISABLED=1`
-- 策略与登录保留域名：`https://policy.example.invalid`、`https://login.example.invalid`
+- 测试策略保留域名：`https://policy.example.invalid`；登录身份中心：`https://sso.zzjjzz.top/realms/identity`
 - 权限：仅 `contents: read`
 - 触发：仅 `push` 到 `main` 与手动 `workflow_dispatch`
 - 不使用 `pull_request_target`、私有 checkout、token、self-hosted runner 或生产密钥
@@ -61,8 +61,9 @@ artifact 上传成功后，才表示打包成功。**
 
 - **未签名、未做正式发行验收。** Windows 可能显示 SmartScreen 警告；不得把此包描述为
   已签名、生产可用或已通过真实身份提供商验收的正式版本。
-- `login.example.invalid` 是保留的占位域名，默认无法完成真实登录。需要真实部署时，应由
-  运维方通过 `suiyi-oidc-issuer.json` 指向自己的 HTTPS issuer，并自行注册 OIDC 客户端。
+- 公开版内置真实的 HTTPS 身份中心地址，但这仅表示登录服务可发现，**不保证账号授权或桌面登录已经验收**。
+  目标身份中心仍须允许 `suiyi-desktop` 客户端的授权码与本地回调；未来变更服务地址时，
+  可通过 `suiyi-oidc-issuer.json` 覆盖默认值，不需要把任何密钥写入公开仓库。
 - 工作流只构建并做 PE、尺寸、签名状态和 SHA-256 校验，不执行真实 SSO 登录，也不替代
   独立的 Windows 安装/运行验收。
 - 本公开仓库不上传安装包到 release、对象存储或自动更新服务。

@@ -47,7 +47,7 @@ jobs:
           $prefix = if ($manifest.version.Contains('-')) { $manifest.version } else { "$($manifest.version)-test" }
           $version = "$prefix.$date.$env:GITHUB_RUN_NUMBER.$env:GITHUB_RUN_ATTEMPT"
           "SUIYI_TEST_VERSION=$version" >> $env:GITHUB_ENV
-          $policy = @{ allowedAuthOrigins = @('https://login.example.invalid') } | ConvertTo-Json -Compress
+          $policy = @{ allowedAuthOrigins = @('https://sso.zzjjzz.top') } | ConvertTo-Json -Compress
           @(
             'DSH_DESKTOP_FLAVOR=suiyi'
             'DSH_DESKTOP_APP_ID=com.zzjjzz.suiyi'

@@ -60,7 +60,7 @@ describe('desktop welcome presentation', () => {
   })
 
   it('selects Suiyi artwork instead of the official welcome logo', () => {
-    vi.stubEnv('DSH_DESKTOP_FLAVOR', 'suiyi')
+    vi.stubEnv('DSH_CLIENT_BUILD_PROFILE', 'suiyi')
     try {
       mount()
       expect(document.querySelector('img')?.getAttribute('src')).toBe('assets/welcome-brand-suiyi.svg')
