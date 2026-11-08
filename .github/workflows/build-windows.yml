@@ -93,9 +93,11 @@ jobs:
             throw 'Installer is not a valid PE executable'
           }
           $machine = [System.BitConverter]::ToUInt16($bytes, $peOffset + 4)
-          if ($machine -ne 0x8664) {
-            throw ('Expected PE machine 0x8664 (x64), found 0x{0:X4}' -f $machine)
+          # NSIS commonly uses an x86 bootstrap even when the packaged application is x64.
+          if ($machine -ne 0x014C -and $machine -ne 0x8664) {
+            throw ('Unexpected NSIS launcher PE machine 0x{0:X4}' -f $machine)
           }
+          $peMachine = ('0x{0:X4}' -f $machine)
           $signature = Get-AuthenticodeSignature -LiteralPath $installer.FullName
           if ($signature.Status -ne 'NotSigned') {
             throw "Expected an unsigned installer; Authenticode status is $($signature.Status)"
@@ -109,12 +111,13 @@ jobs:
             "$hash  $($installer.Name)`n",
             [System.Text.Encoding]::ASCII
           )
-          Write-Host "UNSIGNED_NSIS_READY $($installer.Name) $($installer.Length) bytes SHA256=$hash PE=x64 AUTH=NotSigned"
+          Write-Host "UNSIGNED_NSIS_READY $($installer.Name) $($installer.Length) bytes SHA256=$hash LAUNCHER_PE=$peMachine TARGET=win-x64 AUTH=NotSigned"
           Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value @"
           ## 遂意 Suiyi Windows x64 未签名测试包
           - Installer: $($installer.Name)
           - Size: $($installer.Length) bytes
-          - PE machine: x64 (0x8664)
+          - NSIS launcher PE machine: $peMachine (an x86 bootstrap can install an x64 application)
+          - Packaged application target: win-x64
           - Authenticode: NotSigned
           - SHA256: $hash
           "@
