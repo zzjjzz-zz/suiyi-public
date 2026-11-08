@@ -1,0 +1,43 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/client/ui-brand-suiyi/README.md
+/:
+  en: c6d4db96225a9d62
+  zh: 7961b97cf62e422b
+/deepseek-ai-dsh-client-ui-brand-suiyi:
+  en: 14ac70b5717830bb
+  zh: 9465a3bde9198fe4
+/deepseek-ai-dsh-client-ui-brand-suiyi/summary:
+  en: ceecd7b02e227e98
+  zh: 0d856ed898f98f30
+/deepseek-ai-dsh-client-ui-brand-suiyi/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 09388d293f9be9cb
+/deepseek-ai-dsh-client-ui-brand-suiyi/use-this-package:
+  en: ade7dcb6f8fc8182
+  zh: 7739d58881f52709
+/deepseek-ai-dsh-client-ui-brand-suiyi/use-this-package/choosing-the-profile:
+  en: 129964275cbd6d2e
+  zh: 66bbcdc01f59563b
+/deepseek-ai-dsh-client-ui-brand-suiyi/use-this-package/the-artwork:
+  en: 5e58fd390db0f33a
+  zh: b2bfa5cfde32663e
+/deepseek-ai-dsh-client-ui-brand-suiyi/understand-the-implementation:
+  en: 976d7cf0e482eba7
+  zh: 308b55f26125e3ce
+/deepseek-ai-dsh-client-ui-brand-suiyi/further-exploration:
+  en: 918b143f75383f9b
+  zh: d2a776b7644dc1ba
+/deepseek-ai-dsh-client-ui-brand-suiyi/model-experience:
+  en: 618008c7641070e7
+  zh: 7233febb4d92ccfb
+/deepseek-ai-dsh-client-ui-brand-suiyi/model-experience/kv-cache-effect:
+  en: ca75c51c89c2c9b0
+  zh: f57cc48a1b5cbfa9
+/deepseek-ai-dsh-client-ui-brand-suiyi/known-limitations-and-deferred-work:
+  en: e461f5a71f5de84c
+  zh: 3c67403a5e3ec81c
+/deepseek-ai-dsh-client-ui-brand-suiyi/known-limitations-and-deferred-work/dev-note:
+  en: e67f633dc6fe7773
+  zh: 3bb0c20c93f16f98

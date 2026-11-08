@@ -1,0 +1,8 @@
+# Reviewed false positives from the public-snapshot scan (gitleaks 8.30.1).
+# These are test-fixture placeholder values and a minified third-party patch chunk.
+# They are not credentials; keep this list narrow and re-triage if the files change.
+packages/client/ui-settings-models/tests/components.client.spec.tsx:generic-api-key:2158
+packages/session/session-telemetry/tests/redact.spec.ts:generic-api-key:17
+packages/session/session-telemetry-otel/tests/loader-composition.e2e.ts:generic-api-key:24
+patches/lexical@0.49.0.patch:generic-api-key:43
+patches/lexical@0.49.0.patch:generic-api-key:44

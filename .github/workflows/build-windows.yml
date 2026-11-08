@@ -1,0 +1,132 @@
+name: Build Windows x64 NSIS (unsigned)
+
+"on":
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: suiyi-windows-unsigned-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows-x64:
+    name: Windows x64 NSIS unsigned
+    runs-on: windows-2025
+    timeout-minutes: 120
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      CI: 'true'
+      DSH_TELEMETRY_DISABLED: '1'
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up pnpm 11
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          version: '11'
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Generate isolated unsigned test configuration and version
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $manifest = Get-Content -LiteralPath apps/desktop/package.json -Raw | ConvertFrom-Json
+          $date = (Get-Date).ToUniversalTime().ToString('yyyyMMdd')
+          $prefix = if ($manifest.version.Contains('-')) { $manifest.version } else { "$($manifest.version)-test" }
+          $version = "$prefix.$date.$env:GITHUB_RUN_NUMBER.$env:GITHUB_RUN_ATTEMPT"
+          "SUIYI_TEST_VERSION=$version" >> $env:GITHUB_ENV
+          $policy = @{ allowedAuthOrigins = @('https://login.example.invalid') } | ConvertTo-Json -Compress
+          @(
+            'DSH_DESKTOP_FLAVOR=suiyi'
+            'DSH_DESKTOP_APP_ID=com.zzjjzz.suiyi'
+            'DSH_DESKTOP_AUTO_UPDATE_ENV=test'
+            'DSH_DESKTOP_MANDATORY_UPDATE_TEST_ORIGIN=https://policy.example.invalid'
+            "DSH_DESKTOP_MANDATORY_UPDATE_CONFIG='$policy'"
+            'DSH_DESKTOP_WINDOWS_PACK_CONCURRENCY=2'
+            'DSH_DESKTOP_WINDOWS_COMPRESSION_LEVEL=3'
+          ) | Set-Content -LiteralPath apps/desktop/.env.windows -Encoding utf8
+
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate Windows packaging toolchain and configuration
+        run: pnpm run package:desktop:win:x64:unsigned --check --build-version $env:SUIYI_TEST_VERSION
+
+      - name: Build unsigned NSIS installer
+        run: pnpm run package:desktop:win:x64:unsigned --build-version $env:SUIYI_TEST_VERSION
+
+      - name: Verify installer and write SHA256SUMS
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $artifactDir = 'apps/desktop/.desktop-build/targets/win-x64/unsigned-artifacts'
+          $expected = "suiyi-$env:SUIYI_TEST_VERSION-win-x64-unsigned.exe"
+          $files = @(Get-ChildItem -LiteralPath $artifactDir -Filter $expected -File)
+          if ($files.Count -ne 1) {
+            throw "Expected exactly one unsigned installer named $expected; found $($files.Count)"
+          }
+          $installer = $files[0]
+          if ($installer.Length -lt 1048576) {
+            throw "Unexpectedly small installer: $($installer.FullName) ($($installer.Length) bytes)"
+          }
+          $bytes = [System.IO.File]::ReadAllBytes($installer.FullName)
+          if ($bytes.Length -lt 64 -or $bytes[0] -ne 0x4D -or $bytes[1] -ne 0x5A) {
+            throw 'Installer does not start with an MZ header'
+          }
+          $peOffset = [System.BitConverter]::ToInt32($bytes, 0x3C)
+          if ($peOffset -lt 0 -or ($peOffset + 6) -ge $bytes.Length) {
+            throw 'Installer has an invalid PE header offset'
+          }
+          if ($bytes[$peOffset] -ne 0x50 -or $bytes[$peOffset + 1] -ne 0x45 -or
+              $bytes[$peOffset + 2] -ne 0 -or $bytes[$peOffset + 3] -ne 0) {
+            throw 'Installer is not a valid PE executable'
+          }
+          $machine = [System.BitConverter]::ToUInt16($bytes, $peOffset + 4)
+          if ($machine -ne 0x8664) {
+            throw ('Expected PE machine 0x8664 (x64), found 0x{0:X4}' -f $machine)
+          }
+          $signature = Get-AuthenticodeSignature -LiteralPath $installer.FullName
+          if ($signature.Status -ne 'NotSigned') {
+            throw "Expected an unsigned installer; Authenticode status is $($signature.Status)"
+          }
+          $hash = (Get-FileHash -LiteralPath $installer.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          $staging = 'builds/windows/artifact'
+          New-Item -ItemType Directory -Force -Path $staging | Out-Null
+          Copy-Item -LiteralPath $installer.FullName -Destination (Join-Path $staging $installer.Name) -Force
+          [System.IO.File]::WriteAllText(
+            (Join-Path $staging 'SHA256SUMS.txt'),
+            "$hash  $($installer.Name)`n",
+            [System.Text.Encoding]::ASCII
+          )
+          Write-Host "UNSIGNED_NSIS_READY $($installer.Name) $($installer.Length) bytes SHA256=$hash PE=x64 AUTH=NotSigned"
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value @"
+          ## 遂意 Suiyi Windows x64 未签名测试包
+          - Installer: $($installer.Name)
+          - Size: $($installer.Length) bytes
+          - PE machine: x64 (0x8664)
+          - Authenticode: NotSigned
+          - SHA256: $hash
+          "@
+
+      - name: Upload unsigned installer and SHA256SUMS
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: suiyi-windows-x64-unsigned-${{ github.run_number }}-${{ github.run_attempt }}
+          path: |
+            builds/windows/artifact/*-win-x64-unsigned.exe
+            builds/windows/artifact/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 14

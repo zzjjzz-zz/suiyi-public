@@ -1,0 +1,49 @@
+.dsh-suiyi-name {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.dsh-suiyi-name-hanzi {
+  font-size: 17px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  color: var(--dsw-alias-label-primary);
+}
+
+.dsh-suiyi-name-roman {
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.34em;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.dsh-suiyi-mark .dsh-suiyi-body,
+.dsh-suiyi-mark .dsh-suiyi-tail,
+.dsh-suiyi-mark .dsh-suiyi-orbit {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* The idle drift is the only motion; the reduced-motion preference turns it off. */
+@media (prefers-reduced-motion: no-preference) {
+  .dsh-suiyi-mark .dsh-suiyi-body,
+  .dsh-suiyi-mark .dsh-suiyi-tail {
+    animation: dsh-suiyi-drift 7.8s ease-in-out infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dsh-suiyi-mark .dsh-suiyi-body,
+  .dsh-suiyi-mark .dsh-suiyi-tail,
+  .dsh-suiyi-mark .dsh-suiyi-orbit {
+    animation: none;
+  }
+}
+
+@keyframes dsh-suiyi-drift {
+  0%, 100% { transform: translateY(0) rotate(0deg) }
+  50% { transform: translateY(2px) rotate(1.2deg) }
+}
