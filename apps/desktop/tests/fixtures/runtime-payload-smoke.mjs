@@ -133,8 +133,12 @@ function checkHtml() {
 }
 
 try {
-  const builtin = requireRuntime('node-addon-require-builtin')
-  assert.equal(typeof builtin.requireBuiltin('internal/modules/esm/loader').getOrInitializeCascadedLoader, 'function')
+  // The packaged Host runs with --expose-internals. Match that path before requiring
+  // the native fallback, whose runtime fingerprint must remain strictly validated.
+  const esmLoader = process.execArgv.includes('--expose-internals')
+    ? requireRuntime('internal/modules/esm/loader')
+    : requireRuntime('node-addon-require-builtin').requireBuiltin('internal/modules/esm/loader')
+  assert.equal(typeof esmLoader.getOrInitializeCascadedLoader, 'function')
   console.error('runtime payload: pnpm')
   await checkPnpm(resourcesRuntime)
   console.error('runtime payload: koffi')
