@@ -59,6 +59,16 @@ describe('desktop welcome presentation', () => {
     await expect(view.copy()).toMatchFileSnapshot(`./expected/welcome/${language}-api-key.expected.txt`)
   })
 
+  it('selects Suiyi artwork instead of the official welcome logo', () => {
+    vi.stubEnv('DSH_DESKTOP_FLAVOR', 'suiyi')
+    try {
+      mount()
+      expect(document.querySelector('img')?.getAttribute('src')).toBe('assets/welcome-brand-suiyi.svg')
+    } finally {
+      vi.unstubAllEnvs()
+    }
+  })
+
   it('sends one trimmed key, prevents competing actions, and clears it after saving', async () => {
     const view = mount()
     const saved = Promise.withResolvers<WelcomeSaveResult>()

@@ -68,8 +68,18 @@ if ($TestProgress -or $CompileProgressOnly) {
     }
 }
 Add-Type -AssemblyName System.Drawing
+$flavor = $env:DSH_DESKTOP_FLAVOR
+$assetsDirectory = if ($null -eq $flavor -or $flavor -eq 'official') {
+    Join-Path $installerRoot 'assets'
+} elseif ($flavor -eq 'suiyi') {
+    Join-Path $installerRoot 'assets/suiyi'
+} else {
+    throw "Unknown desktop flavor '$flavor': Windows installer assets require official or suiyi."
+}
 foreach ($asset in @('brand', 'brand-2x', 'brand-dark', 'brand-dark-2x', 'uninstaller-sidebar')) {
-    $image = [Drawing.Image]::FromFile((Join-Path $installerRoot "assets/$asset.png"))
+    $sourceImage = Join-Path $assetsDirectory "$asset.png"
+    if (-not (Test-Path -LiteralPath $sourceImage)) { throw "Missing Windows installer asset: $sourceImage" }
+    $image = [Drawing.Image]::FromFile($sourceImage)
     try {
         $bitmap = [Drawing.Bitmap]::new($image.Width, $image.Height, [Drawing.Imaging.PixelFormat]::Format24bppRgb)
         try {

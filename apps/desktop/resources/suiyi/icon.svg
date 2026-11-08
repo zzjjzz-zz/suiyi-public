@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#F0F8FF"/><stop offset="1" stop-color="#D9F5FB"/>
+    </linearGradient>
+    <linearGradient id="wing" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#248DEB"/><stop offset="1" stop-color="#12C1D4"/>
+    </linearGradient>
+    <linearGradient id="wake" x1="0" y1="1" x2="1" y2="0">
+      <stop stop-color="#17BDCD"/><stop offset="1" stop-color="#248DEB"/>
+    </linearGradient>
+  </defs>
+  <rect x="48" y="48" width="928" height="928" rx="220" fill="url(#tile)"/>
+  <rect x="50" y="50" width="924" height="924" rx="218" fill="none" stroke="#83CCEE" stroke-width="4"/>
+  <g id="tray-glyph">
+    <g transform="translate(128 128) scale(6)">
+      <ellipse cx="64" cy="66" rx="51.2" ry="22.4" transform="rotate(-24 64 66)" fill="none" stroke="#21A1DD" stroke-width="2.15" opacity="0.85"/>
+      <path d="M90.4 29.2C77.6 22 61.6 22 46.4 26.8C27.2 32.4 19.2 43.6 23.2 54C26.4 65.2 40.8 69.2 53.6 62.8C41.6 60.4 40 54 44 46.8C51.2 36.4 71.2 32.4 90.4 29.2Z" fill="url(#wing)"/>
+      <path d="M34.4 100.4C52 100.4 72.8 94.8 85.6 82.8C96.8 71.6 96.8 57.2 88 50.8C81.6 45.2 70.4 44.4 62.4 50C72.8 50.8 79.2 59.6 73.6 68.4C66.4 82.8 51.2 92.4 34.4 100.4Z" fill="url(#wake)"/>
+    </g>
+  </g>
+</svg>

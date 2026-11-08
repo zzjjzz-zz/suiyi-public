@@ -46,13 +46,13 @@ describe('official browser-brand plugin', () => {
     expect(inject).toEqual(['slots'])
   })
 
-  it('keeps local sidebar branding and provides the same blank-home feedback', async () => {
-    vi.stubEnv('DSH_CLIENT_BUILD_PROFILE', 'local')
-    const subject = await bench()
-    await subject.ctx.plugin({ inject: [...inject], apply }).await()
-    expect(subject.slots.entries('sidebar.brand.mark')).toHaveLength(0)
-    expect(subject.slots.entries('sidebar.brand.name')).toHaveLength(0)
-    expect(subject.slots.entries('conversation.hero.frame')).toHaveLength(1)
+  it('leaves local and Suiyi builds without official branding or whale', async () => {
+    for (const profile of ['local', 'suiyi', ''] as const) {
+      vi.stubEnv('DSH_CLIENT_BUILD_PROFILE', profile)
+      const subject = await bench()
+      await subject.ctx.plugin({ inject: [...inject], apply }).await()
+      for (const hole of HOLES) expect(subject.slots.entries(hole)).toHaveLength(0)
+    }
   })
 
   it('fills declarations before or after apply and removes every occupant on teardown', async () => {

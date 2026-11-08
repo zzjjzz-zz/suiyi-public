@@ -1,8 +1,10 @@
-import { writeFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { setImmediate } from 'node:timers/promises'
 import { afterEach, expect, it, vi } from 'vitest'
 import { packageTarget, parseDesktopPackageInvocation } from '../scripts/package-target.ts'
+import { createElectronBuilderConfig } from '../scripts/electron-builder-config.mjs'
+import { notarizeMacOS } from '../scripts/notarize-macos.mjs'
 import { withMacOSNotarizationProxy } from '../scripts/macos-notarization-proxy.ts'
 import { packageMacOSArtifacts } from '../scripts/package-macos.ts'
 import { withWindowsSigningStage } from '../scripts/windows-signing-stage.mjs'
@@ -447,4 +449,54 @@ it.each([
     await expect(packageTarget(invocation, env, failed.run)).rejects.toThrow('stage refused')
     expect(failed.stages.some(stage => stage.startsWith('run release:pack'))).toBe(false)
   }
+})
+
+it.each([
+  ['official', 'com.example.test', 'DeepSeek Harness.app'],
+  ['suiyi', 'com.zzjjzz.suiyi', 'Suiyi.app'],
+] as const)('notarizes the signed macOS directory under the %s product name', async (flavor, appId, appName) => {
+  const { run } = supervisor()
+  await packageTarget(parseDesktopPackageInvocation(['mac-arm64', '--dir'], 'darwin', 'arm64'), {
+    ...environment, DSH_DESKTOP_FLAVOR: flavor, DSH_DESKTOP_APP_ID: appId, APPLE_KEYCHAIN_PROFILE: 'fixture',
+  }, run)
+  expect(notarizeMacOS).toHaveBeenCalledOnce()
+  const [options] = vi.mocked(notarizeMacOS).mock.calls[0]!
+  expect(options.appPath.endsWith(`/mac-arm64/${appName}`)).toBe(true)
+})
+
+it.each([
+  ['official', 'com.example.test', 'DeepSeek Harness.app'],
+  ['suiyi', 'com.zzjjzz.suiyi', 'Suiyi.app'],
+] as const)('packages the unnotarized macOS application under the %s product name', async (flavor, appId, appName) => {
+  const { run, stages } = supervisor()
+  await packageTarget(parseDesktopPackageInvocation(['mac-arm64', '--skip-notarization'], 'darwin', 'arm64'), {
+    ...environment, DSH_DESKTOP_FLAVOR: flavor, DSH_DESKTOP_APP_ID: appId,
+  }, run)
+  const prepackaged = stages.filter(stage => stage.includes('--prepackaged'))
+  expect(prepackaged).toHaveLength(2)
+  for (const stage of prepackaged) expect(stage).toContain(`/mac-arm64/${appName} `)
+})
+
+it.each([
+  ['official', 'com.example.test', 'DeepSeek Harness'],
+  ['suiyi', 'com.zzjjzz.suiyi', 'Suiyi'],
+] as const)('derives the macOS microphone purpose from the %s product name', (flavor, appId, productName) => {
+  const config = createElectronBuilderConfig({
+    DSH_DESKTOP_FLAVOR: flavor, DSH_DESKTOP_APP_ID: appId,
+    DSH_DESKTOP_TARGET_PLATFORM: 'darwin', DSH_DESKTOP_TARGET_ARCH: 'arm64', DSH_DESKTOP_UNSIGNED: '1',
+  }, 'darwin', 'arm64')
+  expect(config.productName).toBe(productName)
+  expect(config.mac.extendInfo.NSMicrophoneUsageDescription)
+    .toBe(`${productName} uses your microphone to transcribe speech into message drafts.`)
+})
+
+it('keeps client warnings product-neutral instead of naming the official product', () => {
+  const pluginLocales = readFileSync(new URL('../../../packages/client/ui-plugin-manager/src/client/locales.ts', import.meta.url), 'utf8')
+  const officeLocales = readFileSync(new URL('../../../packages/client/ui-sidebar-documentpreview/src/client/office/locales.ts', import.meta.url), 'utf8')
+  expect(pluginLocales).not.toContain('DeepSeek Harness')
+  expect(officeLocales).not.toContain('DeepSeek Harness')
+  expect(pluginLocales).toContain('损坏本应用')
+  expect(pluginLocales).toContain('damage this app')
+  expect(officeLocales).toContain('运行本应用')
+  expect(officeLocales).toContain('running this app')
 })

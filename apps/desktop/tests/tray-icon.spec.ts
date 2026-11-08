@@ -40,4 +40,15 @@ describe('tray icon packaging', () => {
     expect(entries.map(entry => entry.size)).toEqual([...TRAY_ICON_SIZES])
     for (const entry of entries) expect(entry.png.length).toBeGreaterThan(100)
   })
+
+  it('ships a separate Suiyi icon with valid display scales', () => {
+    const suiyiIco = readFileSync(new URL('../resources/suiyi/tray-windows.ico', import.meta.url))
+    expect(suiyiIco.equals(readFileSync(TRAY_ICON_PATHS.output))).toBe(false)
+    expect(unpackIco(suiyiIco).map(entry => entry.size)).toEqual([...TRAY_ICON_SIZES])
+    const suiyiIcon = readFileSync(new URL('../resources/suiyi/icon-windows.png', import.meta.url))
+    const officialIcon = readFileSync(new URL('../resources/icon-windows.png', import.meta.url))
+    expect(suiyiIcon.readUInt32BE(16)).toBe(1024)
+    expect(suiyiIcon.readUInt32BE(20)).toBe(1024)
+    expect(suiyiIcon.equals(officialIcon)).toBe(false)
+  })
 })

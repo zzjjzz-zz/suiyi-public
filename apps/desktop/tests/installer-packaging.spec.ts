@@ -1,4 +1,5 @@
 import { readInstallerLocales } from '../scripts/installer-locales.mjs'
+import { createHash } from 'node:crypto'
 import { tmpdir } from 'node:os'
 import { readFileSync } from 'node:fs'
 import { Arch, Platform } from 'electron-builder'
@@ -127,5 +128,51 @@ describe('installer preparation preserves application dependencies', () => {
     }, 'darwin', 'arm64')
     const packaged = new Set(config.files.filter((entry): entry is string => typeof entry === 'string'))
     for (const name of referenced) expect(packaged.has(`lib/${name}`)).toBe(true)
+  })
+
+  it('keeps official installer artwork intact and ships distinct Suiyi bitmaps', async () => {
+    execute.mockClear()
+    write.mockClear()
+    const assets = new URL('../installer/assets/', import.meta.url)
+    const officialHashes: Record<string, string> = {
+      'brand.png': '3276df8a1d3491160e9436a4b5690444c96c1351661901a84581ff216d10fd2f',
+      'brand-2x.png': '2d3538a84ecf40619053218f9f32ee853d26614377cbcd8d3c96a9a0192ac529',
+      'brand-dark.png': '59901811702183ee8047b61ca7d0be9adc6c1bbd8f6d630f859b60b0e583cd9a',
+      'brand-dark-2x.png': 'd9ac067d453cceace270fdf17158a2dccd8df5577f35639699030d6a80c39e40',
+      'uninstaller-sidebar.png': 'f853ea4d1d54fc9aa55565ce05ae51c1f577db835636dadb74db54cd8b00e3ea',
+    }
+    const dimensions = (bytes: Buffer) => [bytes.readUInt32BE(16), bytes.readUInt32BE(20)]
+    for (const [name, width, height] of [
+      ['brand.png', 600, 196],
+      ['brand-2x.png', 1200, 392],
+      ['brand-dark.png', 600, 196],
+      ['brand-dark-2x.png', 1200, 392],
+      ['uninstaller-sidebar.png', 164, 314],
+    ] as const) {
+      const official = readFileSync(new URL(name, assets))
+      const suiyi = readFileSync(new URL(`suiyi/${name}`, assets))
+      expect(dimensions(official)).toEqual([width, height])
+      expect(dimensions(suiyi)).toEqual([width, height])
+      expect(createHash('sha256').update(official).digest('hex')).toBe(officialHashes[name])
+      expect(suiyi.equals(official)).toBe(false)
+    }
+    for (const [light, dark] of [['brand.png', 'brand-dark.png'], ['brand-2x.png', 'brand-dark-2x.png']] as const) {
+      expect(readFileSync(new URL(`suiyi/${light}`, assets)).equals(readFileSync(new URL(`suiyi/${dark}`, assets)))).toBe(false)
+    }
+    const script = readFileSync(new URL('../scripts/prepare-windows-installer.ps1', import.meta.url), 'utf8')
+    expect(script).toContain('$env:DSH_DESKTOP_FLAVOR')
+    expect(script).toContain("Join-Path $installerRoot 'assets/suiyi'")
+    expect(script).toContain('Unknown desktop flavor')
+    const { createElectronBuilderConfig } = await import('../scripts/electron-builder-config.mjs')
+    const config = createElectronBuilderConfig({
+      DSH_DESKTOP_FLAVOR: 'suiyi',
+      DSH_DESKTOP_APP_ID: 'com.zzjjzz.suiyi',
+      DSH_DESKTOP_TARGET_PLATFORM: 'win32',
+      DSH_DESKTOP_TARGET_ARCH: 'x64',
+      DSH_DESKTOP_UNSIGNED: '1',
+    }, 'win32', 'x64')
+    await config.beforeBuild()
+    expect(execute).toHaveBeenCalledWith('powershell.exe', expect.any(Array),
+      expect.objectContaining({ env: expect.objectContaining({ DSH_DESKTOP_FLAVOR: 'suiyi' }) }))
   })
 })
