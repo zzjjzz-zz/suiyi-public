@@ -20,6 +20,9 @@ public static class InstallerCapture {
     [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr window, out uint process);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetWindowText(IntPtr window, StringBuilder text, int count);
     [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr window, out Rect rect);
+    [DllImport("user32.dll")] static extern IntPtr GetParent(IntPtr window);
+    [DllImport("user32.dll")] static extern bool ScreenToClient(IntPtr window, ref Point point);
+    [DllImport("user32.dll")] static extern IntPtr ChildWindowFromPointEx(IntPtr parent, Point point, uint flags);
     [DllImport("user32.dll")] static extern bool PrintWindow(IntPtr window, IntPtr dc, uint flags);
     [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr window, int command);
     [DllImport("user32.dll")] static extern bool RedrawWindow(IntPtr window, IntPtr rect, IntPtr region, uint flags);
@@ -168,7 +171,21 @@ public static class InstallerCapture {
     [DllImport("user32.dll")] static extern IntPtr GetAncestor(IntPtr window, uint flags);
 
     public static void Click(IntPtr control) {
+        AssertControlExposed(control);
         if (!PostMessage(control, 0xF5, IntPtr.Zero, IntPtr.Zero)) throw new InvalidOperationException("Could not click native button");
+    }
+
+    // IsWindowVisible alone does not detect an opaque sibling covering a button.
+    public static void AssertControlExposed(IntPtr control) {
+        Rect rect;
+        if (!IsWindowVisible(control) || !GetWindowRect(control, out rect)
+            || rect.Right <= rect.Left || rect.Bottom <= rect.Top)
+            throw new InvalidOperationException("Native control has no visible area");
+        var center = new Point((rect.Left + rect.Right) / 2, (rect.Top + rect.Bottom) / 2);
+        IntPtr parent = GetParent(control);
+        if (parent == IntPtr.Zero || !ScreenToClient(parent, ref center)
+            || ChildWindowFromPointEx(parent, center, 1) != control)
+            throw new InvalidOperationException("Native control is covered by a sibling");
     }
 
     public static IntPtr Find(int process) {

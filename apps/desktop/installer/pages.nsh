@@ -40,6 +40,7 @@ Var InstallerLaunchHint
 Var InstallerCancel
 Var InstallerMinimizeButton
 Var InstallerCloseButton
+Var InstallerDragSurface
 Var InstallerBackdrop
 Var InstallerBackdropBitmap
 Var InstallerBackdropOld
@@ -368,7 +369,7 @@ Function InstallerCreate
     StrCpy $InstallerBackdropBitmap 0
     StrCpy $InstallerBackdropOld 0
 
-    ; The backdrop is the first child so every label and control paints above it.
+    ; New child windows start below existing siblings; lower decorative layers after creation.
     ${NSD_CreateBitmap} 0 0 0 0 ""
     Pop $InstallerBackdrop
     !insertmacro InstallerPlace $InstallerBackdrop 0 0 ${INSTALLER_WINDOW_WIDTH} ${INSTALLER_WINDOW_HEIGHT}
@@ -376,11 +377,11 @@ Function InstallerCreate
 
     ; Custom caption: a drag surface plus minimize and close controls.
     ${NSD_CreateLabel} 0 0 0 0 ""
-    Pop $4
-    !insertmacro InstallerPlace $4 0 0 504 48
-    ${NSD_AddStyle} $4 ${SS_NOTIFY}
-    ${NSD_OnClick} $4 InstallerDrag
-    !insertmacro InstallerPageTransparentColors $4
+    Pop $InstallerDragSurface
+    !insertmacro InstallerPlace $InstallerDragSurface 0 0 504 48
+    ${NSD_AddStyle} $InstallerDragSurface ${SS_NOTIFY}
+    ${NSD_OnClick} $InstallerDragSurface InstallerDrag
+    !insertmacro InstallerPageTransparentColors $InstallerDragSurface
     ${NSD_CreateButton} 0 0 0 0 "−"
     Pop $InstallerMinimizeButton
     !insertmacro InstallerPlace $InstallerMinimizeButton ${INSTALLER_CAPTION_MIN_X} ${INSTALLER_CAPTION_Y} ${INSTALLER_CAPTION_W} ${INSTALLER_CAPTION_H}
@@ -513,10 +514,23 @@ Function InstallerCreate
     !insertmacro InstallerPageTransparentMutedColors $InstallerFootnote
 
     Call InstallerRender
+    ; HWND_BOTTOM keeps decorative bitmaps behind native controls and their hit targets.
+    System::Call 'user32::SetWindowPos(p $InstallerEditFrame, p 1, i 0, i 0, i 0, i 0, i 0x13) i.r0'
+    ${If} $0 == 0
+        MessageBox MB_OK|MB_ICONSTOP "$(INSTALLER_UI_ERROR)"
+        SetErrorLevel 2
+        Quit
+    ${EndIf}
+    System::Call 'user32::SetWindowPos(p $InstallerBackdrop, p 1, i 0, i 0, i 0, i 0, i 0x13) i.r0'
+    ${If} $0 == 0
+        MessageBox MB_OK|MB_ICONSTOP "$(INSTALLER_UI_ERROR)"
+        SetErrorLevel 2
+        Quit
+    ${EndIf}
     System::Call 'user32::SetPropW(p $HWNDPARENT, w "HarnessInstaller.Ready", p 1)'
     ShowWindow $InstallerDialog 5
     ShowWindow $HWNDPARENT 5
-    ${If} $InstallerPhase == "welcome"
+    ${If} $InstallerPhase == "platform"
         System::Call '$PLUGINSDIR\window-frame.dll::InstallerPresentWelcome(p $HWNDPARENT) i.r0 ?c'
     ${EndIf}
     nsDialogs::Show
@@ -547,7 +561,7 @@ Function InstallerApplyLayout
     !insertmacro InstallerMove $InstallerBackdrop 0 0 $InstallerLayoutWidth $InstallerLayoutHeight
     StrCpy $1 $InstallerLayoutWidth
     IntOp $1 $1 - 96
-    !insertmacro InstallerMove $4 0 0 $1 48
+    !insertmacro InstallerMove $InstallerDragSurface 0 0 $1 48
     StrCpy $1 $InstallerLayoutWidth
     IntOp $1 $1 - 96
     !insertmacro InstallerMove $InstallerMinimizeButton $1 8 40 32

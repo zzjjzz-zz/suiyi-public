@@ -859,6 +859,46 @@ describe('Enter semantics', () => {
     }).placeholder).toBe('Cmd/Ctrl+Enter 插话发送全部排队消息')
   })
 
+  it.each([['本轮补充', 'steer'], ['下一轮', 'queue']] as const)('routes %s through the resident draft machine', async (label, mode) => {
+    vi.stubEnv('DSH_CLIENT_BUILD_PROFILE', 'suiyi')
+    try {
+      const { view, sink } = bench({ running: true, draft: '实际补充', busyEnter: mode === 'steer' ? 'queue' : 'steer' })
+      await act(async () => { fireEvent.click(view.getByRole('button', { name: label })) })
+      expect(sink).toHaveBeenCalledWith('实际补充', [], mode, expect.any(AbortSignal), expect.any(Function))
+    } finally { vi.unstubAllEnvs() }
+  })
+
+  it('keeps an empty running draft available for instructions without sending', () => {
+    vi.stubEnv('DSH_CLIENT_BUILD_PROFILE', 'suiyi')
+    try {
+      const { view, sink, textarea } = bench({ running: true })
+      fireEvent.click(view.getByRole('button', { name: '本轮补充' }))
+      expect(sink).not.toHaveBeenCalled()
+      expect(view.getByText('请先输入补充要求或添加附件')).toBeTruthy()
+      expect(document.activeElement).toBe(textarea)
+    } finally { vi.unstubAllEnvs() }
+  })
+
+  it('hides running draft actions when prompting is denied or the turn is idle', () => {
+    vi.stubEnv('DSH_CLIENT_BUILD_PROFILE', 'suiyi')
+    try {
+      expect(bench({ running: true, deniedEndpoints: ['session/prompt'] }).view.queryByText('本轮补充')).toBeNull()
+      cleanup()
+      expect(bench().view.queryByText('下一轮')).toBeNull()
+    } finally { vi.unstubAllEnvs() }
+  })
+
+  it('keeps blocked running drafts out of the submission path', () => {
+    vi.stubEnv('DSH_CLIENT_BUILD_PROFILE', 'suiyi')
+    try {
+      const { view, sink } = bench({ running: true, draft: '等待配置', blocked: { reason: 'model' } })
+      const button = view.getByRole('button', { name: '下一轮' })
+      expect(button).toHaveProperty('disabled', true)
+      fireEvent.click(button)
+      expect(sink).not.toHaveBeenCalled()
+    } finally { vi.unstubAllEnvs() }
+  })
+
   it('uses the Suiyi ordinary active placeholder while preserving special hints', () => {
     vi.stubEnv('DSH_CLIENT_BUILD_PROFILE', 'suiyi')
     try {

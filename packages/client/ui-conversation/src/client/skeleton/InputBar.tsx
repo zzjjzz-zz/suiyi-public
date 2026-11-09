@@ -457,6 +457,17 @@ export const InputBar = memo(function InputBar({
     if (!empty && !disabled && !machineBusy && !uploadsPending) keyboard.submit(primarySubmitMode, 'click')
   }
 
+  const runControlsBlocked = disabled || machineBusy || uploadsPending || (!empty && !plainMessageDraft)
+  const submitRunDraft = (mode: 'steer' | 'queue'): void => {
+    if (runControlsBlocked || promptDenied || !running || !steeringAvailable) return
+    if (empty) {
+      showToast(t('input.running.empty'))
+      if (editor !== null) focusDraftEditor(editor, revealSelection)
+      return
+    }
+    keyboard.submit(mode, 'click')
+  }
+
   // Claim ghost hint: rendered by CSS as generated content after the last
   // paragraph while the claim's args are blank (a hint implies a single-line
   // token draft). The translated per-command hint wins over the claim's own.
@@ -503,6 +514,18 @@ export const InputBar = memo(function InputBar({
       {notice?.level === 'info' && (
         <div className={css.notice} role="status">
           {notice.text}
+        </div>
+      )}
+      {process.env.DSH_CLIENT_BUILD_PROFILE === 'suiyi' && running && steeringAvailable && !promptDenied && (
+        <div className={css.runControls} data-composer-run-controls>
+          <span className={css.runOrbital} aria-hidden="true" />
+          <span className={css.runLabel}>{t('input.running.label')}</span>
+          <button type="button" disabled={runControlsBlocked} onMouseDown={keepFocus} onClick={() => { submitRunDraft('steer') }}>
+            {t('input.running.steer')}
+          </button>
+          <button type="button" disabled={runControlsBlocked} onMouseDown={keepFocus} onClick={() => { submitRunDraft('queue') }}>
+            {t('input.running.queue')}
+          </button>
         </div>
       )}
       {/* Trigger clicks land on the card, not the editor: the toolbar row's

@@ -51,10 +51,10 @@ function Start-Setup([string]$Theme, [string]$Path = $installPath) {
     })
     if ($languages.Count -ne 1) { throw "Cannot identify installer language: $([InstallerCapture]::VisibleText($process.Id))" }
     $script:copy = $localizedCopy[$languages[0]]
-    [void](Wait-Control $process $copy.INSTALLER_CONTINUE)
+    [InstallerCapture]::AssertControlExposed((Wait-Control $process $copy.INSTALLER_CONTINUE))
     [void][InstallerCapture]::Save($window, (Join-Path $OutputDirectory ($Theme + '-platform.png')))
     Click-Control $process $copy.INSTALLER_CONTINUE
-    [void](Wait-Control $process $copy.INSTALLER_INSTALL)
+    [InstallerCapture]::AssertControlExposed((Wait-Control $process $copy.INSTALLER_INSTALL))
     return $process
 }
 function Click-Control([Diagnostics.Process]$Process, [string]$Text) {

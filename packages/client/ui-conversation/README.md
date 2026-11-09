@@ -13,6 +13,8 @@ The main composer reserves 35 px on each side of the full conversation column on
 
 The running composer uses an outlined stop square and a dark glyph on the dark theme’s light-blue button.
 
+In Suiyi, a running conversation shows **Add to this turn** and **Next turn** above the composer. Both submit the current draft through the existing input machine; prompting permissions, pending uploads, command ownership and blocked states still apply. Empty drafts focus the editor and show guidance. The Host decides whether steering reaches the current turn or the next available delivery window.
+
 ## Summary
 
 `ui-conversation` owns target-neutral Conversation assembly and the shared browser shell. It consumes Session Controller `SessionEventLikeEntry` feeds, exposes React-free registries and per-Session bindings through `ctx.uiConversation`, and contributes the `useConversation`, `useInput`, and `inputActions` standard props through `ctx.uiSession`. It also owns the per-session durable image URL cache: `ctx.uiConversation.imageUrl(sessionId, attachment)` resolves one Gateway-authorized browser URL per attachment and revokes it with the Session binding, so every Conversation target shares one `session.attachment` read. Concrete targets such as Chat are separate packages that register their own Definitions, snapshot builders, Views, and renderers.
