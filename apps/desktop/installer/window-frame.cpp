@@ -1102,8 +1102,8 @@ static void InvalidateCaptionButtons(HWND window, const ProgressPage& page) {
 static bool PaintRailDetails(Graphics& graphics, const Palette& palette, const InstallerLayout& layout,
         Image& brand, const std::wstring& wordmark, const std::wstring* descriptions, const std::wstring& note) {
     if (!layout.desktop) return true;
-    Font small(g_fontCatalog->regular, 10.0f, FontStyleRegular, UnitPixel);
-    if (!FontReady(small)) return false;
+    Font detailFont(g_fontCatalog->regular, 10.0f, FontStyleRegular, UnitPixel);
+    if (!FontReady(detailFont)) return false;
     SolidBrush muted(Color(palette.muted));
     if (brand.GetWidth() == brand.GetHeight()) {
         Font title(g_fontCatalog->medium, 22.0f, FontStyleRegular, UnitPixel);
@@ -1114,11 +1114,11 @@ static bool PaintRailDetails(Graphics& graphics, const Palette& palette, const I
             layout.cardX + 79.0f, layout.cardY + 34.6f, 150.0f, 32.0f);
     }
     for (int index = 0; index < 4; ++index) {
-        DrawTextBlock(graphics, descriptions[index], small, muted,
+        DrawTextBlock(graphics, descriptions[index], detailFont, muted,
             layout.stepLabelX, layout.stepLabelY + static_cast<REAL>(index) * layout.stepGap + 26.0f,
             index == 3 ? layout.stepLastW : layout.stepLabelW, 17.0f, true);
     }
-    DrawTextBlock(graphics, note, small, muted,
+    DrawTextBlock(graphics, note, detailFont, muted,
         layout.cardX + 27.0f, layout.cardY + layout.cardH - 64.0f, 197.0f, 52.0f, true);
     return true;
 }

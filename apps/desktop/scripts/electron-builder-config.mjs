@@ -136,11 +136,19 @@ export function createElectronBuilderConfig(
     electronFuses: { runAsNode: true },
     beforeBuild: async () => {
       if (resolvedPlatform !== 'win32') return true
-      await promisify(execFile)('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File',
-        fileURLToPath(new URL('./prepare-windows-installer.ps1', import.meta.url)),
-        '-OutputDirectory', join(buildPaths.root, 'installer-ui')], {
-        env: scrubWindowsSigningEnvironment(env), windowsHide: true,
-      })
+      try {
+        await promisify(execFile)('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File',
+          fileURLToPath(new URL('./prepare-windows-installer.ps1', import.meta.url)),
+          '-OutputDirectory', join(buildPaths.root, 'installer-ui')], {
+          env: scrubWindowsSigningEnvironment(env), windowsHide: true,
+        })
+      } catch (error) {
+        // MSVC writes compiler diagnostics to stdout; execFile's message only carries stderr.
+        if (error instanceof Error && 'stdout' in error && typeof error.stdout === 'string' && error.stdout.trim()) {
+          throw new Error(`${error.message}\n${error.stdout.trimEnd()}`, { cause: error })
+        }
+        throw error
+      }
       await writeFile(join(buildPaths.root, 'installer-ui', 'strings.nsh'), renderInstallerStrings(readInstallerLocales()).replaceAll('DeepSeek Harness', identity.displayName), 'utf8')
       if (windowsSigner !== undefined) {
         await windowsSigner({ path: join(buildPaths.root, 'installer-ui', 'window-frame.dll'), hash: 'sha256', isNest: false })

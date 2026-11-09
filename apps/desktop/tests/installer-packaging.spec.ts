@@ -19,6 +19,25 @@ vi.mock('node:fs/promises', async importOriginal => ({
 }))
 
 describe('installer preparation preserves application dependencies', () => {
+  it('includes native compiler output in a preparation failure and stops packaging', async () => {
+    const { createElectronBuilderConfig } = await import('../scripts/electron-builder-config.mjs')
+    const config = createElectronBuilderConfig({
+      DSH_DESKTOP_APP_ID: 'com.example.installer',
+      DSH_DESKTOP_MANDATORY_UPDATE_TEST_ORIGIN: 'https://policy.example.com',
+      DSH_DESKTOP_MANDATORY_UPDATE_CONFIG: JSON.stringify({ allowedAuthOrigins: ['https://login.example.com'] }),
+      DSH_DESKTOP_UNSIGNED: '1',
+    }, 'win32', 'x64')
+    const failure = Object.assign(new Error('Native installer helper compilation failed'), {
+      stdout: 'window-frame.cpp(1105): error C2628: illegal type declaration',
+    })
+    execute.mockRejectedValueOnce(failure)
+    write.mockClear()
+    const preparation = config.beforeBuild()
+    await expect(preparation).rejects.toThrow('error C2628')
+    await expect(preparation).rejects.toHaveProperty('cause', failure)
+    expect(write).not.toHaveBeenCalled()
+  })
+
   it.each(['win32', 'darwin'] as const)('rejects a missing production policy before signing on %s', async (platform) => {
     const { createElectronBuilderConfig } = await import('../scripts/electron-builder-config.mjs')
     expect(() => createElectronBuilderConfig({ DSH_DESKTOP_APP_ID: 'com.example.installer',
