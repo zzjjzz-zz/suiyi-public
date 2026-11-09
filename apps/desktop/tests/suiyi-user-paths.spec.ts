@@ -58,11 +58,12 @@ it('strips inherited DSH_* configuration per user instead of merging it', () => 
   const root = mkdtempSync(join(tmpdir(), 'suiyi-user-env-'))
   try {
     const environment = { DSH_HOME: join(root, '.dsh'), DSH_AGENTS_HOME: join(root, '.agents'),
-      DSH_CONFIG: 'inherited.yml', dsh_home: 'case-insensitive-pollution',
+      DSH_CONFIG: 'inherited.yml', DSH_DESKTOP_FLAVOR: 'official', dsh_home: 'case-insensitive-pollution',
       OPENAI_API_KEY: 'shared-model-secret', GH_TOKEN: 'shared-tool-secret',
       AWS_SECRET_ACCESS_KEY: 'shared-cloud-secret', PATH: 'kept path' }
     const alice = suiyiUserHostEnvironment(environment, root, ALICE)
     const bob = suiyiUserHostEnvironment(environment, root, BOB)
+    expect(alice.DSH_DESKTOP_FLAVOR).toBe('suiyi')
     expect(alice.DSH_HOME).toBe(suiyiUserPaths(root, ALICE).home)
     expect(alice.DSH_AGENTS_HOME).toBe(suiyiUserPaths(root, ALICE).agents)
     expect(alice.DSH_CONFIG).toBeUndefined()

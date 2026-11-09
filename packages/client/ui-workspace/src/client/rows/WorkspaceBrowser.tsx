@@ -1180,11 +1180,8 @@ export function WorkspaceBrowser({
     focusSearch()
   }, [wide, searchExpanded, searchOnExpand, focusSearch])
 
-  // Outside-click dismissal stays off while the rail gesture is in flight
-  // (searchOnExpand): the rail click flips the shell wide and mounts this
-  // listener during its own dispatch, then keeps bubbling to document with
-  // the now-unmounted rail button as its target — outside searchRoot, so the
-  // listener would dismiss the search that click just opened.
+  // Capture excludes the initiating click from outside dismissal. Rail
+  // expansion keeps dismissal disabled until the input is ready for focus.
   useEffect(() => {
     if (!wide || !searchExpanded || searchOnExpand) return
     const onClick = (event: MouseEvent): void => {
@@ -1193,8 +1190,8 @@ export function WorkspaceBrowser({
       if (normalizedQuery !== '') return
       changeSearchExpanded(false)
     }
-    document.addEventListener('click', onClick)
-    return () => { document.removeEventListener('click', onClick) }
+    document.addEventListener('click', onClick, true)
+    return () => { document.removeEventListener('click', onClick, true) }
   }, [normalizedQuery, wide, searchExpanded, searchOnExpand])
 
   useEffect(() => {
@@ -1251,7 +1248,7 @@ export function WorkspaceBrowser({
         )}
         {wide && searchExpanded && (
           <div className={clsx(css.searchSlot, css.searchSlotExpanded)}>
-            <div className={clsx(css.search, css.searchExpanded)}>
+            <div ref={searchRoot} className={clsx(css.search, css.searchExpanded)} onClick={focusSearch}>
               <input
                 ref={searchInput}
                 className={css.searchInput}

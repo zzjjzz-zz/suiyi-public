@@ -83,7 +83,12 @@
 
 .chevron {
   flex: none;
-  display: flex;
   align-self: center;
-  color: var(--dsw-alias-label-secondary);
+  color: light-dark(#72859c, #92acc8);
+  font-size: 14px;
+  line-height: normal;
+}
+
+.chevron svg {
+  vertical-align: middle;
 }

@@ -198,3 +198,27 @@ it('propagates catalog publication failures after a successful preference save',
     .rejects.toThrow('Command label unavailable')
   expect(f.api.edit).toHaveBeenCalledOnce()
 })
+
+it('checks the live modal and focus before invoking a product command', () => {
+  const { service } = mount()
+  const run = vi.fn()
+  const resolve = vi.fn(() => ({ status: 'handled' as const, run }))
+  const off = service.register({ ...command, resolve })
+  const dialog = document.createElement('div')
+  dialog.setAttribute('role', 'dialog')
+  dialog.setAttribute('aria-modal', 'true')
+  const input = document.createElement('input')
+  dialog.append(input)
+  document.body.append(dialog)
+  input.focus()
+  try {
+    expect(service.invoke(command.id).status).toBe('blocked')
+    expect(resolve).not.toHaveBeenCalled()
+    dialog.remove()
+    expect(service.invoke(command.id).status).toBe('handled')
+    expect(resolve).toHaveBeenCalledWith(expect.objectContaining({ modal: null, target: document.body, source: 'menu' }))
+    expect(run).toHaveBeenCalledOnce()
+    off()
+    expect(service.invoke(command.id).status).toBe('unavailable')
+  } finally { dialog.remove() }
+})

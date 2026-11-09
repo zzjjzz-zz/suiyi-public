@@ -114,7 +114,7 @@ export function applySuiyiUserElectronStorage(application: {
  * @param environment - inherited process environment.
  * @param appData - OS per-application data root.
  * @param verifiedIdentity - issuer and sub from a validated ID token.
- * @returns environment with `DSH_HOME`/`DSH_AGENTS_HOME` pointing at this user's roots.
+ * @returns Suiyi Host environment with `DSH_HOME`/`DSH_AGENTS_HOME` pointing at this user's roots.
  */
 export function suiyiUserHostEnvironment(
   environment: NodeJS.ProcessEnv, appData: string, verifiedIdentity: SuiyiVerifiedIdentity,
@@ -124,6 +124,7 @@ export function suiyiUserHostEnvironment(
   // an API key inherited from the Windows login shell or another process.
   return { ...Object.fromEntries(Object.entries(environment).filter(([key]) =>
     !/^DSH_/iu.test(key) && !/(?:^|_)(?:API_KEY|TOKEN|AUTH_TOKEN|ACCESS_KEY_ID|SECRET_ACCESS_KEY|SECRET|PASSWORD)$/iu.test(key))),
+  DSH_DESKTOP_FLAVOR: 'suiyi',
   DSH_HOME: paths.home,
   DSH_AGENTS_HOME: paths.agents,
   // Non-secret verified identity the plugin hub scopes decisions by. The access

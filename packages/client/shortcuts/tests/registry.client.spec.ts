@@ -212,3 +212,18 @@ it.each(['macos', 'windows'] as const)('keeps %s priority identical before savin
   }
   expect(run).toHaveBeenCalledTimes(18)
 })
+
+it('classifies menu refusal and never dispatches through an unrelated modal', () => {
+  const registry = new ShortcutRegistry('web', 'windows')
+  const run = vi.fn()
+  const resolve = vi.fn<ShortcutCommand['resolve']>(() => ({ status: 'handled', run }))
+  expect(registry.invoke('test.toggle' as ShortcutCommandId, context)).toEqual({ status: 'unavailable' })
+  const off = registry.register(command({ resolve }))
+  expect(registry.invoke('test.toggle' as ShortcutCommandId, { ...context, modal: 'other' })).toEqual({ status: 'blocked', reason: 'modal' })
+  expect(resolve).not.toHaveBeenCalled()
+  expect(registry.invoke('test.toggle' as ShortcutCommandId, context)).toEqual({ status: 'handled' })
+  expect(run).toHaveBeenCalledOnce()
+  off()
+  registry.register(command({ resolve: () => ({ status: 'blocked', reason: 'permission' }) }))
+  expect(registry.invoke('test.toggle' as ShortcutCommandId, context)).toEqual({ status: 'blocked', reason: 'permission' })
+})

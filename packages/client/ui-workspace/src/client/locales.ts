@@ -6,6 +6,16 @@
 
 /** Simplified Chinese dictionary (the key-set source of truth). */
 export const zh = {
+  'globalSearch.escape': 'Esc',
+  'globalSearch.title': '搜索任何内容',
+  'globalSearch.aria': '全局搜索',
+  'globalSearch.placeholder': '搜索功能、对话、工作空间…',
+  'globalSearch.session': '对话',
+  'globalSearch.feature': '功能',
+  'globalSearch.archived': '已归档 · 取消归档',
+  'globalSearch.queryFailed': '会话内容搜索失败，仍可搜索名称和功能',
+  'globalSearch.actionFailed': '无法打开此项目，请关闭其他弹窗或检查当前页面后重试',
+  'globalSearch.retry': '重试',
   'defaultWorkspace.failed': '无法创建默认工作区，请通过“选择工作区”选择文件夹',
   'draft.workspaceRequired': '请先选择工作区',
   'draft.initializationFailed': '暂时无法填入草稿，请稍后重试',
@@ -134,6 +144,16 @@ export type WorkspaceKey = keyof typeof zh
 
 /** English dictionary, checked complete against the zh key set. */
 export const en = {
+  'globalSearch.escape': 'Esc',
+  'globalSearch.title': 'Search anything',
+  'globalSearch.aria': 'Global search',
+  'globalSearch.placeholder': 'Search features, conversations, workspaces…',
+  'globalSearch.session': 'Conversation',
+  'globalSearch.feature': 'Feature',
+  'globalSearch.archived': 'Archived · Restore',
+  'globalSearch.queryFailed': 'Conversation content search failed. Names and features are still searchable.',
+  'globalSearch.actionFailed': 'Could not open this item. Close other dialogs or check the current page before trying again.',
+  'globalSearch.retry': 'Retry',
   'defaultWorkspace.failed': 'Unable to create default workspace. Use Choose workspace to select a folder.',
   'draft.workspaceRequired': 'Choose a workspace first.',
   'draft.initializationFailed': 'Could not fill the draft. Please try again shortly.',
@@ -259,6 +279,16 @@ export const en = {
 
 /** Japanese copy, checked against the English keys. */
 export const ja = {
+  'globalSearch.escape': 'Esc',
+  'globalSearch.title': 'すべてを検索',
+  'globalSearch.aria': '全体検索',
+  'globalSearch.placeholder': '機能、会話、ワークスペースを検索…',
+  'globalSearch.session': '会話',
+  'globalSearch.feature': '機能',
+  'globalSearch.archived': 'アーカイブ済み · 復元',
+  'globalSearch.queryFailed': '会話内容の検索に失敗しました。名前と機能は検索できます。',
+  'globalSearch.actionFailed': '開けませんでした。他のダイアログを閉じるか、現在のページを確認してから再試行してください。',
+  'globalSearch.retry': '再試行',
   'defaultWorkspace.failed': 'デフォルトのワークスペースを作成できません。ワークスペースを選択してフォルダーを選んでください。',
   'draft.workspaceRequired': '先にワークスペースを選択してください。',
   'draft.initializationFailed': '下書きを埋め込めませんでした。しばらくしてからもう一度お試しください。',
@@ -384,6 +414,16 @@ export const ja = {
 
 /** Spanish dictionary, checked against the English keys. */
 export const es = {
+  'globalSearch.escape': 'Esc',
+  'globalSearch.title': 'Buscar cualquier cosa',
+  'globalSearch.aria': 'Búsqueda global',
+  'globalSearch.placeholder': 'Buscar funciones, conversaciones, espacios…',
+  'globalSearch.session': 'Conversación',
+  'globalSearch.feature': 'Función',
+  'globalSearch.archived': 'Archivada · Restaurar',
+  'globalSearch.queryFailed': 'No se pudo buscar en el contenido. Aún puede buscar nombres y funciones.',
+  'globalSearch.actionFailed': 'No se pudo abrir. Cierre otros diálogos o revise la página actual antes de volver a intentarlo.',
+  'globalSearch.retry': 'Reintentar',
   'defaultWorkspace.failed': 'No se puede crear el espacio de trabajo predeterminado. Utilice Elegir espacio de trabajo para seleccionar una carpeta.',
   'draft.workspaceRequired': 'Elija un espacio de trabajo primero.',
   'draft.initializationFailed': 'No se pudo completar el borrador. Inténtelo de nuevo en breve.',
@@ -509,6 +549,16 @@ export const es = {
 
 /** French dictionary, checked against the English keys. */
 export const fr = {
+  'globalSearch.escape': 'Esc',
+  'globalSearch.title': 'Tout rechercher',
+  'globalSearch.aria': 'Recherche globale',
+  'globalSearch.placeholder': 'Rechercher des fonctions, conversations, espaces…',
+  'globalSearch.session': 'Conversation',
+  'globalSearch.feature': 'Fonction',
+  'globalSearch.archived': 'Archivée · Restaurer',
+  'globalSearch.queryFailed': 'La recherche dans les conversations a échoué. Les noms et fonctions restent disponibles.',
+  'globalSearch.actionFailed': 'Impossible d’ouvrir cet élément. Fermez les autres fenêtres ou vérifiez la page actuelle avant de réessayer.',
+  'globalSearch.retry': 'Réessayer',
   'defaultWorkspace.failed': 'Impossible de créer un espace de travail par défaut. Utilisez Choisir un espace de travail pour sélectionner un dossier.',
   'draft.workspaceRequired': "Choisissez d'abord un espace de travail.",
   'draft.initializationFailed': 'Impossible de remplir le projet. Veuillez réessayer sous peu.',
@@ -634,6 +684,16 @@ export const fr = {
 
 /** German dictionary, checked against the English keys. */
 export const de = {
+  'globalSearch.escape': 'Esc',
+  'globalSearch.title': 'Alles durchsuchen',
+  'globalSearch.aria': 'Globale Suche',
+  'globalSearch.placeholder': 'Funktionen, Gespräche, Arbeitsbereiche suchen…',
+  'globalSearch.session': 'Gespräch',
+  'globalSearch.feature': 'Funktion',
+  'globalSearch.archived': 'Archiviert · Wiederherstellen',
+  'globalSearch.queryFailed': 'Inhalte konnten nicht durchsucht werden. Namen und Funktionen bleiben durchsuchbar.',
+  'globalSearch.actionFailed': 'Öffnen fehlgeschlagen. Schließen Sie andere Dialoge oder prüfen Sie die aktuelle Seite vor einem erneuten Versuch.',
+  'globalSearch.retry': 'Erneut versuchen',
   'defaultWorkspace.failed': 'Der Standardarbeitsbereich kann nicht erstellt werden. Verwenden Sie „Arbeitsbereich auswählen“, um einen Ordner auszuwählen.',
   'draft.workspaceRequired': 'Wählen Sie zunächst einen Arbeitsbereich.',
   'draft.initializationFailed': 'Der Entwurf konnte nicht ausgefüllt werden. Bitte versuchen Sie es in Kürze noch einmal.',
@@ -759,6 +819,16 @@ export const de = {
 
 /** Russian dictionary, checked against the English keys. */
 export const ru = {
+  'globalSearch.escape': 'Esc',
+  'globalSearch.title': 'Поиск по всему',
+  'globalSearch.aria': 'Глобальный поиск',
+  'globalSearch.placeholder': 'Поиск функций, диалогов, рабочих пространств…',
+  'globalSearch.session': 'Диалог',
+  'globalSearch.feature': 'Функция',
+  'globalSearch.archived': 'В архиве · Восстановить',
+  'globalSearch.queryFailed': 'Поиск по содержимому не удался. Поиск названий и функций доступен.',
+  'globalSearch.actionFailed': 'Не удалось открыть. Закройте другие окна или проверьте текущую страницу перед повторной попыткой.',
+  'globalSearch.retry': 'Повторить',
   'defaultWorkspace.failed': 'Невозможно создать рабочую область по умолчанию. Используйте «Выбрать рабочее пространство», чтобы выбрать папку.',
   'draft.workspaceRequired': 'Сначала выберите рабочее место.',
   'draft.initializationFailed': 'Не удалось заполнить черновик. Пожалуйста, повторите попытку в ближайшее время.',
@@ -884,6 +954,16 @@ export const ru = {
 
 /** Portuguese dictionary, checked against the English keys. */
 export const pt = {
+  'globalSearch.escape': 'Esc',
+  'globalSearch.title': 'Pesquisar tudo',
+  'globalSearch.aria': 'Pesquisa global',
+  'globalSearch.placeholder': 'Pesquisar funções, conversas, espaços…',
+  'globalSearch.session': 'Conversa',
+  'globalSearch.feature': 'Função',
+  'globalSearch.archived': 'Arquivada · Restaurar',
+  'globalSearch.queryFailed': 'A pesquisa no conteúdo falhou. Nomes e funções continuam disponíveis.',
+  'globalSearch.actionFailed': 'Não foi possível abrir. Feche outras janelas ou verifique a página atual antes de tentar novamente.',
+  'globalSearch.retry': 'Tentar novamente',
   'defaultWorkspace.failed': 'Não foi possível criar o espaço de trabalho padrão. Use Escolher espaço de trabalho para selecionar uma pasta.',
   'draft.workspaceRequired': 'Escolha um espaço de trabalho primeiro.',
   'draft.initializationFailed': 'Não foi possível preencher o rascunho. Por favor, tente novamente em breve.',

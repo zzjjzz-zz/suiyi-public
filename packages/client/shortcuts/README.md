@@ -90,3 +90,5 @@ None; this package neither assembles nor sends a provider request.
 None.
 
 </details>
+
+Product search can invoke registered commands through `shortcuts.invoke(id)`. The provider reads current focus and the top modal, applies the same menu guards as native input, and returns dispatch acceptance or refusal. Acceptance does not report asynchronous completion; command owners retain execution-failure reporting.

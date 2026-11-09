@@ -1,0 +1,110 @@
+/* Prototype navigation dialog; shared Modal retains focus and Escape ownership. */
+:global([role='presentation']):has(> .dialog) {
+  padding: max(16px, var(--dsh-frame-overlay-top, 16px)) 16px;
+}
+:global([role='presentation']):has(> .dialog) > :first-child {
+  backdrop-filter: blur(7px);
+}
+:global([role='presentation']):has(> .dialog) > :first-child::after {
+  background: #11182738;
+}
+.dialog {
+  width: min(820px, calc(100vw - 34px));
+  max-height: min(85dvh, 100%);
+  gap: 0;
+  font-size: 14px;
+  padding: 0;
+  overflow: auto;
+  border: 1px solid var(--dsw-brand-glass-edge);
+  border-radius: 23px;
+  background: var(--dsw-brand-glass-chrome);
+  backdrop-filter: blur(32px) saturate(1.4);
+  color: var(--dsw-alias-label-primary);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .92), 0 30px 90px rgba(15, 42, 86, .24);
+  animation: enter 0.3s cubic-bezier(.22, 1, .36, 1);
+}
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: none;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--dsw-alias-border-l1);
+  position: sticky;
+  top: 0;
+  background: var(--dsw-brand-glass-chrome);
+  backdrop-filter: blur(24px);
+  z-index: 2;
+}
+.header h2 { margin: 0; font-size: 17px; font-weight: 550; }
+.close {
+  display: block;
+  font: inherit;
+  line-height: normal;
+  width: 33px;
+  height: 33px;
+  padding: 0;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+}
+.body { padding: 23px 24px 25px; }
+.searchBox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  background: var(--dsw-alias-bg-layer-2);
+  padding: 11px 13px;
+  border-radius: 12px;
+  margin-bottom: 15px;
+}
+.searchBox input { border: 0; padding: 0; background: none; outline: none; flex: 1; min-width: 0; font: inherit; font-size: 13px; line-height: 21px; color: inherit; }
+.searchBox kbd { font-family: SFMono-Regular, Consolas, monospace; font-size: 10px; padding: 3px 5px; border: 1px solid var(--dsw-alias-border-l1); border-radius: 5px; color: var(--dsw-alias-label-secondary); }
+.result {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  width: 100%;
+  padding: 13px 11px;
+  border: 0;
+  border-radius: 10px;
+  margin-bottom: 3px;
+  font: inherit;
+  font-size: 12px;
+  line-height: normal;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+}
+.result > svg { flex: none; }
+.resultText { min-width: 0; overflow-wrap: anywhere; }
+.result small { display: block; color: var(--dsw-alias-label-secondary); font-size: 10px; margin-top: 5px; }
+.trailing { margin-left: auto; color: var(--dsw-alias-label-secondary); }
+.notice { margin: 10px 0; font-size: 12px; color: var(--dsw-alias-label-secondary); }
+.notice button { color: var(--dsw-alias-brand-primary); background: transparent; border: 0; font: inherit; cursor: pointer; }
+.empty { padding: 24px 10px; color: var(--dsw-alias-label-secondary); font-size: 12px; }
+.result:disabled { opacity: .5; cursor: wait; }
+.result:focus-visible, .close:focus-visible { outline: 2px solid var(--dsw-alias-brand-primary); outline-offset: -2px; }
+@media (hover: hover) { .result:hover, .close:hover { background: var(--dsw-alias-bg-layer-2); } }
+@keyframes enter { from { opacity: 0; transform: translateY(18px) scale(.98); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .dialog { animation: none; } }
+
+:global(body[data-ds-dark-theme]) .dialog { box-shadow: inset 0 1px 0 rgba(202, 226, 255, .15), 0 30px 90px rgba(15, 42, 86, .24); }
+
+.searchBox input::placeholder { color: #757575; opacity: 1; }
+@media (max-width: 640px) {
+  .header { padding: 16px 19px; }
+  .header h2 { font-size: 16px; }
+  .body { padding: 19px; }
+  .searchBox input { font-size: 16px; line-height: 26px; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .dialog, .header { background: var(--dsw-alias-bg-layer-1); backdrop-filter: none; }
+}
+
+.dialog, .dialog * { corner-shape: round; }
+.close svg { display: inline-block; vertical-align: middle; }

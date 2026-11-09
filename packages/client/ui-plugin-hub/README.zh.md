@@ -52,6 +52,8 @@ kind: "package-reference"
 
 ### 注册
 
+侧栏入口使用原型的叠层轮廓，尺寸由侧栏提供。
+
 浏览器插件注册字典和 controller。在遂意构建（`DSH_CLIENT_BUILD_PROFILE=suiyi`）中，它在插件生命周期内注册 `sidebar.panellist` 入口和 `plugin-hub` 主面板；其他构建中两者只在 Host 报告市场启用时存在，并同时注册可选的 `plugins.tab` 条目。插件注入 `remote.pluginHub`，因此在 Host 提供该命名空间前 fiber 保持等待。
 
 ### 状态与读取

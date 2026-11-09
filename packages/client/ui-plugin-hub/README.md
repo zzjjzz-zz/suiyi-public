@@ -52,6 +52,8 @@ The page keeps the frame's top clearance and 20px inline insets on a narrow scre
 
 ### Registration
 
+The sidebar entry uses the prototype’s layered outline at the size supplied by the sidebar.
+
 The browser plugin contributes the dictionaries and a controller. In the Suiyi build (`DSH_CLIENT_BUILD_PROFILE=suiyi`) it registers the `sidebar.panellist` entry and the `plugin-hub` main panel for the plugin's lifetime; outside that build both exist exactly while the Host reports the hub enabled, and an optional `plugins.tab` entry is registered alongside them. The plugin injects `remote.pluginHub`, so its fiber parks until the Host contributes that namespace.
 
 ### State and reads

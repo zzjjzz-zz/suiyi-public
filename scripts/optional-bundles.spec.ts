@@ -217,7 +217,7 @@ describe('optional bundles', () => {
       { id: 'optional-session-query-sqlite', name: '@deepseek-ai/dsh-session-query-sqlite', config: { path: ':memory:', openAt: 'first-search' } },
       { id: 'optional-tool-session-query', name: '@deepseek-ai/dsh-tool-session-query' },
     ])
-    expect(composed.find(row => row.id === 'session-query-sqlite')?.config).toEqual({ path: ':memory:', openAt: 'never' })
+    expect(composed.find(row => row.id === 'session-query-sqlite')?.config).toEqual({ path: ':memory:', openAt: { __jsExpr: "process.env.DSH_DESKTOP_FLAVOR === 'suiyi' ? 'first-search' : 'never'" } })
     expect(composed.find(row => row.id === 'session-title-llm')?.disabled).toBe(true)
     expect(composed.find(row => row.id === 'optional-session-title-all-prompts')?.name)
       .toBe('@deepseek-ai/dsh-session-title-all-prompts-llm')

@@ -188,3 +188,5 @@ None.
 </details>
 
 The Web composition includes the account Remote controller and Account settings section.
+
+Suiyi Desktop supplies its build identity to the Host and enables the existing in-memory full-text index on first search. Other products keep full-text search opt-in. A later profile patch can set `session-query-sqlite.config.openAt` explicitly; account storage and Session authorization still govern all reads.

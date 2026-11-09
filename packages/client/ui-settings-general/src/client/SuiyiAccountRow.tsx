@@ -1,5 +1,5 @@
 /** Bottom-row Suiyi account entry backed by the real Desktop Keycloak bridge. */
-import { IconChevronDownOutlineRegular, IconUserOutlineMedium } from '@deepseek-ai/dsh-client-ui-primitives'
+import { AccountChevronGlyph, AccountGlyph } from './settings-icons.tsx'
 import type { SettingsRootComponentProps } from './shell-contract.ts'
 import type { SuiyiIdentityState } from './suiyi-identity.ts'
 import css from './SuiyiAccountRow.module.css'
@@ -30,7 +30,7 @@ export function SuiyiAccountRow({ t, state, signIn, signOut }: SuiyiAccountRowPr
     ? (view.displayName ?? t('suiyiIdentity.account'))
     : view.state === 'locked' ? t('suiyiIdentity.locked') : t('account.unavailable')
   return <div className={css.row}>
-    <span className={css.icon} aria-hidden="true"><IconUserOutlineMedium size={16} /></span>
+    <span className={css.icon} aria-hidden="true"><AccountGlyph /></span>
     <span className={css.copy}>
       <span className={css.title}>{title}</span>
       {pendingLabel !== undefined && <span className={css.detail}>{pendingLabel}</span>}
@@ -46,6 +46,6 @@ export function SuiyiAccountRow({ t, state, signIn, signOut }: SuiyiAccountRowPr
         {t('suiyiIdentity.signIn')}
       </button>
     )}
-    <span className={css.chevron} aria-hidden="true"><IconChevronDownOutlineRegular size={18} /></span>
+    <span className={css.chevron} aria-hidden="true"><AccountChevronGlyph /></span>
   </div>
 }

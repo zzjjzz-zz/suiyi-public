@@ -2,7 +2,7 @@
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { bindingIssue, bindingKey, effectiveShortcuts, initialShortcutConfig, isWebBindingAllowed, normalizeBinding, overlappingBindings, presentBinding, resolveShortcutDefault } from '../protocol.ts'
 import type { ShortcutCommandId, ShortcutConfigSnapshot, ShortcutDefinition, ShortcutPlatform, ShortcutRuntime } from '../protocol.ts'
-import type { ShortcutCatalogEntry, ShortcutCommand, ShortcutContext, ShortcutGesture,
+import type { ShortcutCatalogEntry, ShortcutCommand, ShortcutContext, ShortcutGesture, ShortcutInvokeResult,
   ShortcutFixedCommand, ShortcutFixedCatalogEntry } from './types.ts'
 
 /** Dispatch consumption is independent of later business-operation success. */
@@ -136,12 +136,17 @@ export class ShortcutRegistry {
    * Invoke a native menu selection independently of its optional key binding.
    * @param id - registered product command.
    * @param context - live input owner and modal state.
+   * @returns whether the command accepted dispatch; execution failures remain owner-managed.
    */
-  invoke(id: ShortcutCommandId, context: ShortcutContext): void {
+  invoke(id: ShortcutCommandId, context: ShortcutContext): ShortcutInvokeResult {
     const command = this.commands.get(id)
-    if (command === undefined || (context.modal !== null && !command.modals.includes(context.modal))) return
+    if (command === undefined) return { status: 'unavailable' }
+    if (context.modal !== null && !command.modals.includes(context.modal)) return { status: 'blocked', reason: 'modal' }
     const result = command.resolve({ ...context, source: 'menu' })
-    if (result.status === 'handled') result.run()
+    if (result.status === 'pass') return { status: 'unavailable' }
+    if (result.status === 'blocked') return result
+    result.run()
+    return { status: 'handled' }
   }
 
   /**

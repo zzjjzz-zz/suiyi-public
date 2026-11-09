@@ -57,7 +57,7 @@ async function bench(runtime: 'web' | 'desktop' = 'desktop', platform: ShortcutP
   const reportForkFailure = vi.fn()
   const fiber = ctx.plugin((scoped) => {
     installWorkspaceShortcuts(scoped, navigation, controls,
-      (id) => { void navigation.archiveSession(id) }, reportForkFailure)
+      (id) => { void navigation.archiveSession(id) }, reportForkFailure, controls.search)
   })
   await fiber.await()
   const select = (id: string) => { list.set({ ...list.getSnapshot(), byId: {

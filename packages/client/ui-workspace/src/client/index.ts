@@ -53,6 +53,8 @@ import { WorkspaceBrowser } from './rows/WorkspaceBrowser.tsx'
 import { WorkspacesPage, type WorkspacesPageInjected } from './WorkspacesPage.tsx'
 import { WorkspacePanelIcon } from './WorkspacePanelIcon.tsx'
 import { SidebarSearchTrigger } from './SidebarSearchTrigger.tsx'
+import { GlobalSearch, type GlobalSearchInjected, type SearchPanel } from './GlobalSearch.tsx'
+import { resolveSlotLabel } from '@deepseek-ai/dsh-client-ui-slots'
 import { ArchiveSessionRowButton, SessionArchiveConfirmDialog } from './session-actions/ArchiveSession.tsx'
 import { derive } from './session-actions/derived.ts'
 import { registerSessionMenus } from './session-actions/context-menus.tsx'
@@ -139,6 +141,18 @@ export function apply(ctx: Context): void {
   })
   ctx.effect(() => ctx.locale.register(NS, { zh, en, ja, es, fr, de, ru, pt }), 'ui-workspace: dictionaries')
   const shortcutControls = createWorkspaceShortcutControls()
+  const searchOpen = createSnapshotStore(false)
+  const requestSearch = process.env.DSH_CLIENT_BUILD_PROFILE === 'suiyi'
+    ? () => { searchOpen.set(true) } : shortcutControls.search
+  const searchPanels = createSnapshotStore<readonly SearchPanel[]>([])
+  const syncSearchPanels = (): void => {
+    searchPanels.set([...ctx.slots.entriesOfSlot('sidebar.panellist')]
+      .sort((a, b) => (a.options.order ?? 0) - (b.options.order ?? 0))
+      .map(({ options }) => ({ id: options.id as MainPanelId, label: resolveSlotLabel(options.label) ?? options.id ?? '' })))
+  }
+  ctx.effect(() => ctx.slots.subscribe('sidebar.panellist', syncSearchPanels), 'ui-workspace: search features')
+  ctx.effect(() => ctx.locale.subscribe(syncSearchPanels), 'ui-workspace: search labels')
+  syncSearchPanels()
 
   const searchSessions: WorkspaceBrowserInjected['searchSessions'] = async (query, signal) => {
     const result = await sessions.search(query, signal)
@@ -217,7 +231,7 @@ export function apply(ctx: Context): void {
     unarchiveSession,
   })
   installWorkspaceShortcuts(ctx, uiWorkspace, shortcutControls, archiveInjected().archiveSession,
-    (reason) => { notify({ kind: 'shortcutForkFailed', reason }) })
+    (reason) => { notify({ kind: 'shortcutForkFailed', reason }) }, requestSearch)
   const archiveConfirmInjected = (): SessionArchiveConfirmInjected => ({
     hooks: { archiveRequest },
     settleSessionArchive: () => { archiveRequest.set(null) },
@@ -340,7 +354,7 @@ export function apply(ctx: Context): void {
   ctx.slots.inject('sidebar.search', () => ctx.slots.register({
     name: 'sidebar.search',
     locale: NS,
-    inject: () => ({ requestSearch: shortcutControls.search, hooks: { shortcuts: ctx.shortcuts.catalog } }),
+    inject: () => ({ requestSearch, hooks: { shortcuts: ctx.shortcuts.catalog } }),
   }, SidebarSearchTrigger))
   const WORKSPACES_PANEL_ID = 'workspaces' as MainPanelId
   const addWorkspaceFromPage = async (): Promise<void> => {
@@ -381,7 +395,20 @@ export function apply(ctx: Context): void {
   })
   // The surfaces the actions raise live in the frame-wide layer: they must
   // outlive the row menu the action sat in.
+  const globalSearchInjected = (): GlobalSearchInjected => ({
+    hooks: { searchOpen, searchPanels, shortcuts: ctx.shortcuts.catalog },
+    setSearchOpen: (open) => { searchOpen.set(open) },
+    searchSessions,
+    openSession,
+    openWorkspace: id => uiWorkspace.openWorkspace(id),
+    restoreSession: id => uiWorkspace.unarchiveSession(id),
+    selectPanel: (id) => { ctx.layout.selectPanel(id) },
+    invokeCommand: id => ctx.shortcuts.invoke(id),
+  })
   ctx.slots.inject('shell.overlay', function* () {
+    if (process.env.DSH_CLIENT_BUILD_PROFILE === 'suiyi') yield ctx.slots.register({
+      name: 'shell.overlay', id: 'workspace.global-search', locale: NS, inject: globalSearchInjected,
+    }, GlobalSearch)
     yield ctx.slots.register({
       name: 'shell.overlay', id: 'workspace.session-rename', locale: NS, inject: renameDialogInjected,
     }, SessionRenameDialog)

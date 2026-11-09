@@ -16,6 +16,11 @@ export interface ShortcutContext {
 export type ShortcutResolution = { status: 'handled'; run(): void }
   | { status: 'blocked'; reason: string }
   | { status: 'pass' }
+
+/** Menu dispatch reports acceptance; the command owner reports asynchronous outcomes. */
+export type ShortcutInvokeResult = { status: 'handled' }
+  | { status: 'blocked'; reason: string }
+  | { status: 'unavailable' }
 /** One command's labels, defaults, input ownership, and target resolver. */
 export interface ShortcutCommand {
   readonly id: ShortcutCommandId
@@ -81,6 +86,13 @@ export interface ShortcutFixedCatalogEntry {
 }
 /** Feature-facing keyboard registry. */
 export interface Shortcuts {
+  /**
+   * Invoke a registered menu action against current focus and modal ownership.
+   * @param id - registered product command identity.
+   * @returns dispatch acceptance, the owner's refusal, or an unavailable command.
+   * @throws when the command action throws; no rollback is implied.
+   */
+  invoke(id: ShortcutCommandId): ShortcutInvokeResult
   readonly runtime: ShortcutRuntime
   readonly platform: ShortcutPlatform
   readonly catalog: ObservableSnapshot<readonly ShortcutCatalogEntry[]>

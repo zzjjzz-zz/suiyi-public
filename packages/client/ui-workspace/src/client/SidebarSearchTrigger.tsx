@@ -1,7 +1,6 @@
 /**
  * The sidebar shell's search row. The trigger owns no search state: it asks the
- * browser's shortcut controls to open search, and WorkspaceBrowser expands the
- * inline field, focuses it, and owns filtering and results.
+ * profile's search owner to open the appropriate search surface.
  */
 import type { ReactNode } from 'react'
 import { IconSearchOutlineRegular, Tooltip } from '@deepseek-ai/dsh-client-ui-primitives'
@@ -10,9 +9,9 @@ import type { ShortcutCatalogEntry } from '@deepseek-ai/dsh-client-shortcuts/cli
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import css from './SidebarSearchTrigger.module.css'
 
-/** The trigger's injected action: the browser-owned search request. */
+/** The trigger's injected action: the profile-owned search request. */
 export interface SidebarSearchTriggerInjected {
-  /** Open the sidebar browser's search field. */
+  /** Open the profile's search surface. */
   readonly requestSearch: () => void
   hooks: {
     /** Effective shortcut catalog, bound to `useShortcuts`. */
@@ -32,18 +31,19 @@ export type SidebarSearchTriggerProps =
  * @returns the search trigger element.
  */
 export function SidebarSearchTrigger({ requestSearch, useShortcuts, t }: SidebarSearchTriggerProps): ReactNode {
+  const label = t(process.env.DSH_CLIENT_BUILD_PROFILE === 'suiyi' ? 'globalSearch.aria' : 'search.sessions.aria')
   const shortcut = useShortcuts(rows => rows.find(row => row.id === 'session.search'))
   return (
     <div className={css.row}>
-      <Tooltip label={t('search.sessions.aria')} shortcutKeys={shortcut?.keys} side="bottom" delayMs={500}>
+      <Tooltip label={label} shortcutKeys={shortcut?.keys} side="bottom" delayMs={500}>
         <button
           type="button"
           className={css.trigger}
-          aria-label={t('search.sessions.aria')}
+          aria-label={label}
           aria-keyshortcuts={shortcut?.aria}
           onClick={requestSearch}
         >
-          <IconSearchOutlineRegular size={18} />
+          <span className={css.icon} aria-hidden="true"><IconSearchOutlineRegular size={18} /></span>
           <span className={css.label}>{t('search.trigger')}</span>
         </button>
       </Tooltip>

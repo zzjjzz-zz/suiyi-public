@@ -53,6 +53,7 @@ export function createWorkspaceShortcutControls(): WorkspaceShortcutControls {
  * @param navigation - session creation and forking from the pointer controls' navigation service.
  * @param controls - browser-owned opening requests.
  * @param archiveSession - shared archive action, including running-work confirmation and notices.
+ * @param requestSearch - open the profile's search surface.
  * @param reportForkFailure - publish a classified failure through the frame-wide notice channel.
  */
 export function installWorkspaceShortcuts(
@@ -61,6 +62,7 @@ export function installWorkspaceShortcuts(
   controls: ReturnType<typeof createWorkspaceShortcutControls>,
   archiveSession: (sessionId: SessionId) => void,
   reportForkFailure: (reason: 'unavailable' | 'failed') => void,
+  requestSearch: () => void,
 ): void {
   const t = ctx.locale.bind('workspace')
   const current = () => Object.values(ctx.sessions.list.getSnapshot().byId)
@@ -80,8 +82,8 @@ export function installWorkspaceShortcuts(
   }
   register('session.new', () => t('session.new'), ['new session', 'new chat'], 'KeyN', ['primary'], ['primary', 'alt'],
     () => ({ status: 'handled', run: () => { navigation.startSession() } }))
-  register('session.search', () => t('search.sessions.aria'), ['search sessions'], 'KeyK', ['primary'], ['primary', 'alt'],
-    () => ({ status: 'handled', run: controls.search }))
+  register('session.search', () => t(process.env.DSH_CLIENT_BUILD_PROFILE === 'suiyi' ? 'globalSearch.aria' : 'search.sessions.aria'), ['search sessions'], 'KeyK', ['primary'], ['primary', 'alt'],
+    () => ({ status: 'handled', run: requestSearch }))
   register('workspace.add', () => t('workspace.add'), ['add workspace', 'open folder'], 'KeyO', ['primary'], ['primary', 'alt'],
     () => {
       const reason = addReason()

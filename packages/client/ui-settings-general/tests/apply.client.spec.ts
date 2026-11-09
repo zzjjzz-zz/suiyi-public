@@ -14,6 +14,7 @@ import { graphFromRoster } from '@deepseek-ai/dsh-client-test-runtime/src/assemb
 import { resolveSlotLabel } from '@deepseek-ai/dsh-client-ui-slots'
 import { LOCALE_SETTINGS_NAMESPACE, LocaleSettingsSchema } from '@deepseek-ai/dsh-client-locale/src/locale-settings.ts'
 import { inject } from '../src/client/index.ts'
+import type { ShortcutCommandId } from '@deepseek-ai/dsh-client-shortcuts/client'
 import type { DeveloperToolsRowInjected } from '../src/client/DeveloperToolsRow.tsx'
 import { HostReleasePrompt, type HostReleasePromptInjected } from '../src/client/HostReleasePrompt.tsx'
 import { CloseLabel, HeaderContent, TriggerContent } from '../src/client/chrome.tsx'
@@ -117,7 +118,7 @@ describe('ui-settings-general apply', () => {
     expect(generalLabel(c)).toBe('外观与通用')
     expect(c.ctx.slots.spec('settings.general.item')).toEqual({ kind: 'list', scope: 'root' })
     // The shared developer-tool control belongs to General; onboarding remains feature-owned.
-    expect(c.ctx.slots.entriesOfSlot('settings.general.item').filter(row => row.locale === NS).map(row => row.options.id)).toEqual(['visual-output', 'reduced-motion', 'developer-tools', 'current-version'])
+    expect(c.ctx.slots.entriesOfSlot('settings.general.item').filter(row => row.locale === NS).map(row => row.options.id)).toEqual(['turn-complete-notification', 'visual-output', 'reduced-motion', 'developer-tools', 'current-version'])
     expect(c.ctx.slots.entries('settings.onboarding').filter(row => row.locale === NS)).toEqual([])
     const developer = developerToolsRowOf(c)
     expect(developer.hooks.developerTools).toBe(c.ctx.configForms.developerTools.enabled)
@@ -181,6 +182,18 @@ describe('ui-settings-general apply', () => {
     ])
     expect(c.ctx.slots.entries('settings.general.item').some(row => row.options.id === 'developer-tools')).toBe(false)
     expect(c.ctx.slots.entries('settings.action')).toHaveLength(0)
+    const drawer = document.createElement('div')
+    drawer.setAttribute('role', 'dialog')
+    drawer.setAttribute('aria-modal', 'true')
+    drawer.dataset.shortcutModal = 'sidebar'
+    document.body.append(drawer)
+    try {
+      expect(c.ctx.shortcuts.invoke('settings.open' as ShortcutCommandId)).toEqual({ status: 'handled' })
+      expect(c.ctx.layout.panelInfo.getSnapshot().activePanelId).toBe('settings')
+      drawer.dataset.shortcutModal = 'other'
+      expect(c.ctx.shortcuts.invoke('settings.open' as ShortcutCommandId).status).toBe('blocked')
+      expect(c.ctx.layout.panelInfo.getSnapshot().activePanelId).toBe('settings')
+    } finally { drawer.remove() }
   }, COLD_BOOT_TIMEOUT_MS)
 
   it('reports a Coding Tools toggle only when a known value changes to the requested one', async ({ mock, start }) => {
@@ -402,7 +415,7 @@ describe('ui-settings-general apply', () => {
       expect(ownEntries(c, name)[0]).not.toBe(before[index])
     })
     expect(c.ctx.slots.spec('settings.general.item')).toEqual({ kind: 'list', scope: 'root' })
-    expect(c.ctx.slots.entriesOfSlot('settings.general.item').filter(row => row.locale === NS).map(row => row.options.id)).toEqual(['visual-output', 'reduced-motion', 'developer-tools', 'current-version'])
+    expect(c.ctx.slots.entriesOfSlot('settings.general.item').filter(row => row.locale === NS).map(row => row.options.id)).toEqual(['turn-complete-notification', 'visual-output', 'reduced-motion', 'developer-tools', 'current-version'])
     // The recovered registrations still ride the locale path.
     const english = localeView('en', 1)
     const chinese = localeView('zh', 2)

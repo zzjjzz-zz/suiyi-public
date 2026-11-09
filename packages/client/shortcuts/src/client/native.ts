@@ -2,6 +2,7 @@
 import { modalSelector } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { DesktopKeyboardApi, ShortcutConfigSnapshot } from '../protocol.ts'
 import type { ShortcutRegistry } from './registry.ts'
+import type { ShortcutContext } from './types.ts'
 
 /**
  * Route native menu, main-frame, and embedded-frame input through the shared command registry.
@@ -17,14 +18,8 @@ export function installNativeKeyboard(window: Window, keyboard: DesktopKeyboardA
   return keyboard.subscribe((input) => {
     if (input.revision !== snapshot().revision) return
     reset?.()
-    let target = window.document.activeElement
-    while (target?.shadowRoot?.activeElement != null && !target.matches('webview[data-sidebar-browser-frame]')) {
-      target = target.shadowRoot.activeElement
-    }
-    const top = [...window.document.querySelectorAll<HTMLElement>(modalSelector)].at(-1)
-    const region = target?.closest('.xterm') ? 'terminal' as const
-      : target?.matches('input, textarea, select, [contenteditable="true"], [contenteditable=""]') ? 'editable' as const : 'page' as const
-    const context = { target, region, modal: top?.dataset.shortcutModal ?? (top === undefined ? null : 'other') }
+    const context = readShortcutContext(window.document)
+    const target = context.target
     if (input.kind === 'menu') { registry.invoke(input.commandId, context); return }
     if (input.kind === 'keyboard') {
       registry.dispatch({ ...input, composing: false, defaultPrevented: false }, context, () => {})
@@ -42,4 +37,20 @@ export function installNativeKeyboard(window: Window, keyboard: DesktopKeyboardA
       || input.frameName === '' || target.name !== input.frameName) return
     registry.dispatch({ ...input, composing: false, defaultPrevented: false }, { ...context, source: 'iframe' }, () => {})
   })
+}
+
+/**
+ * Read current focus and the top modal for explicit product commands.
+ * @param document - the command service's document.
+ * @returns live ownership, including shadow-root focus.
+ */
+export function readShortcutContext(document: Document): ShortcutContext {
+  let target = document.activeElement
+  while (target?.shadowRoot?.activeElement != null && !target.matches('webview[data-sidebar-browser-frame]')) {
+    target = target.shadowRoot.activeElement
+  }
+  const top = [...document.querySelectorAll<HTMLElement>(modalSelector)].at(-1)
+  const region = target?.closest('.xterm') ? 'terminal' as const
+    : target?.matches('input, textarea, select, [contenteditable="true"], [contenteditable=""]') ? 'editable' as const : 'page' as const
+  return { target, region, modal: top?.dataset.shortcutModal ?? (top === undefined ? null : 'other') }
 }

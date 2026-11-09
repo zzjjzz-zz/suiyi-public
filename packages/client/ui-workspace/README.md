@@ -27,7 +27,9 @@ Browse grouped or flat Session lists, choose a Workspace, and manage their names
 <a id="use-this-package"></a>
 ## Use this package
 
-Suiyi recent rows use 11 px titles, 14 px leading icons, and a 9 px gap. They omit the resting timestamp column; update times remain in hover details and pending-interaction labels stay visible.
+The workspace navigation entry uses the prototype folder outline. Suiyi recent rows use 11 px titles, 14 px leading icons, and a 9 px gap. They omit the resting timestamp column; update times remain in hover details and pending-interaction labels stay visible. The recent-conversation heading is 32 px tall with a 24 px action; opening search retains its separate input layout. The search trigger keeps a 14 px icon line and a 12 px label, matching the prototype’s natural row height. The recent-conversation menu’s inline search stays open after activation; a subsequent outside click closes only an empty query.
+
+In Suiyi, the top sidebar search and its shortcut open a global dialog for registered features, Session names and content, and Workspaces. Results use the current Host catalogs and existing navigation owners; archived Sessions offer restoration. Content searches cancel on query changes and close, retain name matches on failure, and offer explicit retry. Commands run only after the dialog closes and retain the registry’s live-modal and owner checks. The recent-conversation menu still opens inline filtering.
 
 This package lets users browse grouped or flat Session lists, choose a Workspace for a new Session, and manage Workspaces and Sessions through add, rename, reorder, search, fork, archive, and Workspace deletion; the Session row menu and its hover buttons are slot lists that client plugins extend. Pending interactions appear as warning dots, and subagent-origin Sessions remain hidden. An idle, unarchived Session row with active scheduled tasks shows a clock mark, and its hover card lists those tasks. Canonically distinct folder paths remain separate Workspaces. Adding a Workspace requires a composed directory picker; without one, adding is unavailable.
 

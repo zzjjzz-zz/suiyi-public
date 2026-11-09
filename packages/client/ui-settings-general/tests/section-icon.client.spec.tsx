@@ -57,7 +57,7 @@ it('renders a contributed section icon and restores the default after its plugin
   expect(icon.getAttribute('width')).toBe('16')
   expect(icon.getAttribute('data-active')).toBe('false')
   expect(row.textContent).toBe('Custom')
-  const general = screen.getByRole('button', { name: 'General' })
+  const general = screen.getByRole('button', { name: 'Appearance and general' })
   expect(general.querySelector('[data-slot="settings.section.icon"]')?.tagName).toBe('SPAN')
   const fallback = general.querySelector('svg')?.getAttribute('data-icon')
   expect(fallback).toBeTruthy()

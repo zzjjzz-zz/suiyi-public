@@ -298,9 +298,9 @@ export function apply(ctx: ClientContext): void {
         'web:macos': { code: 'Comma', modifiers: ['primary', 'alt'] },
         'web:windows': { code: 'Comma', modifiers: ['primary', 'alt'] },
       },
-      regions: ['page', 'editable', 'terminal'], modals: page === undefined ? ['settings'] : [],
+      regions: ['page', 'editable', 'terminal'], modals: page === undefined ? ['settings'] : ['sidebar'],
       resolve: ({ modal }) => {
-        if (modal !== null && modal !== 'settings') return { status: 'blocked', reason: 'modal' }
+        if (modal !== null && modal !== 'settings' && !(page !== undefined && modal === 'sidebar')) return { status: 'blocked', reason: 'modal' }
         return { status: 'handled', run: () => {
           if (page !== undefined) {
             if (page.panelInfo.getSnapshot().activePanelId === pageId) closePage()

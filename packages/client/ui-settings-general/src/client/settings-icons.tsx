@@ -21,6 +21,7 @@ const PATHS = {
   sliders: 'M4 7h16M4 17h16M9 4v6M15 14v6',
   shield: 'M12 2 3 6v6c0 5 9 10 9 10s9-5 9-10V6l-9-4Zm-4 9 3 3 5-5',
   terminal: 'm4 5 6 7-6 7M12 19h8',
+  chevron: 'm8 10 4 4 4-4',
   user: 'M8 6a4 4 0 1 1 8 0 4 4 0 0 1-8 0ZM3 22v-3a9 9 0 0 1 18 0v3',
   monitor: 'M2 3h20v14H2zM12 17v5M7 22h10',
   settings: 'M12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8ZM9 3h6l.7 3 2.3 1.3 3-.8 3 5.2-2.2 2.1v2.6L24 18.5l-3 5.2-3-.8-2.3 1.3-.7 3H9',
@@ -33,6 +34,22 @@ const PATHS = {
  */
 export function SettingsGlyph({ size = 18 }: { size?: number }) {
   return <PrototypeGlyph d={PATHS.settings} size={size} />
+}
+
+/**
+ * Prototype identity glyph for the Suiyi account row.
+ * @returns the existing prototype user outline at eighteen pixels
+ */
+export function AccountGlyph() {
+  return <PrototypeGlyph d={PATHS.user} size={18} />
+}
+
+/**
+ * Prototype disclosure glyph for the Suiyi account row.
+ * @returns the existing prototype downward chevron at eighteen pixels
+ */
+export function AccountChevronGlyph() {
+  return <PrototypeGlyph d={PATHS.chevron} size={18} />
 }
 
 /**

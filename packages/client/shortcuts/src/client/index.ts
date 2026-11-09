@@ -9,10 +9,10 @@ import type { DesktopKeyboardApi, DesktopShortcutsApi, ShortcutSaveResult } from
 import { desktopShortcutStorage, webShortcutStorage } from './storage.ts'
 import type { Shortcuts } from './types.ts'
 import type { ShortcutFixedInput } from './types.ts'
-import { installNativeKeyboard } from './native.ts'
+import { installNativeKeyboard, readShortcutContext } from './native.ts'
 import { Config } from '../config.ts'
 
-export type { ShortcutCatalogEntry, ShortcutCommand, ShortcutContext, ShortcutGesture, Shortcuts } from './types.ts'
+export type { ShortcutCatalogEntry, ShortcutCommand, ShortcutContext, ShortcutGesture, ShortcutInvokeResult, Shortcuts } from './types.ts'
 export type { ShortcutFixedInput, ShortcutFixedCommand, ShortcutFixedCatalogEntry } from './types.ts'
 export type { ShortcutBinding, ShortcutCommandId, ShortcutPlatform, ShortcutRuntime } from '../protocol.ts'
 
@@ -72,6 +72,10 @@ export default class ShortcutsService extends Service implements Shortcuts {
       return () => { off(); this.fixedListeners.clear() }
     }, 'shortcuts: keyboard')
     ctx.effect(() => ctx.locale.subscribe(() => { this.registry.refreshLabels() }), 'shortcuts: locale')
+  }
+
+  invoke(id: Parameters<Shortcuts['invoke']>[0]): ReturnType<Shortcuts['invoke']> {
+    return this.registry.invoke(id, readShortcutContext(document))
   }
 
   register(command: Parameters<Shortcuts['register']>[0]): () => void {

@@ -49,7 +49,7 @@ Settings visibility and section selection live in the shell owner store. The she
 
 Completion reminders default off. Enabling requests this browser’s notification permission from the toggle gesture, then saves intent in `ui-settings-general.turnCompleteNotification`. Only live successful turns produce a notification containing the Session title; historical replay, cancellation and errors do not. Permission revocation or delivery failure shows an inactive state without erasing saved intent; the row can clear that intent. Disconnect, Host reset and disposal close notifications and invalidate pending permission requests.
 
-Suiyi returns from full-page Settings through shared navigation and the Settings shortcut. Cards use 20 px spacing, 44 px headings, and rows at least 77 px tall (73 px below 768 px). Status and error text can grow a row without clipping its controls.
+Suiyi returns from full-page Settings through shared navigation and the Settings shortcut. The account row uses the prototype user and chevron outlines; the chevron keeps its subdued theme color and inline alignment. Cards use 20 px spacing, 44 px headings, and rows at least 77 px tall (73 px below 768 px). Status and error text can grow a row without clipping its controls.
 
 The current release version appears at the bottom of General Settings in Web and Desktop, using the build’s `DSH_CLIENT_VERSION` metadata and the active language. Partial builds without version metadata omit the row.
 
@@ -154,3 +154,5 @@ These limits define what the shell itself provides versus what features must sup
 None.
 
 </details>
+
+The Suiyi full-page settings command may open from the navigation drawer. Other modal layers retain their command blocking; the regular settings dialog keeps its existing modal scope.
