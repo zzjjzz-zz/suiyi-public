@@ -47,6 +47,18 @@ test("a host without a workspace names the missing workspace, not the missing ho
   expect(() => bind().exec.bash("ls")).toThrow("$dsh/exec needs a session workspace");
 });
 
+test("fs and exec requests retain the client deployment prefix", async () => {
+  release = hostWith("/tmp");
+  const paths: string[] = [];
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    paths.push(new URL(String(input), "https://example.test/suiyi/").pathname);
+    return new Response(JSON.stringify({ error: "read-only session" }), { status: 403 });
+  }) as typeof fetch;
+  await expect(bind().fs.readFile("a.txt")).rejects.toThrow("read-only session");
+  await expect(bind().exec.bash("ls")).rejects.toThrow("read-only session");
+  expect(paths).toEqual([`/suiyi${FS_PATH}`, `/suiyi${EXEC_PATH}`]);
+});
+
 // A denial carries the route's own `error` so the card can say "this session is read-only".
 test("a rejected fs or exec request surfaces the route's reason", async () => {
   release = hostWith("/tmp");

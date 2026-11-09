@@ -25,6 +25,8 @@ English | [中文](README.zh.md)
 <a id="use-this-package"></a>
 ## Use this package
 
+The package exports display metadata for every shipped language. The optional credential package loads only when a request contains a credential template.
+
 Mount the service beside `dsh-mcp-manager`, `dsh-tools`, `dsh-settings`, and a credential provider. The hub is off until a deployment opts in.
 
 ```yaml

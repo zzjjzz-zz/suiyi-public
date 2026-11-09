@@ -48,6 +48,20 @@ afterEach(() => {
 })
 
 describe('default product isolation', () => {
+  it('checks plugin workspaces and their transitive experimental dependencies', () => {
+    const root = fixture()
+    const plugin = '@deepseek-ai/dsh-bundled-feature'
+    const file = 'plugins/bundled-feature/package.json'
+    write(root, file, { name: plugin })
+    write(root, 'plugins/bundled-feature/src/index.ts', 'export {}\n')
+    manifest(root, 'apps/cli/package.json', { dependencies: { [plugin]: 'workspace:*' } })
+    expect(verifyDefaultProductIsolation(root).failures).toEqual([])
+    manifest(root, file, { dependencies: { [experimental]: 'workspace:*' } })
+    expect(verifyDefaultProductIsolation(root).failures).toEqual(expect.arrayContaining([
+      expect.stringContaining(`${experimental}: default product must not include experimental packages`),
+    ]))
+  })
+
   describe.each(Object.entries(EXPERIMENTAL_PACKAGE_NAME_EXCEPTIONS))('retained experimental identity %s', (directory, name) => {
     it.each(['direct dependency', 'transitive dependency', 'npm alias', 'value import', 'subpath import', 'profile row', 'preset row'])(
       'rejects default product use through a %s', (route) => {

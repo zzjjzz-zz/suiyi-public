@@ -19,7 +19,7 @@ const scope = (cwd: string, sessionId?: string) => `cwd=${encodeURIComponent(cwd
 
 /** Every canvas in the workspace, including ones this session never wrote. */
 export async function listCanvasIds(cwd: string, sessionId?: string): Promise<readonly string[]> {
-  const response = await fetch(`${CANVAS_READ_PATH}?${scope(cwd, sessionId)}`, { cache: "no-store" });
+  const response = await fetch(`${CANVAS_READ_PATH.slice(1)}?${scope(cwd, sessionId)}`, { cache: "no-store" });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   return (await response.json()) as string[];
 }
@@ -28,7 +28,7 @@ export async function readCanvasFile(cwd: string, id: string, sessionId?: string
   // A distinct URL per read on top of `no-store`: the file is re-read precisely because it
   // changed, so any reuse of an earlier response is guaranteed to be the wrong answer.
   readSerial += 1;
-  const url = `${CANVAS_READ_PATH}?${scope(cwd, sessionId)}&id=${encodeURIComponent(id)}&r=${readSerial}`;
+  const url = `${CANVAS_READ_PATH.slice(1)}?${scope(cwd, sessionId)}&id=${encodeURIComponent(id)}&r=${readSerial}`;
   // `cache: "no-store"` on the request as well as the response: a canvas is re-read
   // precisely because it just changed, and a cached body is the one answer that is
   // guaranteed wrong.
@@ -46,7 +46,7 @@ export async function readCanvasFile(cwd: string, id: string, sessionId?: string
  */
 export async function readCanvasChild(cwd: string, id: string, specifier: string, from: string, sessionId?: string): Promise<{ source: string; filename: string } | null> {
   readSerial += 1;
-  const url = `${CANVAS_READ_PATH}?${scope(cwd, sessionId)}&id=${encodeURIComponent(id)}&child=${encodeURIComponent(specifier)}&from=${encodeURIComponent(from)}&r=${readSerial}`;
+  const url = `${CANVAS_READ_PATH.slice(1)}?${scope(cwd, sessionId)}&id=${encodeURIComponent(id)}&child=${encodeURIComponent(specifier)}&from=${encodeURIComponent(from)}&r=${readSerial}`;
   try {
     const response = await fetch(url, { cache: "no-store" });
     if (!response.ok) return null;

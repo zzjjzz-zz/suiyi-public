@@ -25,7 +25,7 @@ let configPromise: Promise<VisualRuntimeConfig> | null = null;
 export function visualRuntimeConfig(): Promise<VisualRuntimeConfig> {
   configPromise ??= (typeof document === "undefined"
     ? Promise.reject(new Error("visual output needs a browser document"))
-    : fetch(VISUAL_OUTPUT_PATH, { credentials: "same-origin" }))
+    : fetch(VISUAL_OUTPUT_PATH.slice(1), { credentials: "same-origin" }))
     .then(async (response) => {
       if (!response.ok) throw new Error(`visual output runtime: ${response.status}`);
       const body = (await response.json()) as VisualRuntimeConfig;
@@ -136,7 +136,7 @@ export function createIsolatedRenderer(
   frame.style.display = "block";
   frame.style.background = "transparent";
   frame.style.colorScheme = "normal";
-  frame.src = SANDBOX_WRAPPER_PATH;
+  frame.src = SANDBOX_WRAPPER_PATH.slice(1);
 
   let port: MessagePort | null = null;
   let generation = 0;

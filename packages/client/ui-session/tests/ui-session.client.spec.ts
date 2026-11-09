@@ -8,7 +8,7 @@ import type {
   SessionRetainInfo,
   SessionSnapshot,
 } from '@deepseek-ai/dsh-api-session-controller/client'
-import { MutableSessionEventSource } from '@deepseek-ai/dsh-api-session-controller/client'
+import { MutableSessionEventSource, SESSION_SEARCH_RESULT_LIMIT } from '@deepseek-ai/dsh-api-session-controller/client'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { StaticRemoteAccess } from '@deepseek-ai/dsh-client-test-runtime'
 import type { HostObservable, RootStandardSourceContribution } from '@deepseek-ai/dsh-client-ui-slots'
@@ -77,13 +77,24 @@ function createSessionsBench(ctx: Context): SessionsBench {
   const retainInfo = vi.fn<ISessions['retainInfo']>(id => retainSource(id))
   const retain = vi.fn<ISessions['retain']>(target =>
     bench.reference(bench.binding(typeof target === 'string' ? target : target.childSessionId)))
-  const sessions = {
+  const unusedSessionOperation = (): never => { throw new Error('Unexpected session operation in UI fixture') }
+  const sessions: ISessions = {
     list,
     create: createSession,
     binding: resolveBinding,
     retainInfo,
     retain,
-  } as unknown as ISessions
+    searchResultLimit: SESSION_SEARCH_RESULT_LIMIT,
+    using: unusedSessionOperation,
+    subagentAddress: unusedSessionOperation,
+    refreshProjections: unusedSessionOperation,
+    refresh: unusedSessionOperation,
+    search: unusedSessionOperation,
+    fork: unusedSessionOperation,
+    scope: unusedSessionOperation,
+    scopeOf: unusedSessionOperation,
+    sessionOf: unusedSessionOperation,
+  }
 
   const bench: SessionsBench = {
     sessions,

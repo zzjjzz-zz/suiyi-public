@@ -562,8 +562,7 @@
     "67b3449f6e9ef4d8549d4f8a884f7b145729a874c6932021cdbd172f039467ed": 1
   },
   "packages/client/ui-session/tests/ui-session.client.spec.ts": {
-    "0861cbfb10a7adecf7a225d194f2a19015cd6fa54bed435d4a08480d1d5cd34e": 1,
-    "3460653105a74d4c1e8f3e22b03492b225ca4e960f1a14ecc92e62b3d9453054": 1
+    "0861cbfb10a7adecf7a225d194f2a19015cd6fa54bed435d4a08480d1d5cd34e": 1
   },
   "packages/client/ui-settings-general/tests/apply.client.spec.ts": {
     "04984a2ce1486250236e638e0197da0a1a840855ed3975c59130a85358c7e5fe": 1,

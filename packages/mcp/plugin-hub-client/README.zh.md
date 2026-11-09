@@ -25,6 +25,8 @@ kind: "package-reference"
 <a id="use-this-package"></a>
 ## 使用本包
 
+本包为所有内置语言导出展示元数据。只有请求包含凭据模板时，才加载可选的凭据包。
+
 将本服务与 `dsh-mcp-manager`、`dsh-tools`、`dsh-settings` 以及一个凭据提供方一起挂载。插件中心在部署明确选择启用之前保持关闭。
 
 ```yaml

@@ -236,7 +236,7 @@ export type Ui4aSearchResult = {
 };
 
 async function searchRequest(cwd: string, query: string, options?: { maxResults?: number; signal?: AbortSignal }): Promise<Ui4aSearchResult> {
-  const response = await fetch(`${WEB_SEARCH_PATH}?cwd=${encodeURIComponent(cwd)}`, {
+  const response = await fetch(`${WEB_SEARCH_PATH.slice(1)}?cwd=${encodeURIComponent(cwd)}`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ query, ...(options?.maxResults === undefined ? {} : { maxResults: options.maxResults }) }),
@@ -253,7 +253,7 @@ async function request<T>(method: "GET" | "POST", path: string, content?: string
   const workspace = host.cwd(sessionId);
   if (workspace === undefined) throw new Error("[dsh-generative-ui] $dsh/fs needs a session workspace");
   const query = `cwd=${encodeURIComponent(workspace)}&session=${encodeURIComponent(sessionId ?? host.sessionId())}&path=${encodeURIComponent(path)}${extra === undefined ? "" : `&${extra}`}`;
-  const response = await fetch(`${FS_PATH}?${query}`, content === undefined ? { method } : { method, headers: { "content-type": "application/json" }, body: JSON.stringify({ content }) });
+  const response = await fetch(`${FS_PATH.slice(1)}?${query}`, content === undefined ? { method } : { method, headers: { "content-type": "application/json" }, body: JSON.stringify({ content }) });
   const body = (await response.json().catch(() => ({}))) as { error?: string };
   // A denial is not an outage. Naming it lets the card say "this session is read-only"
   // rather than "something went wrong" — and `denied` carries that as a field, because the
@@ -270,7 +270,7 @@ async function execRequest(cwd: string, sessionId: string, command: string, sign
   const query = `cwd=${encodeURIComponent(cwd)}&session=${encodeURIComponent(sessionId)}`;
   // Aborting really kills the command: the route watches premature response-socket closure,
   // so dropping the request is what a polling card needs to not stack runs on a slow one.
-  const response = await fetch(`${EXEC_PATH}?${query}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ command }), signal: signal ?? null });
+  const response = await fetch(`${EXEC_PATH.slice(1)}?${query}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ command }), signal: signal ?? null });
   const body = (await response.json().catch(() => ({}))) as Ui4aExecResult & { error?: string };
   if (!response.ok) throw new Error(`[dsh-generative-ui] $dsh/exec: ${body.error ?? response.statusText}`);
   return body;
@@ -295,7 +295,7 @@ async function* streamFrom(cwd: string, sessionId: string | undefined, request: 
   // `session` rides the query because the route pairs it with `cwd`: the pair must name one
   // live session (§ "authorize session/cwd matching"), so the caller cannot spend another
   // session's workspace on a model call.
-  const response = await fetch(`${AI_STREAM_PATH}?cwd=${encodeURIComponent(cwd)}&session=${encodeURIComponent(sessionId ?? "")}`, {
+  const response = await fetch(`${AI_STREAM_PATH.slice(1)}?cwd=${encodeURIComponent(cwd)}&session=${encodeURIComponent(sessionId ?? "")}`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(request),

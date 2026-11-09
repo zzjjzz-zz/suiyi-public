@@ -239,7 +239,7 @@ export function apply(ctx: ClientContext): void {
   const sendToModel = (report: { message: string; phase: string } | null) => {
     const id = currentSession();
     if (id === undefined) return;
-    void fetch(`${CARD_ERROR_PATH}?session=${encodeURIComponent(id)}`, {
+    void fetch(`${CARD_ERROR_PATH.slice(1)}?session=${encodeURIComponent(id)}`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(report ?? {}),

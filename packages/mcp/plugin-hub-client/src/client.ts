@@ -11,7 +11,7 @@
  */
 
 import { z } from 'zod'
-import { credentialRef, type CredentialRef } from '@deepseek-ai/dsh-credentials'
+import type { CredentialRef } from '@deepseek-ai/dsh-credentials'
 import { deadline, timeoutOf } from '@deepseek-ai/dsh-timeout'
 import type { CatalogPlugin, PublishedTool } from './types.ts'
 import { namespaceForPlugin, publicToolName } from './names.ts'
@@ -151,6 +151,8 @@ async function resolveAuthorization(
   if (credentials === undefined) {
     throw new HubClientError('credentials-unavailable', 'plugin hub credential templates require a credentials provider')
   }
+  const { credentialRef } = await import('@deepseek-ai/dsh-credentials')
+  signal.throwIfAborted()
   let out = ''
   let cursor = 0
   for (const token of tokens) {

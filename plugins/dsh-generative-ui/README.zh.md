@@ -16,6 +16,8 @@
 
 那个围栏里的 `ui4a` 就是本插件实现的 harness——**UI for Agent**，出自 Mind Lab：与其把 agent 引导进固定的 UI schema，不如让它写普通前端代码，由运行时执行边界约束。背后的论证与基准见 [UI4A: A Component-Native Harness for Generative UI](https://www.mindlab.im/updates/ui4a-a-component-native-harness-for-generative-ui)。本包就是把该 harness 接入 dsh Web 客户端的实现。
 
+宿主请求和隔离框架使用相对于客户端页面的 URL，以保留部署路径前缀。
+
 ## 安装
 
 ```sh
