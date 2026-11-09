@@ -75,7 +75,7 @@
     "INSTALLER_SUIYI_BRAND": "遂意",
     "INSTALLER_TITLE_STYLE": "compact",
     "INSTALLER_SHORTCUT": "创建桌面快捷方式",
-    "INSTALLER_SHORTCUT_HINT": "取消勾选不会删除已有快捷方式",
+    "INSTALLER_SHORTCUT_HINT": "仅控制本次安装是否创建快捷方式",
     "INSTALLER_SHORTCUT_UNAVAILABLE": "安装参数已禁用此选项",
     "INSTALLER_STARTUP": "开机时启动 DeepSeek Harness",
     "INSTALLER_STARTUP_HINT": "默认关闭，可在 Windows 启动应用中管理",

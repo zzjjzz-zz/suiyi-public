@@ -75,7 +75,7 @@
     "INSTALLER_SUIYI_BRAND": "Suiyi",
     "INSTALLER_TITLE_STYLE": "spaced",
     "INSTALLER_SHORTCUT": "Criar atalho na área de trabalho",
-    "INSTALLER_SHORTCUT_HINT": "Desmarcar mantém os atalhos existentes",
+    "INSTALLER_SHORTCUT_HINT": "Controla a criação do atalho nesta instalação",
     "INSTALLER_SHORTCUT_UNAVAILABLE": "Desativado pelos parâmetros de instalação",
     "INSTALLER_STARTUP": "Iniciar DeepSeek Harness ao entrar",
     "INSTALLER_STARTUP_HINT": "Desativado por padrão; gerencie na Inicialização do Windows",

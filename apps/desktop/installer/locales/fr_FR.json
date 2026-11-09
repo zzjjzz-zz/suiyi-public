@@ -75,7 +75,7 @@
     "INSTALLER_SUIYI_BRAND": "Suiyi",
     "INSTALLER_TITLE_STYLE": "spaced",
     "INSTALLER_SHORTCUT": "Créer un raccourci sur le bureau",
-    "INSTALLER_SHORTCUT_HINT": "Décocher conserve les raccourcis existants",
+    "INSTALLER_SHORTCUT_HINT": "Contrôle la création du raccourci pour cette installation",
     "INSTALLER_SHORTCUT_UNAVAILABLE": "Désactivé par les paramètres d’installation",
     "INSTALLER_STARTUP": "Lancer DeepSeek Harness à la connexion",
     "INSTALLER_STARTUP_HINT": "Désactivé par défaut ; gérer dans Démarrage de Windows",

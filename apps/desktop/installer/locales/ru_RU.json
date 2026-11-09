@@ -75,7 +75,7 @@
     "INSTALLER_SUIYI_BRAND": "Suiyi",
     "INSTALLER_TITLE_STYLE": "spaced",
     "INSTALLER_SHORTCUT": "Создать ярлык на рабочем столе",
-    "INSTALLER_SHORTCUT_HINT": "Снятие флажка сохраняет имеющиеся ярлыки",
+    "INSTALLER_SHORTCUT_HINT": "Создание ярлыка при этой установке",
     "INSTALLER_SHORTCUT_UNAVAILABLE": "Отключено параметрами установки",
     "INSTALLER_STARTUP": "Запускать DeepSeek Harness при входе",
     "INSTALLER_STARTUP_HINT": "По умолчанию выключено; настройка в автозагрузке Windows",

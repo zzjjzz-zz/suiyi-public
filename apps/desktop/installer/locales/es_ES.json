@@ -75,7 +75,7 @@
     "INSTALLER_SUIYI_BRAND": "Suiyi",
     "INSTALLER_TITLE_STYLE": "spaced",
     "INSTALLER_SHORTCUT": "Crear un acceso directo en el escritorio",
-    "INSTALLER_SHORTCUT_HINT": "Desmarcar conserva los accesos existentes",
+    "INSTALLER_SHORTCUT_HINT": "Controla la creación del acceso en esta instalación",
     "INSTALLER_SHORTCUT_UNAVAILABLE": "Desactivado por los parámetros de instalación",
     "INSTALLER_STARTUP": "Iniciar DeepSeek Harness al iniciar sesión",
     "INSTALLER_STARTUP_HINT": "Desactivado por defecto; gestionar en Inicio de Windows",

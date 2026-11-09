@@ -75,7 +75,7 @@
     "INSTALLER_SUIYI_BRAND": "Suiyi",
     "INSTALLER_TITLE_STYLE": "spaced",
     "INSTALLER_SHORTCUT": "Desktopverknüpfung erstellen",
-    "INSTALLER_SHORTCUT_HINT": "Abwählen behält vorhandene Verknüpfungen",
+    "INSTALLER_SHORTCUT_HINT": "Steuert die Erstellung bei dieser Installation",
     "INSTALLER_SHORTCUT_UNAVAILABLE": "Durch Installationsparameter deaktiviert",
     "INSTALLER_STARTUP": "DeepSeek Harness bei Anmeldung starten",
     "INSTALLER_STARTUP_HINT": "Standardmäßig aus; im Windows-Autostart verwalten",

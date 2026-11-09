@@ -75,7 +75,7 @@
     "INSTALLER_SUIYI_BRAND": "Suiyi",
     "INSTALLER_TITLE_STYLE": "compact",
     "INSTALLER_SHORTCUT": "デスクトップにショートカットを作成",
-    "INSTALLER_SHORTCUT_HINT": "オフにしても既存のショートカットは残ります",
+    "INSTALLER_SHORTCUT_HINT": "今回のインストールで作成するかを選択",
     "INSTALLER_SHORTCUT_UNAVAILABLE": "インストール引数で無効になっています",
     "INSTALLER_STARTUP": "サインイン時に DeepSeek Harness を起動",
     "INSTALLER_STARTUP_HINT": "既定はオフ。Windows のスタートアップで管理",

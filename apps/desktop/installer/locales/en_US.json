@@ -75,7 +75,7 @@
     "INSTALLER_SUIYI_BRAND": "Suiyi",
     "INSTALLER_TITLE_STYLE": "spaced",
     "INSTALLER_SHORTCUT": "Create a desktop shortcut",
-    "INSTALLER_SHORTCUT_HINT": "Unchecking keeps existing shortcuts",
+    "INSTALLER_SHORTCUT_HINT": "Controls shortcut creation for this installation",
     "INSTALLER_SHORTCUT_UNAVAILABLE": "Disabled by the installation arguments",
     "INSTALLER_STARTUP": "Start DeepSeek Harness at sign-in",
     "INSTALLER_STARTUP_HINT": "Off by default; manage in Windows Startup apps",

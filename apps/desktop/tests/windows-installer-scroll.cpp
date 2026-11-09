@@ -9,6 +9,9 @@
 #include <initializer_list>
 #include <stdexcept>
 
+// Standard-class initialization requires the themed Common Controls assembly.
+#pragma comment(linker, "/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
+
 extern "C" __declspec(dllimport) BOOL __cdecl InstallerConfigurePageScroll(
     HWND page, int height, UINT dpi, HWND drag, HWND minimize, HWND close);
 
