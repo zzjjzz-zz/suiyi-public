@@ -4,6 +4,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 
 import { rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { createRequire } from 'node:module'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
 const state = vi.hoisted(() => ({
@@ -14,6 +15,7 @@ const state = vi.hoisted(() => ({
   preparePrimary: vi.fn(),
   extractElectron: vi.fn(),
   commandLink: vi.fn(),
+  downloadElectron: vi.fn(async () => 'electron.zip'),
 }))
 vi.mock('../scripts/desktop-build-paths.mjs', async importOriginal => ({
   ...await importOriginal<typeof import('../scripts/desktop-build-paths.mjs')>(),
@@ -22,7 +24,7 @@ vi.mock('../scripts/desktop-build-paths.mjs', async importOriginal => ({
     runtime: join(state.root, 'runtime'), electron: join(state.root, 'electron'), downloads: join(state.root, 'downloads'),
   }),
 }))
-vi.mock('@electron/get', () => ({ downloadArtifact: async () => 'electron.zip' }))
+vi.mock('@electron/get', () => ({ downloadArtifact: state.downloadElectron }))
 vi.mock('@electron-internal/extract-zip', () => ({ default: state.extractElectron }))
 vi.mock('node:child_process', async importOriginal => ({
   ...await importOriginal<typeof import('node:child_process')>(),
@@ -83,6 +85,15 @@ it.each(['mac-arm64', 'mac-x64', 'win-x64'] as const)('prepares %s with one pnpm
   const runtime = join(state.root, 'runtime')
   mkdirSync(join(runtime, 'pnpm'), { recursive: true })
   await import('../scripts/prepare-runtime.ts')
+  const require = createRequire(import.meta.url)
+  const electron = require('electron/package.json') as { version: string }
+  const checksums = require('electron/checksums.json') as Record<string, string>
+  expect(state.downloadElectron).toHaveBeenCalledWith(expect.objectContaining({
+    version: electron.version,
+    checksums,
+    platform: windows ? 'win32' : 'darwin',
+    arch: target === 'mac-arm64' ? 'arm64' : 'x64',
+  }))
   expect(existsSync(join(runtime, 'pnpm'))).toBe(false)
   expect(existsSync(join(runtime, 'primary-runtime', 'dependencies', 'pnpm', 'bin', 'pnpm.mjs'))).toBe(true)
   expect(existsSync(join(runtime, 'bin', 'node'))).toBe(true)

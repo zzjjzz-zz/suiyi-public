@@ -64,6 +64,32 @@ jobs:
       - name: Validate Windows packaging toolchain and configuration
         run: pnpm run package:desktop:win:x64:unsigned --check --build-version $env:SUIYI_TEST_VERSION
 
+      - name: Prepare verified NSIS toolsets before compilation
+        run: |
+          @'
+          const { createRequire } = require('node:module');
+          const { resolve } = require('node:path');
+          const desktopRequire = createRequire(resolve('apps/desktop/package.json'));
+          const { getMakeNsisPath, getNsisPluginsPath } = desktopRequire('app-builder-lib/out/toolsets/windows.js');
+          (async () => {
+            for (const [name, prepare] of [['nsis', getMakeNsisPath], ['nsis-resources', getNsisPluginsPath]]) {
+              console.log(`Preparing checksum-verified ${name}`);
+              try {
+                await prepare();
+                console.log(`READY ${name}`);
+              } catch (error) {
+                const address = error.request?.requestUrl;
+                const url = address ? new URL(address) : undefined;
+                console.error(JSON.stringify({ tool: name, status: error.response?.statusCode,
+                  endpoint: url ? `${url.origin}${url.pathname}` : undefined, message: error.message }));
+                process.exitCode = 1;
+                return;
+              }
+            }
+          })().catch(error => { console.error(error.message); process.exitCode = 1; });
+          '@ | node
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Build unsigned NSIS installer
         run: pnpm run package:desktop:win:x64:unsigned --build-version $env:SUIYI_TEST_VERSION
 
