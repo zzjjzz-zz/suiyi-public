@@ -10,9 +10,16 @@ it('validates and updates onboarding preferences without remounting', async () =
   const ctx = new Context()
   onTestFinished(() => ctx.fiber.dispose())
   const configuration = await liveConfig(ctx, General)
-  await configuration.update({ welcomeNoticeVersion: 'v1' })
-  expect(plainConfig(configuration.fiber.effectiveConfig)).toMatchObject({ welcomeNoticeVersion: 'v1' })
+  await configuration.update({ welcomeNoticeVersion: 'v1', reduceMotion: true, turnCompleteNotification: true })
+  expect(plainConfig(configuration.fiber.effectiveConfig)).toMatchObject({ welcomeNoticeVersion: 'v1', reduceMotion: true, turnCompleteNotification: true })
   expect(configuration.entry.fiber).toBe(configuration.fiber)
+})
+
+it('defaults the reduced-motion preference to off', async () => {
+  const ctx = new Context()
+  onTestFinished(() => ctx.fiber.dispose())
+  const configuration = await liveConfig(ctx, General)
+  expect(plainConfig(configuration.fiber.effectiveConfig)).toMatchObject({ reduceMotion: false, turnCompleteNotification: false })
 })
 
 it('keeps its own instance off the generated Settings pages', () => omitsGeneratedPage(ctx => ctx.plugin(HostPlugin)))

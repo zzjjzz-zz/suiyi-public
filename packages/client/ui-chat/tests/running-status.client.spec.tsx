@@ -24,6 +24,20 @@ function statusHarness(startTime?: number) {
 }
 
 describe('RunningStatus', () => {
+  it('exposes indeterminate waiting and suspends motion while disconnected or holding', () => {
+    const mark = <svg data-testid="brand-mark" />
+    const view = render(<RunningStatus startTime={1_000} paused={false} thinkingMark={mark} t={t} />)
+    expect(view.getByRole('progressbar').hasAttribute('aria-valuenow')).toBe(false)
+    expect(view.getByRole('status').textContent).toBe('正在思考…')
+    view.rerender(<RunningStatus startTime={1_000} paused thinkingMark={mark} t={t} />)
+    expect(view.container.querySelector('[data-chat-thinking]')?.hasAttribute('data-paused')).toBe(true)
+    expect(vi.getTimerCount()).toBe(0)
+    view.rerender(<RunningStatus startTime={1_000} paused={false} holding thinkingMark={mark} t={t} />)
+    expect(view.queryByRole('status')).toBeNull()
+    expect(view.queryByRole('progressbar')).toBeNull()
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
   it('waits for an open Turn start before allocating its clock', () => {
     const view = statusHarness()
     expect(view.content()?.textContent).toBe('深度求索中')

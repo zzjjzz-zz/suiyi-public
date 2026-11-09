@@ -184,10 +184,13 @@ type RowListName = typeof MENU_ITEM | typeof ROW_ACTION | 'shell.overlay'
 
 /** Declare any subset of the holes with a single root registration ('root' is a single slot); the overlay is a list. */
 function declare(slots: SlotRegistry, ...names: HoleName[]): () => void {
-  const children = Object.fromEntries([...names, 'contextMenu.content', 'contextMenu.icon'].map(name => [
-    name, { kind: name === 'shell.overlay' ? 'list' : name.startsWith('contextMenu.') ? 'keyed' : 'single', scope: 'root',
-      ...name === 'contextMenu.icon' ? { inline: true } : {},
-      ...name === 'sidebar.workspaces' ? { inject: SECTION_INJECT } : {} },
+  const children = Object.fromEntries([
+    ...names, 'contextMenu.content', 'contextMenu.icon', 'main', 'sidebar.panellist',
+  ].map(name => [
+    name, { kind: name === 'shell.overlay' || name === 'sidebar.panellist' ? 'list'
+      : name === 'main' || name.startsWith('contextMenu.') ? 'keyed' : 'single', scope: 'root',
+    ...name === 'contextMenu.icon' ? { inline: true } : {},
+    ...name === 'sidebar.workspaces' ? { inject: SECTION_INJECT } : {} },
   ]))
   return slots.register({ name: 'root', children } as never, () => null)
 }
@@ -237,6 +240,17 @@ const settled = (): Promise<void> => new Promise((resolve) => { setTimeout(resol
 describe('ui-workspace apply', () => {
   it('keeps the host Loader entry inert', () => {
     expect(hostApply).not.toThrow()
+  })
+
+  it('registers the Workspaces main panel and its sidebar entry outside official artifacts', async () => {
+    const b = await bench()
+    onTestFinished(() => b.ctx.fiber.dispose())
+    declare(b.slots)
+    await b.ctx.plugin({ inject: [...inject], apply }).await()
+    await vi.waitFor(() => {
+      expect(b.slots.entries('main').map(entry => entry.options.key)).toContain('workspaces')
+      expect(b.slots.entries('sidebar.panellist').map(entry => entry.options.id)).toContain('workspaces')
+    })
   })
 
   it('declares the services it drives', () => {

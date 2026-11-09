@@ -24,8 +24,36 @@
   cursor: pointer;
 }
 
+@media (max-width: 640px) {
+  .iconButton {
+    width: 33px;
+    height: 33px;
+  }
+}
+
 @media (hover: hover) {
   .iconButton:hover {
     background: var(--dsw-alias-interactive-bg-hover);
   }
+}
+
+:global(body[data-dsh-brand='suiyi']) .iconButton {
+  border-radius: 9px;
+  transition: background 0.2s, transform 0.2s;
+}
+
+@media (hover: hover) {
+  :global(body[data-dsh-brand='suiyi']) .iconButton:hover {
+    background: var(--dsw-alias-bg-module-platform);
+    color: var(--dsw-alias-label-primary);
+  }
+}
+
+:global(body[data-dsh-brand='suiyi']) .iconButton:focus-visible {
+  outline: 2px solid light-dark(#2678ed, #7bb5ff);
+  outline-offset: 4px;
+}
+
+:global(body[data-dsh-brand='suiyi']) .iconButton:active {
+  transform: scale(0.92);
 }

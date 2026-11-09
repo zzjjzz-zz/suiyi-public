@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { apply as applyMenus, inject as injectMenus } from '@deepseek-ai/dsh-client-ui-context-menu/client'
-import { render, cleanup } from '@testing-library/react'
+import { render, cleanup, fireEvent, waitFor } from '@testing-library/react'
 import { $getRoot, $isTextNode, PASTE_COMMAND } from 'lexical'
 import { createUserTextFixture } from './user-text-component-fixture.client.tsx'
 import { registerComposerKeymap } from '../src/client/input/editor/keymap.ts'
@@ -51,7 +51,7 @@ function sessionFakeFor() {
   } satisfies SessionBehaviorOverrides
 }
 
-async function bench(renderQuote = false) {
+async function bench(renderQuote = false, renderHeaderMenu = false) {
   const runtime = await SlotTestRuntime.create()
   const rootUpload = vi.fn(() => Promise.resolve({
     ok: true as const,
@@ -114,7 +114,8 @@ async function bench(renderQuote = false) {
   await runtime.root.declare({
     'main': { kind: 'keyed', scope: 'root' },
     'quote-probe': { kind: 'single', scope: 'session' },
-  }, ({ renderFactorySlot, SessionProvider }) => renderQuote ? (
+    'contextMenu.content': { kind: 'keyed', scope: 'root' },
+  }, ({ renderFactorySlot, renderSlot, SessionProvider }) => renderHeaderMenu ? renderSlot('contextMenu.content', { target: { kind: 'sessionHeader', value: { sessionId: ROOT } }, dismiss: () => {} }, { entryKey: 'sessionHeader' }) : renderQuote ? (
     <SessionProvider session={rootReference}>
       {renderFactorySlot('conversation.user.text', { text: '> @literal /review', facts: {} })}
     </SessionProvider>
@@ -166,6 +167,34 @@ async function bench(renderQuote = false) {
 }
 
 describe('Conversation inject API', () => {
+  it('keeps Suiyi header View selection in the captured Session and releases the menu reference', async () => {
+    vi.stubEnv('DSH_CLIENT_BUILD_PROFILE', 'suiyi')
+    onTestFinished(() => { vi.unstubAllEnvs() })
+    const b = await bench(false, true)
+    onTestFinished(() => b.runtime.dispose())
+    b.slots.register({ name: 'conversation.view', id: 'chat', label: 'Chat' }, () => null)
+    b.slots.register({ name: 'conversation.view', id: 'notes', label: 'Notes' }, () => null)
+    const removeActions = b.slots.register({ name: 'conversation.session.header.views.actions', id: 'test-views' }, ({ entries, onOpen, onDismiss }) => <>
+      {entries.map(entry => <button key={entry.id} role="menuitem" onClick={() => { onOpen(entry.id); onDismiss() }}>{entry.label}</button>)}
+    </>)
+    await b.runtime.flush()
+    await waitFor(() => expect(document.querySelector('[role="group"]')?.textContent).toBe('ChatNotes'))
+    expect(document.querySelector('[role="group"]')?.textContent).toMatchInlineSnapshot('"ChatNotes"')
+    expect(b.runtime.sessions.retainInfo(ROOT).getSnapshot().retainedBy.conversationMenu).toBe(1)
+    const activate = vi.spyOn(b.runtime.ctx.uiConversation.binding(ROOT), 'activate')
+    const notes = [...document.querySelectorAll('button')].find(button => button.textContent === 'Notes')!
+    fireEvent.click(notes)
+    expect(activate).toHaveBeenCalledWith('notes')
+    expect(b.conversationApi(ROOT).instance.store.getSnapshot().view).toBe('notes')
+    removeActions()
+    await b.runtime.flush()
+    expect(document.querySelector('[role="group"]')?.textContent).toBe('ChatNotes')
+    expect(b.runtime.sessions.retainInfo(ROOT).getSnapshot().retainedBy.conversationMenu).toBe(1)
+    await b.feature.dispose()
+    await b.runtime.flush()
+    expect(b.runtime.sessions.retainInfo(ROOT).getSnapshot().retainedBy.conversationMenu).toBeUndefined()
+  })
+
   it.each(['zh', 'en'])('submits empty continuation input in the %s locale', async (locale) => {
     const b = await bench()
     onTestFinished(() => b.runtime.dispose())

@@ -1,10 +1,9 @@
 /** Strict per-session header/body content inserted into the resident conversation layout. */
 
-import { useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import clsx from 'clsx'
 import { Button, IconEllipsisOutlineRegular, Menu, Tooltip } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { SessionListState, SessionSummary } from '@deepseek-ai/dsh-api-session-controller/client'
-import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type {
   ConversationSessionHeaderSlotProps, ConversationSessionSlotProps, ConversationViewActionsOwnerProps,
 } from '../contract/slots.ts'
@@ -22,10 +21,15 @@ export type ConversationSessionHeaderProps = ConversationSessionHeaderSlotProps
 type ViewsMoreMenuProps =
   Omit<ConversationViewActionsOwnerProps, 'onDismiss'>
   & Pick<ConversationSessionHeaderSlotProps, 'renderSlot'>
-  & { readonly label: string; readonly current: boolean }
+  & {
+    readonly label: string
+    readonly current: boolean
+    /** Views whose tabs are hidden by the one-row header; they stay reachable here. */
+    readonly tabs: readonly { readonly id: string; readonly label: string; readonly active: boolean }[]
+  }
 
 /** The View tab row's More launcher; its menu rows come from `conversation.session.header.views.actions`. */
-function ViewsMoreMenu({ label, current, entries, onOpen, onPinnedChange, renderSlot }: ViewsMoreMenuProps) {
+function ViewsMoreMenu({ label, current, entries, tabs, onOpen, onPinnedChange, renderSlot }: ViewsMoreMenuProps) {
   const [open, setOpen] = useState(false)
   const onDismiss = (): void => { setOpen(false) }
   return (
@@ -38,6 +42,18 @@ function ViewsMoreMenu({ label, current, entries, onOpen, onPinnedChange, render
           </Button>
         </Tooltip>
       )}>
+      {tabs.map(tab => (
+        <button
+          key={tab.id}
+          type="button"
+          role="menuitem"
+          className={css.viewsMoreItem}
+          data-active={tab.active ? '' : undefined}
+          onClick={() => { onOpen(tab.id); onDismiss() }}
+        >
+          {tab.label}
+        </button>
+      ))}
       {renderSlot('conversation.session.header.views.actions', { entries, onOpen, onPinnedChange, onDismiss })}
     </Menu>
   )
@@ -66,38 +82,14 @@ function ViewTabLabel({ label }: { readonly label: string }) {
   )
 }
 
-interface Breadcrumb {
-  readonly id: SessionId
-  readonly displayTitle: string
-  readonly subagent: boolean
-}
-
-function deriveAncestry(list: SessionListState, id: SessionId): readonly Breadcrumb[] {
-  const chain: Breadcrumb[] = []
-  const seen = new Set<SessionId>()
-  let cursor: SessionId | undefined = id
-  while (cursor !== undefined) {
-    if (seen.has(cursor)) break
-    seen.add(cursor)
-    const summary: SessionSummary | undefined = list.byId[cursor]
-    if (summary === undefined) break
-    chain.unshift({
-      id: summary.id,
-      displayTitle: summary.displayTitle,
-      subagent: summary.origin === 'subagent',
-    })
-    if (summary.origin !== 'subagent') break
-    cursor = summary.parentId
-  }
-  return chain
-}
-
-function equalBreadcrumbs(left: readonly Breadcrumb[], right: readonly Breadcrumb[]): boolean {
-  return left.length === right.length
-    && left.every((item, index) => {
-      const other = right.at(index)
-      return other !== undefined && item.id === other.id && item.displayTitle === other.displayTitle
-    })
+/** Move the navigation-owned corner control into the global shell topbar when it is mounted. */
+function HeaderCornerPortal({ children }: { readonly children: React.ReactNode }) {
+  const [target, setTarget] = useState<HTMLElement | null>(null)
+  useEffect(() => {
+    setTarget(document.querySelector<HTMLElement>('[data-shell-header-corner]'))
+  }, [])
+  const content = <div className={css.headerCorner} data-conversation-header-corner="">{children}</div>
+  return target === null ? content : createPortal(content, target)
 }
 
 /**
@@ -106,17 +98,15 @@ function equalBreadcrumbs(left: readonly Breadcrumb[], right: readonly Breadcrum
  * @returns Session navigation controls, with title and tabs after conversation starts.
  */
 export function ConversationSessionHeader({
-  sessionId, hideChrome, useSessions, useConversationViews, useStore,
-  renderSlot, renderFactorySlot, open, useContextMenu, selectView, setPinned, t, useEntryPins, useEntryActions,
+  sessionId, hideChrome, useConversationViews, useStore,
+  renderSlot, renderFactorySlot, selectView, setPinned, t, useEntryPins, useEntryActions,
 }: ConversationSessionHeaderProps) {
-  const { getTriggerProps } = useContextMenu()
   const tabs = useConversationViews(value => value)
   const selectedId = useStore(s => s.view)
   const active = resolveActiveView(tabs, selectedId)
-  const ancestry = useSessions(s => deriveAncestry(s, sessionId), equalBreadcrumbs)
   const unpinned = useEntryPins(ids => ids)
   const hasEntryActions = useEntryActions(registered => registered)
-  const showTabs = !hideChrome && tabs.length > 1
+  const showTabs = process.env.DSH_CLIENT_BUILD_PROFILE !== 'suiyi' && !hideChrome && tabs.length > 1
   const tabRow = useRef<HTMLDivElement>(null)
   const [visibleViewLimit, setVisibleViewLimit] = useState(1)
   // Observe only the available row width; individual tabs are not measured.
@@ -141,70 +131,16 @@ export function ConversationSessionHeader({
     const visibleIds = new Set(visibleTabs.map(tab => tab.id))
     return { visibleTabs, moreTabs: tabs.filter(tab => !visibleIds.has(tab.id)) }
   }, [tabs, unpinned, hasEntryActions, visibleViewLimit])
-  const currentInMore = moreTabs.some(tab => tab.id === active?.id)
+  // Every View is reachable through the one More menu; the visible tab strip is
+  // visually collapsed by CSS so the header keeps a single row.
+  const currentInMore = tabs.some(tab => tab.id === active?.id)
   return (
     <>
       <div className={css.titleRow}>
-        {!hideChrome && (
+        {hideChrome ? null : (
           <>
-            <div className={css.titleCluster}>
-              <nav className={css.crumbs} aria-label={t('session.hierarchy')}>
-                {ancestry.map((summary, index) => {
-                  const last = index === ancestry.length - 1
-                  // The current crumb has no navigation, so it is plain text
-                  // rather than a disabled button: on darwin desktop a button
-                  // would subtract itself from the header's drag row (ui-web
-                  // base.css) and leave the title inert for dragging too.
-                  const title = last
-                    ? (
-                      <span className={clsx(css.crumb, css.crumbCurrent)}>
-                        {summary.displayTitle}
-                      </span>
-                    )
-                    : (
-                      <button
-                        type="button"
-                        className={css.crumb}
-                        onClick={() => { open(summary.id) }}
-                      >
-                        {summary.displayTitle}
-                      </button>
-                    )
-                  const lineage = last || summary.subagent
-                  const lineageOwner = {
-                    lineageSessionId: summary.id,
-                    displayTitle: summary.displayTitle,
-                    ...last ? {} : { openTitle: () => { open(summary.id) } },
-                  }
-                  return (
-                    <span key={summary.id} className={css.crumbSeg} {...getTriggerProps({ kind: 'session', value: { sessionId: summary.id, displayTitle: summary.displayTitle } })}>
-                      {index > 0 && <span className={css.crumbSep}>/</span>}
-                      {lineage
-                        ? summary.subagent
-                          ? renderSlot(
-                            'conversation.session.header.lineage',
-                            lineageOwner,
-                            { fallback: title },
-                          )
-                          : (
-                            <>
-                              {title}
-                              {renderSlot(
-                                'conversation.session.header.lineage',
-                                lineageOwner,
-                                { fallback: null },
-                              )}
-                            </>
-                          )
-                        : title}
-                    </span>
-                  )
-                })}
-                {ancestry.length === 0 && <span className={css.crumbCurrent}>{sessionId}</span>}
-              </nav>
-              <div className={css.headerActions}>
-                {renderSlot('conversation.session.header.actions', {})}
-              </div>
+            <div className={css.headerActions}>
+              {renderSlot('conversation.session.header.actions', {})}
             </div>
             <div className={css.headerUtilities}>
               {renderSlot('conversation.session.header.utilities', {})}
@@ -215,9 +151,9 @@ export function ConversationSessionHeader({
             </div>
           </>
         )}
-        <div className={css.headerCorner} data-conversation-header-corner="">
+        <HeaderCornerPortal>
           {renderSlot('conversation.session.header.corner', {})}
-        </div>
+        </HeaderCornerPortal>
       </div>
       {showTabs && (
         // data-conversation-tabs: marks the tab strip, which the window-chrome
@@ -244,6 +180,9 @@ export function ConversationSessionHeader({
               entries={moreTabs.map(viewTab => ({
                 id: viewTab.id, label: viewTab.label,
                 pinned: !unpinned.includes(viewTab.id), active: viewTab.id === active?.id,
+              }))}
+              tabs={visibleTabs.map(viewTab => ({
+                id: viewTab.id, label: viewTab.label, active: viewTab.id === active?.id,
               }))}
               onOpen={selectView}
               onPinnedChange={setPinned}

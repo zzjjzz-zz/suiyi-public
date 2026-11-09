@@ -123,9 +123,17 @@ const CAPABILITY_REFERENCES: [keyof Capabilities, string, string][] = [
 
 /** Only this entrypoint is sent by the skill tool; topic references stay on disk until needed. */
 export function skillEntry(typesMap: string | undefined, standaloneMap: string | undefined, capabilities: Capabilities = DEFAULT_CAPABILITIES): string {
-  const core = [...CAPABILITY_REFERENCES, ...CAPABILITY_PROSE].reduce(
+  // The bridge is denied at the execution layer by default. Say so before any reference
+  // that still shows an example import, so a copied snippet has a rule in front of it.
+  const bridgeDenied = !capabilities.chat && !capabilities.fs && !capabilities.exec && !capabilities.web && !capabilities.ai
+    ? "> **This host denies generated-code host bridges.** A card may import React, chart/table libraries and `$dsh/state`, and render from data the transcript already provides. Do not import `$dsh/chat`, `$dsh/fs`, `$dsh/exec`, `$dsh/web` or `$dsh/ai`; examples below that show a bridge apply only to hosts that opt in. Data comes from the Harness tools before the card is written.\n\n"
+    : "";
+  const browseGate = capabilities.fs
+    ? "For a recursive workspace browse, prefer one bounded command listing when a command capability is available, or a shallow `readdir` with lazy expansion when it does not; use the exact `readdir` shape (`type: \"file\" | \"directory\"`, `size` on files), never invent `stat`, and never turn a failed directory read into an empty successful listing."
+    : "For browsing, use only rows already supplied in the conversation and keep filtering/sorting local; never claim the card can read the workspace or fetch a file body.";
+  const core = bridgeDenied + [...CAPABILITY_REFERENCES, ...CAPABILITY_PROSE].reduce(
     (text, [key, marker, line]) => text.replace(marker, capabilities[key] ? line : ""),
-    stripFrontmatter(readSkill("SKILL.md")).replace(EXEC_REFERENCE, capabilities.exec ? "- For non-destructive workspace commands: [commands.md](references/commands.md)." : ""),
+    stripFrontmatter(readSkill("SKILL.md")).replace(EXEC_REFERENCE, capabilities.exec ? "- For non-destructive workspace commands: [commands.md](references/commands.md)." : "").replace("__WORKSPACE_BROWSE_GATE__", browseGate),
   );
   const maps = mapNotes(typesMap, standaloneMap);
   return core + (maps ? `\n## Checker import maps\n\n${maps}\n` : "\n## Checker import maps\n\nNo type import map is installed here. Omit `-i` from `check`; use the live panel to verify harness calls.\n");
@@ -137,5 +145,9 @@ export function skillBody(typesMap: string | undefined, standaloneMap: string | 
   // the same error as documenting `$dsh/web` in the prompt — the model reads it and writes an
   // import that fails.
   const refs = ["lifetime", "layout", "accessibility", "sound", "runtime", ...(capabilities.exec ? ["commands"] : []), ...(capabilities.web ? ["web"] : []), ...(capabilities.fs ? ["files"] : []), ...(capabilities.ai ? ["ai"] : []), "checking", "imports"];
-  return skillEntry(typesMap, standaloneMap, capabilities) + refs.map((name) => `\n${readSkill(`references/${name}.md`)}`).join("");
+  const body = skillEntry(typesMap, standaloneMap, capabilities) + refs.map((name) => `\n${readSkill(`references/${name}.md`)}`).join("");
+  // The bridge is denied at the execution layer. A reference that still shows the
+  // import would hand the model a snippet whose module cannot load; strip those lines
+  // rather than only warning above them.
+  return capabilities.chat ? body : body.split("\n").filter((line) => !line.includes("$dsh/chat") && !line.includes("sendMessage")).join("\n");
 }

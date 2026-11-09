@@ -38,6 +38,7 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+  box-sizing: border-box;
   /* Hidden docked items sit past the frame's right edge. Unclipped, they widen
      the frame's scrollable overflow, and a caret reveal (PageUp in a text field
      outside macOS) scrolls the `overflow: hidden` frame sideways. `clip` keeps
@@ -45,6 +46,15 @@
      not clip fixed floating children, whose containing block is the viewport. */
   overflow: clip;
   pointer-events: none;
+}
+
+/* The workbench is a surface pane against the conversation only while its dock
+   surface is open. The collapsed panel keeps its box for the slide but paints
+   nothing, so a closed workbench never covers the conversation or the composer;
+   floating children carry their own surfaces. */
+.panel[data-sidebar-right-open] {
+  background: var(--dsw-alias-bg-layer-1);
+  border-left: 1px solid var(--dsw-alias-border-l3);
 }
 
 /* Only docked Grid items slide. Their common ancestor remains untransformed
@@ -81,6 +91,45 @@
 
 .panel[data-sidebar-right-panel='fullscreen'] {
   --dsh-dockkit-dock-layer: 40;
+  border-left: 0;
+}
+
+/* Only the OPEN fullscreen workbench is a surface above the conversation
+   composer. A collapsed mobile panel also carries the fullscreen presentation
+   label (automatic fullscreen), so an unconditional opaque background here
+   would paint over the home and thinking views while the panel is closed. */
+.panel[data-sidebar-right-panel='fullscreen'][data-sidebar-right-open] {
+  /* Above the conversation composer (z-index 9) and below the mobile
+     navigation drawer, mirroring the prototype inspector's z-index 23. */
+  z-index: 23;
+  background: var(--dsw-alias-bg-layer-1);
+}
+
+/* The closed mobile panel still carries the fullscreen presentation label.
+   Keep the closed state explicitly surface-free so any future fullscreen-only
+   rule cannot paint over the conversation; floating panes keep their own
+   surfaces and are not selected here. */
+.panel[data-sidebar-right-panel='fullscreen']:not([data-sidebar-right-open]) {
+  background: transparent;
+  z-index: auto;
+}
+
+/* The workbench owns the outer separator and an opaque content surface in
+   both presentations; dockkit must not add another leading border. */
+.panel[data-sidebar-right-open] :global([data-dockkit-host='dock'] > section) {
+  background: var(--dsw-alias-bg-layer-1);
+}
+
+.panel[data-sidebar-right-open] :global([data-dockkit-host='dock'][data-dockkit-column='0'] > section) {
+  border-left: 0;
+}
+
+/* One open content tab needs no second tab strip: the workbench's five doors
+   and the title-bar controls are the entry, matching the prototype's single
+   header pair. A second tab reveals the dock strip and its multi-document
+   controls; the strip stays in the DOM for keyboard/docking behavior. */
+.panel[data-sidebar-right-single-tab] :global([data-dockkit-strip]) {
+  display: none;
 }
 
 /* No whole-box subtraction here: Electron drag regions are window geometry,
@@ -130,16 +179,16 @@
   }
 }
 
-/* The geometry of a message's action row button (ui-chat MessageIconActions),
-   shared with the kit's split control beside it: a 28px circle around a 15px glyph. */
+/* The prototype inspector's compact header controls: 24px boxes around a
+   14px glyph, spaced 3px apart at the strip's end. */
 .iconButton {
   display: inline-flex;
   flex: none;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  padding: 6px;
+  width: 24px;
+  height: 24px;
+  padding: 5px;
   color: var(--dsw-alias-label-secondary);
   line-height: 1;
   background: transparent;
@@ -149,8 +198,22 @@
 }
 
 .iconButton svg {
-  width: 15px;
-  height: 15px;
+  width: 14px;
+  height: 14px;
+}
+
+/* The tab strip carries the prototype inspector's small labels; the chip
+   geometry, close control, and drag behavior stay the docking kit's. */
+.panel :global([data-dockkit-tab]) {
+  font-size: 12px;
+}
+
+.panel :global([data-dockkit-strip-chrome]) {
+  gap: 3px;
+}
+
+.panel :global([data-dockkit-strip-tabs]) {
+  gap: 2px;
 }
 
 @media (hover: hover) {
@@ -164,10 +227,121 @@
   transform: scaleX(-1);
 }
 
+.workbenchFooter {
+  pointer-events: auto;
+  display: flex;
+  flex: none;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+  height: 39px;
+  padding: 0 17px;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 9px;
+  line-height: 1;
+  background: var(--dsw-alias-bg-layer-1);
+  border-top: 0.5px solid var(--dsw-alias-border-l3);
+}
+
+.workbenchWorkspace {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workbenchBoundary {
+  flex: none;
+  padding: 0;
+  color: var(--dsw-brand-accent-ink, var(--dsw-alias-state-business-primary));
+  font: inherit;
+  font-size: 10px;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.workbenchBoundaryBody {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.workbenchBoundaryBody p {
+  margin: 0;
+}
+
+.workbenchBoundaryWorkspace {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0;
+  padding: 9px 10px;
+  background: var(--dsw-alias-bg-layer-2, var(--dsw-alias-bg-layer-1));
+  border: 0.5px solid var(--dsw-alias-border-l3);
+  border-radius: var(--dsw-radius-sm);
+}
+
+.workbenchBoundaryWorkspace dt {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 10px;
+}
+
+.workbenchBoundaryWorkspace dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--dsw-alias-label-primary);
+  font-family: var(--dsh-font-family-mono, monospace);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+@media (hover: hover) {
+  .workbenchBoundary:hover {
+    color: var(--dsw-alias-label-primary);
+  }
+}
+
+.workbenchBoundary:focus-visible {
+  outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
+  outline-offset: 2px;
+}
+
 .panelBody {
   display: flex;
   flex: 1 1 auto;
+  flex-direction: column;
   min-height: 0;
+}
+
+/* The workbench bar is panel chrome, so it joins the docked content's slide:
+   collapsed it sits past the right edge and paints nothing; open it returns
+   in place. Without this, a collapsed panel would leave the bar over the
+   conversation while the kit translated only its own hosts. */
+.workbenchBarSlot {
+  flex: none;
+  transform: translateX(var(--dsh-sidebar-width));
+  visibility: hidden;
+  transition:
+    transform var(--ds-transition-duration-slow) var(--ds-ease-in-out),
+    visibility 0s linear var(--ds-transition-duration-slow);
+}
+
+.panel[data-sidebar-right-open] .workbenchBarSlot {
+  transform: none;
+  visibility: visible;
+  transition: transform var(--ds-transition-duration-slow) var(--ds-ease-in-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workbenchBarSlot,
+  .panel[data-sidebar-right-open] .workbenchBarSlot {
+    transition: none;
+  }
 }
 
 @media (pointer: coarse) {

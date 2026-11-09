@@ -133,7 +133,7 @@ export function parseDevWebArguments(argv: readonly string[]): DevWebArguments {
  */
 export function discoverPluginDirs(root = repoRoot): string[] {
   const dirs: string[] = []
-  for (const manifestPath of globSync('packages/*/*/package.json', { cwd: root }).sort()) {
+  for (const manifestPath of globSync(['packages/*/*/package.json', 'plugins/*/package.json'], { cwd: root }).sort()) {
     const manifest = JSON.parse(readFileSync(join(root, manifestPath), 'utf8')) as {
       dsh?: { client?: { platform?: unknown } }
     }

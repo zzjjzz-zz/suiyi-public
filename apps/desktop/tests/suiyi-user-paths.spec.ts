@@ -13,7 +13,7 @@ import {
   suiyiUserPaths,
 } from '../src/paths.ts'
 
-const ISSUER = 'https://login.example.invalid/realms/identity'
+const ISSUER = 'https://sso.zzjjzz.top/realms/identity'
 const ALICE = { issuer: ISSUER, sub: 'f1c0ffee-1234-4abc-9def-567890abcdef' }
 const BOB = { issuer: ISSUER, sub: '0badcafe-4321-4fed-cba-9876543210fe' }
 // Same subject under another issuer is a different account, not a shared one.

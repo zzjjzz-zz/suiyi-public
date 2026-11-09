@@ -19,12 +19,14 @@ const useResource = (() => ({ status: 'none' as const, value: undefined, failure
 const usePanelInfo: GlobalStandardProps['usePanelInfo'] = selector => selector({ activePanelId: null })
 
 afterEach(cleanup)
+afterEach(() => { vi.unstubAllEnvs() })
 
 const COPY: Record<string, string> = {
   'fontSize.text.title': 'Font size',
   'fontSize.text.description': 'Only affects conversation content',
   'fontSize.text.increase': 'Increase font size',
   'fontSize.text.decrease': 'Decrease font size',
+  'fontSize.standard': 'Standard',
   'fontSize.terminal.increase': 'Increase terminal font size',
   'fontSize.terminal.decrease': 'Decrease terminal font size',
 }
@@ -72,6 +74,22 @@ const arrow = (name: string): HTMLButtonElement =>
   screen.getByRole('button', { name }) as HTMLButtonElement
 
 describe('FontSizeRow', () => {
+  it('Suiyi selects every supported size while displaying only the accepted value', () => {
+    vi.stubEnv('DSH_CLIENT_BUILD_PROFILE', 'suiyi')
+    const b = mount(14)
+    const select = screen.getByRole<HTMLSelectElement>('combobox', { name: 'Font size' })
+    expect(select.value).toBe('14')
+    expect(select.selectedOptions[0]?.textContent).toBe('Standard')
+    expect([...select.options].map(option => Number(option.value))).toEqual(
+      Array.from({ length: 13 }, (_, index) => index + 10),
+    )
+    fireEvent.change(select, { target: { value: '17' } })
+    expect(b.setFontSize).toHaveBeenCalledWith(17)
+    expect(select.value).toBe('14')
+    act(() => { b.store.actions.sync({ text: 17, code: 11, terminal: 13 }, { text: '', code: '', terminal: '' }, 1) })
+    expect(select.value).toBe('17')
+  })
+
   it('renders the title and the current size with both arrows enabled mid-range', () => {
     mount(14)
     expect(screen.getByText('Font size')).toBeDefined()

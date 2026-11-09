@@ -1,7 +1,10 @@
 import { memo, useCallback, useMemo } from 'react'
 import type { InjectFace, PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots'
+import { FishLogo } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ChatFileMentions, ChatNodeViewProps, PresentationInjected, TurnTailOwnerProps } from '../contract/slots.ts'
+import { hasAssistantReplyContent } from '../contract/assistant-content.ts'
 import { AssistantMarkdown } from './AssistantMarkdown.tsx'
+import css from './AssistantNodeView.module.css'
 
 /** Business readers owned by the assistant renderer's existing Slot registration. */
 export interface AssistantNodeInjected extends PresentationInjected {
@@ -12,7 +15,9 @@ export interface AssistantNodeInjected extends PresentationInjected {
 }
 
 type AssistantNodeViewProps = ChatNodeViewProps<'assistant-step'> & InjectFace<AssistantNodeInjected>
-  & PropsRenderSlots<'conversation.chat.reasoning.body' | 'conversation.chat.message.images'>
+  & PropsRenderSlots<
+    'conversation.chat.reasoning.body' | 'conversation.chat.message.images' | 'conversation.chat.assistant.mark'
+  >
 
 /** Streaming, settled, and interrupted Assistant states share one keyed renderer instance. */
 export const AssistantNodeView = memo(function AssistantNodeView({
@@ -46,7 +51,7 @@ export const AssistantNodeView = memo(function AssistantNodeView({
       : turnProcess.spec.answerStep === data.step && turnProcess.spec.inlineReasoning)
     && !turnProcess.open
   const revealProcess = useCallback(() => { turnProcess?.setOpen(true) }, [turnProcess])
-  return (
+  const reply = (
     <AssistantMarkdown
       blocks={data.blocks}
       groupPart={groupPart}
@@ -63,5 +68,29 @@ export const AssistantNodeView = memo(function AssistantNodeView({
       mentions={mentions}
       t={t}
     />
+  )
+  // The reasoning-only group sits inside the Turn process row, which owns its
+  // own leading icon; the reply column carries the answer mark.
+  const showsMark = groupPart !== 'reasoning'
+    && (hasAssistantReplyContent(data.blocks)
+      || (process.env.DSH_CLIENT_BUILD_PROFILE !== 'suiyi' && data.status === 'running'))
+  if (!showsMark) return reply
+  return (
+    <div
+      className={css.root}
+      data-chat-assistant-mark=""
+      data-streaming={data.status === 'running' ? '' : undefined}
+    >
+      <span className={css.mark} aria-hidden="true">
+        {renderSlot('conversation.chat.assistant.mark', {
+          size: 32,
+          running: data.status === 'running',
+          className: css.markGlyph,
+        }, {
+          fallback: <FishLogo size={32} className={`${css.markGlyph} ${css.markFallback}`} />,
+        })}
+      </span>
+      <div className={css.body}>{reply}</div>
+    </div>
   )
 })

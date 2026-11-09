@@ -38,6 +38,8 @@ import { canvasAddress, startCanvasAutoOpen } from "./canvas/auto-open.ts";
 import { liveCanvasForSession, toolCallsOf, type CallBlock, type ToolCallView } from "./canvas/collect.ts";
 import { listCanvasIds } from "./canvas/read.ts";
 import { CARD_ERROR_PATH } from "../contract-assets.ts";
+import { createVisualOutput } from "./visual-output.ts";
+import { disposeVisualInstances } from "./runtime/instances.ts";
 
 export const inject = ["sessions", "locale"];
 
@@ -50,8 +52,55 @@ type AssistantNodeData = { blocks?: readonly { kind: string; text?: string }[] }
 export function apply(ctx: ClientContext): void {
   // The Host and browser halves share one type-check program but bind different
   // `sessions` service shapes; the browser uses the Client Controller.
-  const sessions = ctx.sessions as unknown as ISessions;
+  const sessions = ctx.get("sessions") as ISessions;
   const currentSession = () => selectedSessionId(ctx);
+  // Registration that renders generated code is started and stopped by the
+  // `visualOutput` preference. The text transcript is untouched: when the switch
+  // is off, a ui4a fence stays an ordinary code block.
+  let stopInline: (() => void) | null = null;
+  let stopAutoOpen: (() => void) | null = null;
+  const stopVisual = (): void => {
+    stopInline?.();
+    stopInline = null;
+    stopAutoOpen?.();
+    stopAutoOpen = null;
+    disposeVisualInstances();
+  };
+  let visualEnabled = false;
+  let visualReady = false;
+  const startVisual = (): void => {
+    if (!visualEnabled || !visualReady || stopInline !== null) return;
+    stopInline = claimInlineFences({
+      segments,
+      fences: fencesByKey,
+      t: ctx.locale.bind("common"),
+      subscribeLocale: (refresh) => ctx.locale.subscribe(refresh),
+      owner: sessionId,
+      subscribeOwner: (refresh) => {
+        const selected = ctx.get("uiSession") as { adapter?: { current: { subscribe?: (listener: () => void) => () => void } } } | undefined;
+        const primary = selected?.adapter?.current.subscribe?.(refresh);
+        if (primary !== undefined) return primary;
+        const list = sessions.list as typeof sessions.list & { subscribe?: (listener: () => void) => () => void };
+        return list.subscribe?.(refresh) ?? (() => {});
+      },
+      render: ({ code, streaming, last, surfaceId }) => createElement(GenUISurface, { key: `${sessionId()}:${surfaceId}`, sessionId: sessionId(), surfaceId, code, streaming, onError: (error, phase) => reportCardError(sendToModel, error.message, phase, last), onRendered: (restored) => cardRendered(restored, last) }),
+    });
+    stopAutoOpen = startCanvasAutoOpen({
+      calls,
+      sessionId: currentSession,
+      cwd,
+      list: (root, session) => listCanvasIds(root, session),
+      open: (session, id) => {
+        try {
+          scopedOpenCanvas(session, id);
+        } catch (error) {
+          console.error("[dsh-generative-ui] could not open canvas", id, error);
+        }
+      },
+    });
+  };
+  // Defined by the sidebar inject below; auto-open before the sidebar arrives is a no-op.
+  let scopedOpenCanvas: (session: string, id: string) => void = () => {};
   // Compiling anything pays a ~400 ms wasm init. Doing it now means the first fence the
   // user actually sees does not, and an idle tab is the cheapest possible moment for it.
   void warmCompiler();
@@ -160,7 +209,7 @@ export function apply(ctx: ClientContext): void {
         sessionId,
         send: (text, owner) => {
           const id = owner ?? currentSession();
-          const store = scoped.sessions as unknown as ISessions;
+          const store = scoped.get("sessions") as ISessions;
           const byId = store.list.getSnapshot().byId;
           const ownerId = id as keyof typeof byId | undefined;
           const session = ownerId === undefined || byId[ownerId] === undefined ? undefined : store.scope(ownerId);
@@ -212,11 +261,11 @@ export function apply(ctx: ClientContext): void {
     // generics still check the seat name and the composed props (§4's `as unknown as` precedent:
     // this dodges a client-side type gap, not the runtime inject check, which still applies).
     // `inject` is on the service wrapper rather than on `SlotCore` itself.
-    const slots = (scoped as unknown as { slots: SlotCore & SlotsInject }).slots;
+    const slots = scoped.get("slots") as SlotCore & SlotsInject;
     // `byId` is keyed by the branded `SessionId`; an address or a tab's standard props carry a
     // plain string that names one, so the lookup widens on the way in and nothing else does.
     const cwdOf = (id: string) => {
-      const byId = (scoped.sessions as unknown as ISessions).list.getSnapshot().byId as Record<string, { cwd?: string } | undefined>;
+      const byId = (scoped.get("sessions") as ISessions).list.getSnapshot().byId as Record<string, { cwd?: string } | undefined>;
       return byId[id]?.cwd;
     };
     // Order matters: `openResource` throws on an address no type claims, so the type has to be
@@ -265,25 +314,7 @@ export function apply(ctx: ClientContext): void {
         ),
       "dsh-generative-ui: canvas browser",
     );
-    scoped.effect(
-      () =>
-        startCanvasAutoOpen({
-          calls,
-          sessionId: currentSession,
-          cwd,
-          list: (root, session) => listCanvasIds(root, session),
-          open: (session, id) => {
-            try {
-              scoped.sidebarRight.openResource(canvasAddress(session, id));
-            } catch (error) {
-              // `openResource` treats an address no type will claim as a wiring mistake and
-              // throws. One bad path must not take the transcript observer down with it.
-              console.error("[dsh-generative-ui] could not open canvas", id, error);
-            }
-          },
-        }),
-      "dsh-generative-ui: canvas auto-open",
-    );
+    scopedOpenCanvas = (session, id) => scoped.sidebarRight.openResource(canvasAddress(session, id));
   });
   // The nested callback above is the success signal; this is only its absence. Same shape as the
   // AppFrame timeout it replaces — one warning turns "the canvases do nothing" into a starting
@@ -296,34 +327,31 @@ export function apply(ctx: ClientContext): void {
     }, 5_000);
     return () => clearTimeout(timer);
   }, "dsh-generative-ui: canvas tab availability");
-  ctx.effect(
-    () =>
-      claimInlineFences({
-        segments,
-        fences: fencesByKey,
-        t: ctx.locale.bind("common"),
-        subscribeLocale: (refresh) => ctx.locale.subscribe(refresh),
-        // A settled card is skipped only while it is still the one it was claimed for: a session
-        // switch re-renders it so its capability shims follow the conversation the reader is on.
-        owner: sessionId,
-        // React can reuse the whole transcript across a session switch without a single mutation,
-        // which is the one case `observeTranscript` has nothing to react to.
-        subscribeOwner: (refresh) => {
-          const selected = ctx.get("uiSession") as { adapter?: { current: { subscribe?: (listener: () => void) => () => void } } } | undefined;
-          const primary = selected?.adapter?.current.subscribe?.(refresh);
-          if (primary !== undefined) return primary;
-          // Older hosts keep the selection on the session list, which is where
-          // `selectedSessionId` reads it from too. Listening to only one of the two leaves the
-          // cards of the other un-re-rendered across a switch.
-          const list = sessions.list as unknown as { subscribe?: (listener: () => void) => () => void };
-          return list.subscribe?.(refresh) ?? (() => {});
-        },
-        // The SAME gate on both callbacks. A card that may not report a failure may not retract
-        // one either — see `cardRendered`.
-        render: ({ code, streaming, last, surfaceId }) => createElement(GenUISurface, { key: `${sessionId()}:${surfaceId}`, sessionId: sessionId(), surfaceId, code, streaming, onError: (error, phase) => reportCardError(sendToModel, error.message, phase, last), onRendered: (restored) => cardRendered(restored, last) }),
-      }),
-    "dsh-generative-ui: inline fences",
-  );
+  // The provider is mounted as an effect so a profile without the settings row still
+  // gets the service, and an unload releases the preference listener and every frame.
+  // `provide` is typed by the settings package's module augmentation; the structural
+  // intersection keeps this plugin independent of that package at build time.
+  ctx.effect(() => {
+    const { capability, dispose } = createVisualOutput(ctx, (enabled, ready) => {
+      visualEnabled = enabled;
+      visualReady = ready;
+      // Tear the old observer/frames down before rebuilding: an account generation
+      // change must not leave the previous account's mounted surfaces alive.
+      stopVisual();
+      startVisual();
+    });
+    visualEnabled = capability.enabled.getSnapshot();
+    visualReady = capability.readiness.getSnapshot().ready;
+    startVisual();
+    // The shared settings seam declares `ctx.visualOutput`; provide the exact
+    // service object through Cordis's own lifecycle, never a structural fallback.
+    const stopProvider = ctx.provide("visualOutput", capability);
+    return () => {
+      stopVisual();
+      stopProvider?.();
+      dispose();
+    };
+  }, "dsh-generative-ui: visual output provider");
 }
 
 /** All assistant prose in one node, concatenated; empty for every other node kind. */

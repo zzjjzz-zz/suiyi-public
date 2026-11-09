@@ -98,6 +98,8 @@ Chat 在 `MarkdownDelegateProvider.getTriggerProps` 接入处适配 Markdown 目
 <a id="turn-process-folding"></a>
 ## 轮次过程折叠
 
+遂意客户端将没有插入用户输入的已完成轮次的原有过程摘要与过程组放在回答之后、操作栏之前。运行中、已停止、失败或插入用户输入的轮次保留原有顺序。空摘要保留不可见的完成播报；尚未加载轮次末尾时保留摘要。
+
 带 `source.kind: 'retry'` 的空 `user/message` 记录保留在 Session 历史中，Chat 显示轻量的继续请求记录，不生成用户气泡。普通空用户消息与包含内容的重试消息保持正常展示。
 
 正常在线时，本地 transcript 与 steering 回显在 Inbox 接受与领取期间保持挂载，直到持久消息到达，不会重复触发跟随底部。跨客户端的待处理 steering 遵循 Inbox 顺序，在匹配位置使用本地回显。已入档的本地 steering 还会排除匹配的旧 Inbox 行，直到领取投影到达；没有本地提交身份的 steering 仍按 Inbox 投影显示。重连后，Host 消息替代已有接收回执的本地回显；已领取但尚未入档时，气泡可能短暂消失。
@@ -112,6 +114,8 @@ Chat 末尾为进行中的 Turn 控制行，且该轮尚无可见输入时，第
 
 <a id="grouped-rendering"></a>
 ## 分组渲染
+
+遂意在 Web 与 Desktop 中默认使用简洁工作步骤展示；已有保存偏好优先。遂意配置在当前 Assistant 步骤尚无回复正文时显示品牌思考标识与不定进度条；正文到达后，只由回复显示前导标识。连接中断时暂停标识动效，减少动态效果偏好使其保持静止；进度条保留初始 18% 的视觉亮段，不表示完成百分比。简洁模式下，思考标签打开原有过程详情，不额外显示分析行，也不重新挂载过程组内容；正在运行的工具操作保留其活动标签。用户气泡使用当前主题的半透明蓝色背景，最大占据对话列宽度的 85%，手机上为 91%。悬停或键盘聚焦时，复制与时间显示在回复间隔内；触摸消息也可显示这些操作，不推动对话布局。
 
 Chat 通过 `uiConversation.groups` 注册过程 Group Definition。React 通过稳定的 Group 与 Node 容器渲染混合 `node`/`group` 根序列，组头数据与成员数组分别订阅。已结束组的标题独立于实时详情偏好，只有运行中的标题在该偏好变化时更新。[过程分组业务规则](src/client/conversation-nodes/README.zh.md#process-grouping) 定义切分方式与活动摘要。
 
@@ -132,6 +136,8 @@ Chat Builder 按节点发布 `bottomSource`：节点可见且属于已加载的�
 每个组拥有本地 `useDisclosure` 状态，组件保持挂载时，模式切换保留该状态。
 
 Session 作用域的 `conversation.chat.reasoning.body` single Slot 仅在思考正文展开时提供原始文本 `rawText`、显示文本 `text` 和流式状态。官方条目以优先级 100 注册，并调用 `conversation.chat.reasoning.content` Factory。替换项使用更小的优先级数值，可向同一个 Factory 传入原文或派生显示文本。root 作用域的 Factory 不要求 Session，并固定使用紧凑排版。其可选 `labels` 原样接受完整的 `MarkdownLabels`，省略时使用 Chat 的默认本地化文案。宿主不提供内联 fallback 或插件操作状态。显示扩展必须保留查看未翻译文本的能力，并在自己的 Body 包装内维护控件。扩展不替换思考预览或展开策略。哪些块生成思考行由[思考展示规则](src/client/conversation-nodes/README.zh.md#display-modes)定义。
+
+`assistant-step` registration 还声明 Session 作用域的 `conversation.chat.assistant.mark` single Slot。renderer 把该标识放在 32px 宽的前导列（640px 以下为 26px），回复正文紧邻其右，不显示品牌名称。fallback 为共享鱼形标识，因此没有占用者时回复列仍有锚点。Owner props 提供 `size`、`className` 与 `running`。chat 层只对 fallback FishLogo 施加动画；品牌占用者接收 `running`，在自己的 artwork 内负责动效，wrapper 不会对整个 SVG 再叠加 transform。fallback 仅在 Assistant 步骤流式运行时漂移，settle 或停止后保持静止；`prefers-reduced-motion: reduce` 会关闭。Suiyi 品牌 owner 负责原型的 2.4s thinking orbit 与 0.5s answer settle。仅推理的分组部分属于轮次过程行，不渲染回答标识。
 
 Chat 节点 slot 为推理与工具注入绑定重置来源的 `useDisclosure` 钩子。中间 renderer 只透传、不订阅，每次调用拥有独立展开状态。来源回调保留接收对象及稳定引用。外层轮次实际隐藏过程成员时，所在节点重置这些开合状态，不替换组件 key，也不改变钩子引用。展示模式切换保留展开状态。
 

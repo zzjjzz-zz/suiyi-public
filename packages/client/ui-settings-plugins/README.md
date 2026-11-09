@@ -29,6 +29,8 @@ Open **Built-in plugins** in Settings. [ui-settings-plugin-inventory](../ui-sett
 
 To contribute a tab, register into `settings.plugins.tab` with an `id`, an `order`, and a localized `label`; the section renders the entries in order and mounts a tab on its first selection. Feature copy stays in the registering plugin's dictionary.
 
+Under the Suiyi client build (`DSH_CLIENT_BUILD_PROFILE=suiyi`), the package registers neither the navigation entry nor the tab slot: the product shows only its business plugin catalog, so internal built-in bundles have no settings surface.
+
 -----
 
 <a id="understand-the-implementation"></a>

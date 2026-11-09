@@ -27,6 +27,9 @@ import { accountClientMetadata } from './client-metadata.ts'
 import { en, ja, es, fr, de, ru, pt, zh, type AccountKey } from './locales.ts'
 import { AccountQuotaNotice, type AccountQuotaNoticeInjected } from './AccountQuotaNotice.tsx'
 import { DESKTOP_ONBOARDING_NAMESPACE, type OnboardingSettings } from '../onboarding-settings.ts'
+import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
+import type { DesktopSuiyiIdentityBridge, DesktopSuiyiIdentityView } from '@deepseek-ai/dsh-client-ui-settings-general/types'
+import { SuiyiAccountSection, type SuiyiAccountSectionInjected } from './SuiyiAccountSection.tsx'
 import { DesktopOnboardingController } from './onboarding-state.ts'
 import { DesktopOnboardingEntry, type DesktopOnboardingInjected } from './DesktopOnboardingEntry.tsx'
 import { readOnboardingApiKeyPresence } from './onboarding-credentials.ts'
@@ -48,6 +51,29 @@ export function apply(ctx: Context): void {
   const desktop = 'dshDesktop' in globalThis
   ctx.effect(() => ctx.locale.register('settings.account', { en, zh, ja, es, fr, de, ru, pt }), 'account: dictionaries')
   const t = ctx.locale.bind('settings.account')
+  // Suiyi Desktop exposes the real Keycloak bridge; the account category uses
+  // it instead of the DeepSeek model-account section. Web/official have none.
+  const suiyiBridge = (globalThis as typeof globalThis & {
+    dshDesktop?: { suiyiIdentity?: DesktopSuiyiIdentityBridge }
+  }).dshDesktop?.suiyiIdentity
+  if (suiyiBridge !== undefined) {
+    const identity = createSnapshotStore<DesktopSuiyiIdentityView>({ state: 'unavailable' })
+    const stop = suiyiBridge.subscribe((view) => { identity.set(view) })
+    ctx.effect(() => () => { stop() }, 'account: Suiyi identity subscription')
+    void suiyiBridge.view().then(
+      (view) => { identity.set(view) },
+      () => { identity.set({ state: 'unavailable' }) },
+    )
+    ctx.slots.inject('settings.section', () => ctx.slots.register({
+      name: 'settings.section', id: 'suiyi-account', order: -10, priority: 0,
+      label: () => t('nav'), locale: 'settings.account',
+      inject: (): SuiyiAccountSectionInjected => ({
+        hooks: { identity },
+        signIn: async () => { await suiyiBridge.signIn() },
+        signOut: async () => { await suiyiBridge.signOut() },
+      }),
+    }, SuiyiAccountSection))
+  }
   const page = globalThis as Partial<Record<typeof CONTACT_CONFIG_GLOBAL, unknown>>
   const config = ContactConfig(page[CONTACT_CONFIG_GLOBAL] ?? {})
   let snapshot: AccountSnapshot = {

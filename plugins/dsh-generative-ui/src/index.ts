@@ -23,8 +23,8 @@ import type {} from "@deepseek-ai/dsh-system-prompt";
 import type {} from "@deepseek-ai/dsh-skill";
 // A value import, unlike the others: `llm.stream` rejects a plain `{role, content}` object,
 // and this is the constructor that stamps the identity and source tags it requires.
-import { createUserMessage, type ContextFormed } from "@deepseek-ai/dsh-llm";
-import { AI_STREAM_PATH, ASSET_PREFIX, CANVAS_READ_PATH, CARD_ERROR_PATH, EXEC_PATH, FS_PATH, WASM_PATH, WEB_SEARCH_PATH } from "./contract-assets.ts";
+import { createUserMessage, type ContextFormed, type LlmRuntime } from "@deepseek-ai/dsh-llm";
+import { AI_STREAM_PATH, ASSET_PREFIX, CANVAS_READ_PATH, CARD_ERROR_PATH, EXEC_PATH, FS_PATH, SANDBOX_PATH, SANDBOX_SCRIPT_PATH, SANDBOX_WASM_PATH, SANDBOX_WRAPPER_PATH, VISUAL_OUTPUT_PATH, WASM_PATH, WEB_SEARCH_PATH } from "./contract-assets.ts";
 import { CANVAS_DIR, canvasChildPath, canvasIdOf, canvasPath, isCanvasId } from "./contract.ts";
 import { CardFailures, CARD_FAILURE_CONTEXT, CARD_FAILURE_CONTEXT_ORDER, WAKE_SUMMARY, WAKE_TEXT } from "./card-failure.ts";
 import { inlinePrompt, PROMPT_SECTION_NAME, PROMPT_SECTION_ORDER, type Capabilities } from "./prompt.ts";
@@ -98,11 +98,25 @@ export const Config = z.object({
     .description(
       "Let generated cards run shell commands through `$dsh/exec`, under this session's own sandbox mode. Cards use it to search (`rg`, `fd`), run `lint`/`check`, and read `git`. The sandbox still applies; what does not is the per-command approval prompt — which is why this is OFF by default. Turn it on only where that trade is acceptable.",
     ),
+  allowData: z
+    .boolean()
+    .default(false)
+    .description(
+      "Let generated cards read and write workspace files through `$dsh/fs` and run web searches through `$dsh/web`. These bypass the per-call approval a model tool would carry, so the default is OFF: a card can render, chat and keep private state, but it cannot touch the workspace or the network until a profile opts in.",
+    ),
+  visualOutput: z
+    .boolean()
+    .default(false)
+    .description(
+      "Render generated interfaces. The settings row writes this Host value; the provider reads it back through configForms, so the switch survives a page reload and a desktop port restart. It is a preference only: the runtime still refuses generation until its opaque-origin isolation and the signed-in connection are ready.",
+    ),
 });
 
 // Old schemastery ignores this metadata; new hosts project it into SettingsForms
 // and parse a stable reference. Keep the older peer floor without importing new-only APIs.
 Object.assign(Config.dict!.allowExec!.meta, { volatile: true });
+Object.assign(Config.dict!.allowData!.meta, { volatile: true });
+Object.assign(Config.dict!.visualOutput!.meta, { volatile: true });
 // `get(): boolean | undefined`, not `get(): boolean`: the volatile reference type is
 // `Volatile<T | undefined>` when the field is merely `default`ed (schemastery 3.18.4's
 // `SchemaOutput<T, 'volatile'>`, which 0.2.0-rc.1's dsh-settings types reach through), and a
@@ -112,11 +126,9 @@ Object.assign(Config.dict!.allowExec!.meta, { volatile: true });
 // SET: the direct dev pin is now `~3.18.4` so the export sits on ONE `Schema` identity, while
 // an older transitive graph may still nest 3.18.2). The runtime already reads it as tri-state
 // (`=== true`), so nothing changes at run time.
-export type Config = { allowExec: boolean | { get(): boolean | undefined } };
+export type Config = { allowExec: boolean | { get(): boolean | undefined }; allowData?: boolean | { get(): boolean | undefined }; visualOutput?: boolean | { get(): boolean | undefined } };
 
-type LegacySettings = {
-  installSection?: (owner: Context, ns: string, schema: typeof Config, defaults: Config, options: { setSource: (source: () => Config) => void; onChange: () => void }) => unknown;
-};
+
 
 // Namespaced by package name because a duplicate (kind, path) throws, and a throw during apply silently fails the whole plugin.
 export { ASSET_PREFIX, CANVAS_READ_PATH, EXEC_PATH, WASM_PATH } from "./contract-assets.ts";
@@ -162,6 +174,124 @@ export async function serveAsset(req: IncomingMessage, res: ServerResponse, file
   // instantiateStreaming rejects anything whose content-type is not exactly application/wasm.
   res.writeHead(200, { "content-type": "application/wasm", "cache-control": "public, max-age=31536000, immutable" });
   res.end(await readFile(file));
+}
+
+/** The document is source-served; the runtime is a build artifact beside `lib/index.js`. */
+const sandboxAsset = (name: string): string => fileURLToPath(new URL(`../src/sandbox/${name}`, import.meta.url));
+const sandboxRuntime = (): string => fileURLToPath(new URL("../lib/sandbox/runtime.js", import.meta.url));
+
+/** Host authorities a CSP may name. A Host header is not identity, but it is also never trusted into a header unvalidated. */
+const authority = (req: IncomingMessage): string | null => {
+  const host = req.headers.host;
+  return host !== undefined && /^[A-Za-z0-9.\-\[\]:]+$/.test(host) ? host : null;
+};
+
+/**
+ * The opaque-origin document. `sandbox="allow-scripts"` is set on the iframe, so this
+ * document has an opaque origin: no cookie jar, no Web Storage, no parent DOM. CSP is the
+ * second half: scripts may come only from this host and the dependency CDN, every fetch is
+ * denied except the CDN's wasm (esm.sh serves @esm.sh/tsx), and the frame may not navigate,
+ * open workers, frame anything, submit forms or read images from the network.
+ *
+ * This route is the only document the plugin frames; the runtime module it loads is served
+ * without the connection fence because it is static code and the opaque origin cannot send
+ * credentials for a module request. It carries no data and no secrets.
+ */
+export async function serveSandbox(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const url = new URL(req.url ?? "/", "http://x");
+  if (req.method !== "GET" && req.method !== "HEAD") return void res.writeHead(405).end();
+  if (url.pathname === SANDBOX_WASM_PATH || url.pathname === SANDBOX_SCRIPT_PATH) {
+    const wasm = url.pathname === SANDBOX_WASM_PATH;
+    let body: Buffer;
+    try {
+      body = await readFile(wasm ? fileURLToPath(new URL("../lib/sandbox/tsx_bg.wasm", import.meta.url)) : sandboxRuntime());
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return void res.writeHead(503).end("sandbox runtime assets are not built; run the package build");
+      throw error;
+    }
+    res.writeHead(200, wasm
+      ? { "content-type": "application/wasm", "cache-control": "public, max-age=31536000, immutable", "access-control-allow-origin": "*", "cross-origin-resource-policy": "cross-origin" }
+      : { "content-type": "text/javascript; charset=utf-8", "cache-control": "no-store", "access-control-allow-origin": "*", "cross-origin-resource-policy": "cross-origin", "x-content-type-options": "nosniff" });
+    return void res.end(body);
+  }
+  if (url.pathname === SANDBOX_WRAPPER_PATH) {
+    const host = authority(req);
+    if (host === null) return void res.writeHead(400).end();
+    const wrapper = `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Generated UI</title>
+<style>html,body{margin:0;padding:0;background:transparent}iframe{display:block;width:100%;height:100%;border:0}</style>
+</head><body>
+<iframe id="inner" sandbox="allow-scripts" referrerpolicy="no-referrer" src="${SANDBOX_PATH}"></iframe>
+<script>
+  // This wrapper executes only this trusted forwarding script. Generated code
+  // never runs here; it runs in the opaque inner frame below.
+  let pending = null;
+  const inner = document.getElementById("inner");
+  const deliver = () => {
+    if (pending === null || inner.contentWindow === null) return;
+    inner.contentWindow.postMessage(pending.data, "*", pending.ports);
+    pending = null;
+  };
+  addEventListener("message", (event) => {
+    if (event.source !== parent || event.data?.type !== "ui4a:init") return;
+    pending = { data: event.data, ports: event.ports };
+    deliver();
+  });
+  inner.addEventListener("load", deliver);
+</script>
+</body></html>`;
+    res.writeHead(200, {
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-store",
+      "x-content-type-options": "nosniff",
+      "referrer-policy": "no-referrer",
+      "content-security-policy": [
+        "default-src 'none'",
+        "script-src 'unsafe-inline'",
+        `frame-src http://${host}${SANDBOX_PATH} https://${host}${SANDBOX_PATH}`,
+        "style-src 'unsafe-inline'",
+        "frame-ancestors 'self'",
+        ].join("; "),
+    });
+    return void res.end(wrapper);
+  }
+  if (url.pathname !== SANDBOX_PATH) return void res.writeHead(404).end();
+  const host = authority(req);
+  if (host === null) return void res.writeHead(400).end();
+  res.writeHead(200, {
+    "content-type": "text/html; charset=utf-8",
+    "cache-control": "no-store",
+    "x-content-type-options": "nosniff",
+    "referrer-policy": "no-referrer",
+    "permissions-policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=(), clipboard-read=(), clipboard-write=()",
+    "content-security-policy": [
+      "default-src 'none'",
+      `script-src 'unsafe-inline' 'unsafe-eval' blob: data: http://${host}${SANDBOX_PATH}/ https://${host}${SANDBOX_PATH}/`,
+      "style-src 'unsafe-inline'",
+      "img-src data: blob:",
+      "font-src data:",
+      "media-src data: blob:",
+      `connect-src http://${host}${SANDBOX_WASM_PATH} https://${host}${SANDBOX_WASM_PATH}`,
+      "worker-src 'none'",
+      "child-src 'none'",
+      "frame-src 'none'",
+      "object-src 'none'",
+      "base-uri 'none'",
+      "form-action 'none'",
+    ].join("; "),
+  });
+  res.end(await readFile(sandboxAsset("sandbox.html")));
+}
+
+/**
+ * What the browser half may mount. `isolation` names the actual mechanism rather than a
+ * boolean so a stale client cannot mistake a same-realm runtime for the sandbox.
+ * `allowExec` is the profile's existing opt-in and stays false by default.
+ */
+export function serveVisualOutput(allowExec: boolean, allowData: boolean, req: IncomingMessage, res: ServerResponse): void {
+  if (req.method !== "GET") return void res.writeHead(405).end();
+  res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
+  res.end(JSON.stringify({ version: 1, isolation: "iframe-opaque", allowExec, allowData, ai: false }));
 }
 
 /**
@@ -509,7 +639,7 @@ export async function serveWebSearch(ctx: WebCtx, liveWorkspaces: () => Readonly
 
 /** Context shape for the two services the AI route needs; see the SessionStoreCtx note. */
 type LlmCtx = {
-  llm: { stream: (options: { provider: string; model: string; messages: readonly unknown[]; system?: string; signal?: AbortSignal }) => AsyncIterable<{ type: string; text?: string; reason?: { kind: string; failure?: { message?: string } } }> };
+  llm: LlmRuntime;
   agentDefaultModel: { currentSelection: () => { provider: string; model: string } };
 };
 
@@ -578,14 +708,17 @@ export async function serveAi(ctx: LlmCtx, liveWorkspaces: () => ReadonlySet<str
 
   res.writeHead(200, { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store", "x-accel-buffering": "no" });
   try {
-    for await (const chunk of ctx.llm.stream({ ...selection, messages, system: request.system, signal: controller.signal })) {
+    for await (const chunk of ctx.llm.stream({ ...selection, messages, ...(request.system === undefined ? {} : { system: request.system }), signal: controller.signal })) {
       if (chunk.type === "text-delta" && chunk.text !== undefined) res.write(chunk.text);
       // A failed call finishes rather than throwing, so without this the card sees a clean
       // empty 200 and reports "the model said nothing" — indistinguishable from a real
       // empty answer. Trailing the reason is the only channel left once the body has begun.
       // `reason` is an object with a `kind`, not a string: interpolating it directly writes
       // `[object Object]`, which is how this was first shipped.
-      else if (chunk.type === "finish" && chunk.reason !== undefined && chunk.reason.kind !== "stop") res.write(`\n\n[${chunk.reason.kind}${chunk.reason.failure?.message === undefined ? "" : `: ${chunk.reason.failure.message}`}]`);
+      else if (chunk.type === "finish" && chunk.reason !== undefined && chunk.reason.kind !== "stop") {
+        const failure = "failure" in chunk.reason ? chunk.reason.failure.message : undefined;
+        res.write(`\n\n[${chunk.reason.kind}${failure === undefined ? "" : `: ${failure}`}]`);
+      }
     }
   } catch (error) {
     // Headers are already out, so this cannot become a status code.
@@ -664,35 +797,34 @@ export function apply(ctx: Context, config: Config = Config({})): void {
   // The mounted value rides ON the handle rather than in a second variable: the two would have to
   // be assigned in lockstep by hand, and an early return added between them later would desync the
   // dedup from what is actually mounted.
-  let configured: { allowExec: boolean; fiber: { dispose: () => Promise<void> } } | null = null;
+  let configured: { allowExec: boolean; allowData: boolean; visualOutput: boolean; fiber: { dispose: () => Promise<void> } } | null = null;
+  const booleanOf = (value: boolean | { get(): boolean | undefined } | undefined): boolean => (typeof value === "boolean" ? value : value?.get()) === true;
   const rebuild = () => {
-    const value = current().allowExec;
-    const allowExec = (typeof value === "boolean" ? value : value?.get()) === true;
+    const section = current();
+    const allowExec = booleanOf(section.allowExec);
+    const allowData = booleanOf(section.allowData);
+    const visualOutput = booleanOf(section.visualOutput);
     // `onChange` fires on every write to the section, and the section may grow other keys later.
     // Rebuilding on a value that did not move would tear down the prompt and both routes for
     // nothing — visible to a reader as a card losing its host mid-conversation.
-    if (configured?.allowExec === allowExec) return;
+    if (configured?.allowExec === allowExec && configured?.allowData === allowData && configured?.visualOutput === visualOutput) return;
     void configured?.fiber.dispose();
-    configured = { allowExec, fiber: ctx.plugin({ name: "dsh-generative-ui:configured", apply: (scoped: Context) => applyWith(scoped, allowExec) }) };
+    configured = { allowExec, allowData, visualOutput, fiber: ctx.plugin({ name: "dsh-generative-ui:configured", apply: (scoped: Context) => applyWith(scoped, allowExec, allowData, visualOutput) }) };
   };
   // 无 settings 服务时下面的 inject 不执行，必须先用 entry 配置挂载；rebuild 内的值比较避免重复挂载。
   rebuild();
   // Profile edits update the reference before this owner-scoped event is emitted.
   // Legacy plain-boolean hosts keep their existing installSection callback below.
-  if (typeof config.allowExec !== "boolean") ctx.on("loader/volatile-update", rebuild);
-  ctx.inject(["settings"], (sctx) => {
-    (sctx.settings as unknown as LegacySettings).installSection?.(ctx, SETTINGS_NAMESPACE, Config, config, {
-      setSource: (source) => {
-        current = source;
-      },
-      onChange: rebuild,
-    });
-  });
+  if (
+    typeof config.allowExec !== "boolean"
+    || (config.allowData !== undefined && typeof config.allowData !== "boolean")
+    || (config.visualOutput !== undefined && typeof config.visualOutput !== "boolean")
+  ) ctx.on("loader/volatile-update", rebuild);
   ctx.effect(() => () => void configured?.fiber.dispose(), "dsh-generative-ui: settings scope");
 }
 
 /** Everything whose shape depends on `allowExec`; rebuilt when the setting changes. */
-function applyWith(ctx: Context, allowExec: boolean): void {
+function applyWith(ctx: Context, allowExec: boolean, allowData: boolean, visualOutput: boolean): void {
   /**
    * The guidance is built from what this host actually mounted, not from what it might have.
    *
@@ -702,7 +834,7 @@ function applyWith(ctx: Context, allowExec: boolean): void {
    * takes the whole module down — a blank card with nothing naming the cause. This is the same rule
    * `allowExec` has always followed, generalised to the four host-backed capabilities.
    */
-  const capabilities: Capabilities = { fs: false, ai: false, exec: false, web: false };
+  const capabilities: Capabilities = { fs: false, ai: false, exec: false, web: false, chat: false };
   // `ctx.effect` and `ctx.inject` hand back a fiber, not a plain disposer, so normalise both.
   const stop = (handle: unknown): void => {
     if (typeof handle === "function") return void (handle as () => void)();
@@ -711,6 +843,11 @@ function applyWith(ctx: Context, allowExec: boolean): void {
   let stopGuidance: unknown[] = [];
   const guidance = () => {
     for (const handle of stopGuidance) stop(handle);
+    stopGuidance = [];
+    // Off means OFF for the model too: no hard output protocol, no generative-ui
+    // skill, and no card-failure context. Routes stay mounted so switching on does
+    // not require unloading the plugin.
+    if (!visualOutput) return;
     stopGuidance = [
       ctx.effect(() => ctx.systemPrompt.section({ name: PROMPT_SECTION_NAME, order: PROMPT_SECTION_ORDER, text: inlinePrompt(capabilities) }), "dsh-generative-ui: inline prompt"),
       ctx.inject(["skills"], (scoped) =>
@@ -736,29 +873,30 @@ function applyWith(ctx: Context, allowExec: boolean): void {
   const mounted =
     (key: keyof Capabilities, ready: () => boolean = () => true) =>
     () => {
-      if (!ready() || capabilities[key]) return;
+      if (!visualOutput || !ready() || capabilities[key]) return;
       capabilities[key] = true;
       guidance();
     };
-  ctx.inject(["fs"], mounted("fs"));
+  ctx.inject(["fs"], mounted("fs", () => allowData));
   ctx.inject(
     ["shell"],
     mounted("exec", () => allowExec),
   );
-  ctx.inject(["web"], mounted("web"));
-  ctx.inject(["llm", "agentDefaultModel"], mounted("ai"));
+  ctx.inject(["web"], mounted("web", () => allowData));
   // A card that will not render, as CONTEXT rather than as a message — see `card-failure.ts`.
   // The provider runs per assembly, so an empty string is how a fixed card stops being mentioned;
   // `agent.id` is the session id, which is what the browser half keys its reports on.
   const failures = new CardFailures();
-  ctx.effect(() => ctx.systemPrompt.context({ name: CARD_FAILURE_CONTEXT, order: CARD_FAILURE_CONTEXT_ORDER, text: (assembly) => failures.text(assembly.agent?.id) }), "dsh-generative-ui: card failure context");
+  if (visualOutput)
+    ctx.effect(() => ctx.systemPrompt.context({ name: CARD_FAILURE_CONTEXT, order: CARD_FAILURE_CONTEXT_ORDER, text: (assembly) => failures.text(assembly.agent?.id) }), "dsh-generative-ui: card failure context");
   // The nudge needs the agent registry, which a diagnostic or headless composition may not have.
   // Scoped, like every other capability here: without it the failure still reaches the model, just
   // on the next turn the user starts rather than on one of its own.
   let wake: ((session: string) => void) | null = null;
-  ctx.inject(["agents"], (withAgents) => {
+  if (visualOutput)
+    ctx.inject(["agents"], (withAgents) => {
     wake = (session) => {
-      const agent = (withAgents as unknown as { agents: { get: (id: string) => { followup: (message: ReturnType<typeof createUserMessage>) => void } | undefined } }).agents.get(session);
+      const agent = (withAgents.get("agents") as { get: (id: string) => { followup: (message: ReturnType<typeof createUserMessage>) => void } | undefined }).get(session);
       // `source.kind` is what the transcript renders on: anything other than `"user"` is
       // classified as injected context rather than a chat bubble, which is why this can wake the
       // model without putting words in the reader's mouth. `form: "notice"` is the presentation.
@@ -786,7 +924,7 @@ function applyWith(ctx: Context, allowExec: boolean): void {
     // Every plugin-owned HTTP route below uses this same request-time check.
     const rejected = trustFenceOf(scoped);
     const liveWorkspaces = (): ReadonlySet<string> => {
-      const sessions = (scoped as unknown as SessionStoreCtx).sessions.list();
+      const sessions = (scoped.get("sessions") as SessionStoreCtx["sessions"]).list();
       return new Set(sessions.flatMap((session) => (session.header.cwd === undefined ? [] : [session.header.cwd])));
     };
     scoped.effect(
@@ -801,6 +939,36 @@ function applyWith(ctx: Context, allowExec: boolean): void {
         }),
       "dsh-generative-ui: tsx wasm",
     );
+    // The opaque-origin renderer. Its runtime module is public static code (an opaque
+    // origin cannot send the connection cookie for a module request); the document itself
+    // is fenced like every other browser-facing route.
+    scoped.effect(
+      () =>
+        scoped.webServer.register({
+          kind: "prefix",
+          path: SANDBOX_PATH,
+          handler: (req, res) => {
+            const path = new URL(req.url ?? "/", "http://x").pathname;
+            if (path !== SANDBOX_SCRIPT_PATH && path !== SANDBOX_WASM_PATH && rejected(req, res)) return;
+            return serveSandbox(req, res);
+          },
+        }),
+      "dsh-generative-ui: isolated runtime",
+    );
+    // Readiness and the exec gate. The preference itself is owned by the settings row
+    // through `visualOutput`; this route never writes it.
+    scoped.effect(
+      () =>
+        scoped.webServer.register({
+          kind: "exact",
+          path: VISUAL_OUTPUT_PATH,
+          handler: (req, res) => {
+            if (rejected(req, res)) return;
+            return serveVisualOutput(allowExec, allowData, req, res);
+          },
+        }),
+      "dsh-generative-ui: visual output readiness",
+    );
     scoped.effect(
       () =>
         scoped.webServer.register({
@@ -808,7 +976,7 @@ function applyWith(ctx: Context, allowExec: boolean): void {
           path: CANVAS_READ_PATH,
           handler: (req, res) => {
             if (rejected(req, res)) return;
-            return serveCanvas(liveWorkspaces, req, res, () => (scoped as unknown as SessionStoreCtx).sessions.list());
+            return serveCanvas(liveWorkspaces, req, res, () => (scoped.get("sessions") as SessionStoreCtx["sessions"]).list());
           },
         }),
       "dsh-generative-ui: canvas reads",
@@ -832,7 +1000,8 @@ function applyWith(ctx: Context, allowExec: boolean): void {
     // losing `$dsh/ai` there should not take the wasm and canvas routes down with it.
     // Same shape again: a deployment can serve the web without a sandboxed filesystem, and
     // losing `$dsh/fs` there should not cost the routes above it.
-    scoped.inject(["fs", "sandboxPolicy"], (withFs) => {
+    if (allowData)
+      scoped.inject(["fs", "sandboxPolicy"], (withFs) => {
       withFs.effect(
         () =>
           withFs.webServer.register({
@@ -840,12 +1009,17 @@ function applyWith(ctx: Context, allowExec: boolean): void {
             path: FS_PATH,
             handler: (req, res) => {
               if (rejected(req, res)) return;
-              return serveFs(withFs as unknown as FsCtx, liveWorkspaces, req, res);
+              const fsCtx: FsCtx = {
+                fs: withFs.get("fs") as FsCtx["fs"],
+                sandboxPolicy: withFs.get("sandboxPolicy") as FsCtx["sandboxPolicy"],
+                sessions: scoped.get("sessions") as FsCtx["sessions"],
+              };
+              return serveFs(fsCtx, liveWorkspaces, req, res);
             },
           }),
         "dsh-generative-ui: workspace files",
       );
-    });
+      });
     // And again for the shell: a host may compose a web server without a command executor — and
     // now also a host that has one but has not opted in. Both mean the same thing to a card, and
     // both are expressed the same way: no route.
@@ -858,7 +1032,12 @@ function applyWith(ctx: Context, allowExec: boolean): void {
               path: EXEC_PATH,
               handler: (req, res) => {
                 if (rejected(req, res)) return;
-                return serveExec(withShell as unknown as ExecCtx, liveWorkspaces, req, res);
+                const execCtx: ExecCtx = {
+                  shell: withShell.get("shell") as ExecCtx["shell"],
+                  sandboxPolicy: withShell.get("sandboxPolicy") as ExecCtx["sandboxPolicy"],
+                  sessions: scoped.get("sessions") as ExecCtx["sessions"],
+                };
+                return serveExec(execCtx, liveWorkspaces, req, res);
               },
             }),
           "dsh-generative-ui: commands",
@@ -866,20 +1045,9 @@ function applyWith(ctx: Context, allowExec: boolean): void {
       });
     // Same nesting as the rest: a host with no web capability loses `$dsh/web` and keeps
     // everything else. `dsh-base` composes `ctx.web` with `searchProvider: deepseek-official`.
-    scoped.inject(["web"], (withWeb) => {
-      withWeb.effect(
-        () =>
-          withWeb.webServer.register({
-            kind: "exact",
-            path: WEB_SEARCH_PATH,
-            handler: (req, res) => {
-              if (rejected(req, res)) return;
-              return serveWebSearch(withWeb as unknown as WebCtx, liveWorkspaces, req, res);
-            },
-          }),
-        "dsh-generative-ui: web search",
-      );
-    });
+    // Kept for older non-isolated clients, but never advertised: the sandbox has no
+    // `$dsh/ai` shim, because a card-triggered model call is model-visible input that the
+    // session log does not reconstruct. New generated code cannot reach it.
     scoped.inject(["llm", "agentDefaultModel"], (withLlm) => {
       withLlm.effect(
         () =>
@@ -888,12 +1056,31 @@ function applyWith(ctx: Context, allowExec: boolean): void {
             path: AI_STREAM_PATH,
             handler: (req, res) => {
               if (rejected(req, res)) return;
-              return serveAi(withLlm as unknown as LlmCtx, liveWorkspaces, req, res, () => (scoped as unknown as SessionStoreCtx).sessions.list());
+              const llmCtx: LlmCtx = {
+                llm: withLlm.llm as LlmCtx["llm"],
+                agentDefaultModel: withLlm.get("agentDefaultModel") as LlmCtx["agentDefaultModel"],
+              };
+              return serveAi(llmCtx, liveWorkspaces, req, res, () => (scoped.get("sessions") as SessionStoreCtx["sessions"]).list());
             },
           }),
         "dsh-generative-ui: model stream",
       );
     });
+    if (allowData)
+      scoped.inject(["web"], (withWeb) => {
+      withWeb.effect(
+        () =>
+          withWeb.webServer.register({
+            kind: "exact",
+            path: WEB_SEARCH_PATH,
+            handler: (req, res) => {
+              if (rejected(req, res)) return;
+              return serveWebSearch({ web: withWeb.get("web") as WebCtx["web"] }, liveWorkspaces, req, res);
+            },
+          }),
+        "dsh-generative-ui: web search",
+      );
+      });
   });
 }
 

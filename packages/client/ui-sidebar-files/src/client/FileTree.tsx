@@ -6,6 +6,11 @@
  * draws the rows and their icons. It redraws when its
  * props or the occurrence's local selection change, and orders a drawn level
  * again only when the names or directory kinds in that level change.
+ *
+ * Rows follow the right workbench's tree metrics: 36px rows, 11px labels, a
+ * 9px icon gap, 14px glyphs, and a 24px indent per level. The container owns
+ * scrolling, so a long tree keeps those sizes and ellipsizes names instead of
+ * widening the pane.
  */
 import { memo, useMemo } from 'react'
 import type { ReactNode } from 'react'
@@ -201,7 +206,7 @@ function Entry({ node, tree }: { node: TreeNode; tree: TreeContext }): ReactNode
     return (
       <li className={css.item} data-files-entry="directory" data-files-path={entry.path}>
         <div className={css.row}>
-          <button type="button" className={clsx(css.action, hidden)} aria-expanded={expanded} onClick={() => { input.onToggle(entry, !expanded) }}
+          <button type="button" className={clsx(css.action, css.folder, hidden)} aria-expanded={expanded} onClick={() => { input.onToggle(entry, !expanded) }}
             {...input.rowTriggerProps?.(entry, 'directory')}>
             {expanded ? <IconFolderOpenRegular className={css.icon} /> : <IconFolderCloseRegular className={css.icon} />}
             {label}
@@ -221,7 +226,7 @@ function Entry({ node, tree }: { node: TreeNode; tree: TreeContext }): ReactNode
             ref={current ? input.currentRef : undefined}
             {...input.rowTriggerProps?.(entry, 'file')}
             onClick={() => { input.onOpen(entry) }}>
-            <FileTypeIcon kind={classifyFileType(entry.name)} size={16} className={css.fileIcon} />
+            <FileTypeIcon kind={classifyFileType(entry.name)} size={14} className={css.fileIcon} />
             {label}
           </button>
           <div className={css.accessory}><Accessory entry={entry} /></div>
@@ -235,7 +240,7 @@ function Entry({ node, tree }: { node: TreeNode; tree: TreeContext }): ReactNode
     <li className={css.item} data-files-entry={kind} data-files-path={entry.path}>
       <div className={clsx(css.row, css.inactive)}>
         <span className={clsx(css.action, hidden, css.other)} aria-disabled="true" title={tree.t(file ? 'entry.noViewer' : 'entry.other')}>
-          {file && <FileTypeIcon kind={classifyFileType(entry.name)} size={16} className={css.fileIcon} />}
+          {file && <FileTypeIcon kind={classifyFileType(entry.name)} size={14} className={css.fileIcon} />}
           {label}
         </span>
         <div className={css.accessory}><Accessory entry={entry} /></div>

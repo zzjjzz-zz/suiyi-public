@@ -35,6 +35,10 @@ kind: "package-reference"
 
 配置表单对每个已认证浏览器都通过 Host settings 服务持久化；该策略由[已认证浏览器 Host 偏好笔记](../../../.agents/notes/implemented/bug-fix/2026-09-15-authenticated-browser-host-preferences.zh.md)拥有。写入是否被接受由 `settings.describe.writable` 决定。
 
+### 生成式界面提供方
+
+渲染模型编写界面的提供方以 `ctx.visualOutput` 挂载本包 `/client` 入口导出的 `VisualOutputCapability` 类型。`readiness` 与 `enabled` 都是 observable source，`setEnabled` 由提供方拥有；消费者通过 `ctx.inject` 跟随该服务，因此晚到的提供方、被替换的提供方或已撤下的提供方都会更新设置行，无需刷新页面。就绪状态与用户偏好保持分离；在生成代码隔离与账号授权同时成立前，提供方保持其为 false。提供方通过自己的 Host 设置命名空间（volatile Config 字段与 `ctx.configForms`）持久化已接受偏好；浏览器存储不可靠，因为 Desktop 每次启动使用新的回环端口。
+
 ### 跟随被服务的命名空间
 
 编辑另一个插件所拥有命名空间的页面通过 `ctx.configForms.whileServed(namespaces, register)` 注册：只要所列命名空间中的任一个进入共享镜像，`register` 就运行一次，收到 Host 当前服务的命名空间集合，并返回该注册的 disposer；当它们全都不再被服务，或 `whileServed` 返回的 disposer 被调用时，这个 disposer 就运行。调用方持有返回的 disposer 并把它包进 `ctx.effect`；与 `get` 不同，服务不会在调用方的 context 上注册任何东西。因此从未组合过所有者的部署看不到该页面的任何痕迹，Host 停止服务的命名空间会撤下它。插件页上的四个官方页面各自通过一个伴生包走这条路径。

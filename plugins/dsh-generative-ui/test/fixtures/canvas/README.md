@@ -1,5 +1,7 @@
 # A real multi-file canvas
 
+English | [中文](README.zh.md)
+
 Unretouched output from one prompt (`做个多页的项目仪表盘画布，拆成几个子组件文件，主文件用相对路径 import 它们`),
 kept because nothing else in the suite exercises the shape that actually ships:
 

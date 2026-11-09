@@ -13,7 +13,7 @@ usePinnedBrowserLanguages('zh-CN')
 
 const SID = 'session-1' as SessionId
 
-async function bench(options: { declareConversation?: boolean } = {}) {
+async function bench(options: { declareConversation?: boolean; declareShell?: boolean } = {}) {
   const runtime = await SlotTestRuntime.create()
   const developerTools = createSnapshotStore(true)
   runtime.ctx.provide('uiWorkspace', {
@@ -32,6 +32,12 @@ async function bench(options: { declareConversation?: boolean } = {}) {
     await runtime.root.declare({
       'main': { kind: 'keyed', scope: 'root' },
       'settings.general.item': { kind: 'list', scope: 'root' },
+      ...(options.declareShell === true
+        ? {
+          'shell.header': { kind: 'single', scope: 'root' },
+          'shell.bottom': { kind: 'single', scope: 'root' },
+        }
+        : {}),
     }, (_props: { renderSlot?: unknown }) => null)
   }
   const feature = await runtime.mount({ inject: [...inject], apply })
@@ -111,6 +117,13 @@ describe('target-neutral Conversation apply wiring', () => {
     expect(b.runtime.slots.spec('conversation.header')).toEqual({ kind: 'single', scope: 'session-maybe' })
     expect(b.runtime.slots.spec('conversation.header.leading')).toEqual({ kind: 'single', scope: 'root' })
     expect(b.runtime.slots.entries('conversation.composer.bar')).toHaveLength(1)
+    await b.runtime.dispose()
+  })
+
+  it('registers the global topbar and footer into the layout shell slots', async () => {
+    const b = await bench({ declareShell: true })
+    expect(b.runtime.slots.entries('shell.header')).toHaveLength(1)
+    expect(b.runtime.slots.entries('shell.bottom')).toHaveLength(1)
     await b.runtime.dispose()
   })
 

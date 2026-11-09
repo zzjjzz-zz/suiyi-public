@@ -49,6 +49,7 @@ export interface FontSizeRowExpander {
 export function FontSizeRow({ t, role, setFontSize, useStore, expander }: FontSizeRowComponentProps) {
   const fontSize = useStore(s => s.fontSizes[role])
   const { min, max } = FONT_SIZE_SPECS[role]
+  const compact = process.env.DSH_CLIENT_BUILD_PROFILE === 'suiyi' && role === 'text'
   return (
     <div className={css.row}>
       <div className={css.rowText}>
@@ -56,43 +57,58 @@ export function FontSizeRow({ t, role, setFontSize, useStore, expander }: FontSi
         <div className={css.desc}>{t(`fontSize.${role}.description`)}</div>
       </div>
       <div className={css.control}>
-        <div className={css.stepper}>
-          <span className={css.value}>{fontSize}</span>
-          <span className={css.arrows}>
+        {compact ? <select
+          className={css.selector}
+          aria-label={t('fontSize.text.title')}
+          value={fontSize}
+          onChange={(event) => {
+            if (event.currentTarget.value === 'more') expander?.onToggle()
+            else setFontSize(Number(event.currentTarget.value))
+          }}
+        >
+          {Array.from({ length: max - min + 1 }, (_, index) => min + index).map(size =>
+            <option key={size} value={size}>{size === FONT_SIZE_SPECS.text.default
+              ? t('fontSize.standard') : `${size} ${t('fontSize.unit')}`}</option>)}
+          {expander !== undefined && <option value="more">{t('fontSize.more')}</option>}
+        </select> : <>
+          <div className={css.stepper}>
+            <span className={css.value}>{fontSize}</span>
+            <span className={css.arrows}>
+              <button
+                type="button"
+                className={css.arrow}
+                aria-label={t(`fontSize.${role}.increase`)}
+                disabled={fontSize >= max}
+                onClick={() => { setFontSize(fontSize + 1) }}
+              >
+                <IconChevronUpOutlineRegular size={9} />
+              </button>
+              <button
+                type="button"
+                className={css.arrow}
+                aria-label={t(`fontSize.${role}.decrease`)}
+                disabled={fontSize <= min}
+                onClick={() => { setFontSize(fontSize - 1) }}
+              >
+                <IconChevronDownOutlineRegular size={9} />
+              </button>
+            </span>
+          </div>
+          <span className={css.unit}>{t('fontSize.unit')}</span>
+          {expander !== undefined && (
             <button
               type="button"
-              className={css.arrow}
-              aria-label={t(`fontSize.${role}.increase`)}
-              disabled={fontSize >= max}
-              onClick={() => { setFontSize(fontSize + 1) }}
+              className={css.expander}
+              aria-label={t('fontSize.more')}
+              title={t('fontSize.more')}
+              aria-expanded={expander.open}
+              aria-controls={expander.controls}
+              onClick={expander.onToggle}
             >
-              <IconChevronUpOutlineRegular size={9} />
+              <IconChevronDownOutlineRegular size={12} />
             </button>
-            <button
-              type="button"
-              className={css.arrow}
-              aria-label={t(`fontSize.${role}.decrease`)}
-              disabled={fontSize <= min}
-              onClick={() => { setFontSize(fontSize - 1) }}
-            >
-              <IconChevronDownOutlineRegular size={9} />
-            </button>
-          </span>
-        </div>
-        <span className={css.unit}>{t('fontSize.unit')}</span>
-        {expander !== undefined && (
-          <button
-            type="button"
-            className={css.expander}
-            aria-label={t('fontSize.more')}
-            title={t('fontSize.more')}
-            aria-expanded={expander.open}
-            aria-controls={expander.controls}
-            onClick={expander.onToggle}
-          >
-            <IconChevronDownOutlineRegular size={12} />
-          </button>
-        )}
+          )}
+        </>}
       </div>
     </div>
   )

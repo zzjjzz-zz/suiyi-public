@@ -91,7 +91,7 @@ describe('WorkspaceBrowser.module.css list', () => {
   })
 
   it('keeps 2px between rows and 4px between workspace groups', () => {
-    expect(declarations('.flatList > * + *')?.get('margin-top')).toBe('2px')
+    expect(declarations('.flatList > * + *')?.get('margin-top')).toBe('0')
     expect(declarations(".searchTree > [role='treeitem'] + [role='treeitem']")?.get('margin-top')).toBe('2px')
     expect(declarations('.groupSection > * + *')?.get('margin-top')).toBe('2px')
     expect(declarations('.groupSection + .groupSection')?.get('margin-top')).toBe('4px')
@@ -122,18 +122,20 @@ describe('WorkspaceBrowser.module.css list', () => {
   it('keeps the overflow control, search field, and row heights', () => {
     expect(declarations('.sessionOverflowButton')?.get('height')).toBe('28px')
     expect(declarations('.searchExpanded')?.get('height')).toBe('32px')
-    expect(rowDeclarations('.projectRow')?.get('height')).toBe('32px')
-    expect(rowDeclarations('.sessionRow')?.get('height')).toBe('32px')
+    expect(rowDeclarations('.projectRow')?.get('height')).toBe('34px')
+    expect(rowDeclarations('.sessionRow')?.get('height')).toBe('36px')
     // One leading status cell for every session row, grouped or flat: the cell
     // hosts either the row's status dot or the leading seat, and it reserves its
     // own box, so the title's one shared margin below needs no per-view override.
     expect(rowDeclarations('.slot')?.get('width')).toBe('16px')
     expect(rowDeclarations('.slot')?.get('height')).toBe('20px')
-    expect(rowDeclarations('.sessionRow .title')?.get('margin')).toBe('0 6px 0 var(--dsh-sidebar-label-gap)')
+    expect(rowDeclarations('.sessionRow .title')?.get('margin')).toBe('0 6px 0 8px')
+    expect(rowDeclarations('.sessionRow .title')?.get('font-size')).toBe('12px')
+    expect(rowDeclarations('.projectRow .title')?.get('font-size')).toBe('13px')
     expect(rowDeclarations('.searchResultRow')?.get('min-height')).toBe('48px')
     expect(rowDeclarations('.searchResultTitle')?.get('margin')).toBe('0 var(--dsh-sidebar-label-gap)')
     expect(rowDeclarations('.sessionRow.selected')?.get('background-color'))
-      .toBe('var(--dsw-alias-interactive-bg-hover)')
+      .toBe('color-mix(in srgb, var(--dsw-alias-bg-layer-1) 65%, transparent)')
   })
 
   it('shares action spacing and inset backgrounds without moving the title column', () => {
@@ -146,6 +148,8 @@ describe('WorkspaceBrowser.module.css list', () => {
     expect(rowDeclarations('.iconButton')?.get('width')).toBe('24px')
     expect(rowDeclarations('.time')?.get('margin-inline-end')).toBe('-1px')
     expect(declarations('.sectionLabel')?.get('left')).toBe('-1px')
+    expect(declarations('.sectionLabel')?.get('font-size')).toBe('10px')
+    expect(declarations('.sectionLabel')?.get('letter-spacing')).toBe('0.06em')
     expect(declarations('.sectionHeader')?.get('padding-left')).toBe('var(--dsh-sidebar-row-padding)')
   })
 

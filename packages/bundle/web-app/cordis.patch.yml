@@ -154,6 +154,22 @@
       name: '@deepseek-ai/dsh-mcp-manager'
       inject: [credentials]
 
+    # Built-in reviewed MCP catalog. The service loads at boot; connecting
+    # requires an explicit platform URL and this user's credential.
+    - id: plugin-hub
+      name: '@deepseek-ai/dsh-plugin-hub-client'
+      config:
+        enabled: false
+
+    # Built-in generative UI: the Host serves the sandbox/wasm routes and the
+    # browser half registers its chat node and canvas tab. Generated cards stay
+    # behind the visual-output setting; commands remain off until the isolated
+    # runtime and per-user authorization pass their own acceptance.
+    - id: generative-ui
+      name: '@deepseek-ai/dsh-generative-ui'
+      config:
+        allowExec: false
+
     # Workspace commands and reconnect-safe projection over Typert Remote.
     - id: workspace-controller
       name: '@deepseek-ai/dsh-api-workspace-controller'
@@ -321,6 +337,9 @@
     # Without a profile-backed Host it reports itself unavailable.
     - id: ui-plugin-manager
       name: '@deepseek-ai/dsh-client-ui-plugin-manager'
+
+    - id: ui-plugin-hub
+      name: '@deepseek-ai/dsh-client-ui-plugin-hub'
 
     # Read-only Plugin list tab in the Settings Plugins section; the built-in
     # bundles the sidebar page leaves out are inspected here.

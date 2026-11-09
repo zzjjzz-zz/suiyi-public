@@ -1,0 +1,97 @@
+/* Brand identity contract read by feature packages instead of hard-coding a
+ * product identity. The defaults below are the neutral official identity; a
+ * build-profile brand plugin overrides the same names in its own scope, so a
+ * consumer's CSS never names a palette and only one identity is ever active.
+ * Values are arbitrary CSS values rather than colors, so font lists, weights,
+ * tracking, glass fills, and artwork shadows travel through one contract.
+ *
+ * Declared on body because --dsw-font-family carries the user's font list
+ * there; a computed value on :root would resolve the built-in stack first and
+ * silently drop the user's choice. */
+body {
+  --dsw-brand-switch-on: var(--dsw-alias-brand-primary);
+  /* Brand typography: the wordmark beside the mark and page-title weight. */
+  --dsw-brand-font-family: var(--dsw-font-family);
+  --dsw-brand-title-weight: 600;
+  --dsw-brand-wordmark-weight: 600;
+  --dsw-brand-wordmark-size: 17px;
+  --dsw-brand-wordmark-tracking: 0.08em;
+  --dsw-brand-wordmark-line-height: 1.1;
+  /* Decorative background scene and the wash that keeps content legible over
+     it. `transparent` scene stops leave the stock surface alone. */
+  --dsw-brand-scene-base: var(--dsw-alias-bg-base);
+  --dsw-brand-scene-cyan: transparent;
+  --dsw-brand-scene-blue: transparent;
+  --dsw-brand-scene-ice: transparent;
+  --dsw-brand-scene-veil: transparent;
+  --dsw-brand-scene-veil-compact: transparent;
+  --dsw-brand-scene-veil-size: 43% 39%;
+  --dsw-brand-scene-veil-position: 58% 33%;
+  --dsw-brand-scene-veil-size-compact: 80% 35%;
+  --dsw-brand-scene-veil-position-compact: 50% 30%;
+  --dsw-brand-scene-veil-fade-compact: 82%;
+  --dsw-brand-scene-strength: 1;
+  --dsw-brand-scene-strength-compact: 1;
+  --dsw-brand-content-wash: var(--dsw-alias-bg-base);
+  --dsw-brand-page-wash: var(--dsw-alias-bg-base);
+  /* Glass material for chrome rows and floating surfaces. */
+  --dsw-brand-glass-chrome: var(--dsw-alias-bg-layer-1);
+  --dsw-brand-glass-nav: var(--dsw-specific-sidebar-fill);
+  --dsw-brand-glass-toolbar: var(--dsw-alias-bg-layer-1);
+  --dsw-brand-glass-edge: var(--dsw-alias-border-l1);
+  --dsw-brand-glass-shadow: transparent;
+  /* Shared accent pair for navigation selections, settings categories, and
+   * workbench labels. Defaults reproduce the current business accent; a brand
+   * profile supplies the prototype's ink and soft values. */
+  --dsw-brand-accent-ink: var(--dsw-alias-state-business-primary);
+  --dsw-brand-accent-soft: var(--dsw-alias-state-business-tertiary);
+  /* Composer material. The defaults reproduce the current conversation card
+   * exactly, so the conversation package can consume these names without any
+   * visible change outside a brand profile. */
+  --dsw-brand-composer-fill: linear-gradient(
+    133deg,
+    color-mix(in srgb, var(--dsw-alias-bg-layer-1) 90%, transparent),
+    color-mix(in srgb, var(--dsw-alias-state-idle-primary) 8%, var(--dsw-alias-bg-layer-1)) 67%,
+    color-mix(in srgb, var(--dsw-alias-state-idle-primary) 13%, var(--dsw-alias-bg-layer-1))
+  );
+  --dsw-brand-composer-border: 0.5px solid color-mix(
+    in srgb,
+    var(--dsw-alias-state-idle-primary) 32%,
+    var(--dsw-alias-border-l2)
+  );
+  --dsw-brand-composer-shadow:
+    inset 0 1px color-mix(in srgb, var(--dsw-alias-bg-layer-1) 92%, transparent),
+    0 12px 38px color-mix(in srgb, var(--dsw-alias-state-idle-primary) 12%, transparent);
+  --dsw-brand-composer-focus-fill: linear-gradient(
+    133deg,
+    color-mix(in srgb, var(--dsw-alias-bg-layer-1) 92%, transparent),
+    color-mix(in srgb, var(--dsw-alias-state-idle-primary) 10%, var(--dsw-alias-bg-layer-1)) 66%,
+    color-mix(in srgb, var(--dsw-alias-state-idle-primary) 15%, var(--dsw-alias-bg-layer-1))
+  );
+  --dsw-brand-composer-focus-border: 0.5px solid color-mix(
+    in srgb,
+    var(--dsw-alias-state-idle-primary) 62%,
+    var(--dsw-alias-border-l2)
+  );
+  --dsw-brand-composer-focus-shadow:
+    inset 0 1px color-mix(in srgb, var(--dsw-alias-bg-layer-1) 96%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--dsw-alias-state-idle-primary) 18%, transparent),
+    0 14px 44px color-mix(in srgb, var(--dsw-alias-state-idle-primary) 17%, transparent);
+  --dsw-brand-composer-placeholder-color: var(--dsw-alias-label-caption);
+  --dsw-brand-composer-material-content: none;
+  --dsw-brand-composer-sheen: none;
+  --dsw-brand-composer-inner-border: transparent;
+  --dsw-brand-composer-inner-shadow: none;
+  /* Blank-home shortcut pills. The defaults reproduce the current controls. */
+  --dsw-brand-shortcut-fill: color-mix(in srgb, var(--dsw-alias-bg-layer-1) 15%, transparent);
+  --dsw-brand-shortcut-border: 0.5px solid var(--dsw-alias-border-l1);
+  --dsw-brand-shortcut-radius: 999px;
+  --dsw-brand-shortcut-radius-compact: 999px;
+  --dsw-brand-shortcut-shadow: none;
+  /* Artwork shadow around the brand mark. */
+  --dsw-brand-mark-glow: transparent;
+  /* Application frame fill. AppFrame paints this instead of a fixed alias so a
+   * brand can let one ambient scene back the window; the default keeps the
+   * stock ground for every other profile. */
+  --dsw-app-frame-fill: var(--dsw-alias-bg-base);
+}

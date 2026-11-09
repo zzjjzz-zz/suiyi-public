@@ -20,6 +20,12 @@ describe('viewer endpoint classification', () => {
         + 'missing ["session/prompt"]; unexpected []')
   })
 
+  it('keeps plugin-hub lifecycle endpoints owner-only', () => {
+    for (const endpoint of ['pluginHub/add', 'pluginHub/enable', 'pluginHub/disable', 'pluginHub/removeInstance']) {
+      expect(VIEWER_ENDPOINT_CLASSES[endpoint as keyof typeof VIEWER_ENDPOINT_CLASSES]).toBe('owner-only')
+    }
+  })
+
   it('reports the endpoint a classification adds beyond the expected set', () => {
     const extra = { ...VIEWER_ENDPOINT_CLASSES, 'newPlugin/endpoint': 'plugin-offered' }
     expect(() => { assertSameViewerActions(Object.keys(extra), CLASSIFIED, 'VIEWER_ENDPOINT_CLASSES') })

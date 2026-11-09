@@ -142,6 +142,8 @@ describe('Chat apply wiring', () => {
       .toMatchObject({ kind: 'keyed', scope: 'session' })
     expect(b.runtime.slots.entries('conversation.composer.dock').map(row => row.options.id))
       .toEqual(['activity', 'usage'])
+    expect(b.runtime.slots.entries('conversation.composer.context').map(row => row.options.id))
+      .toEqual(['session-usage'])
     expect(b.runtime.slots.entries('settings.general.item').map(row => row.options.id))
       .toEqual(['transcript-view', 'link-opening', 'composer-enter', 'performance-usage'])
     await b.runtime.dispose()
@@ -161,6 +163,7 @@ describe('Chat apply wiring', () => {
     expect(userContent).toMatchObject({ scope: 'session', locale: 'chat', component: UserContent })
     expect(userContent.children?.['conversation.chat.user.images']).toMatchObject({ kind: 'single', scope: 'session' })
     expect(assistant?.children?.['conversation.chat.message.images']).toMatchObject({ kind: 'single', scope: 'session' })
+    expect(assistant?.children?.['conversation.chat.assistant.mark']).toMatchObject({ kind: 'single', scope: 'session' })
     expect(userContent.store).toBeUndefined()
     expect(userContent.inject).toBeUndefined()
     expect(view?.children?.['conversation.chat.flow']).toBeDefined()
@@ -205,9 +208,13 @@ describe('Chat apply wiring', () => {
   })
 
   it.each([
-    { desktop: false, initial: 'detailed', choice: 'standard' },
-    { desktop: true, initial: 'standard', choice: 'detailed' },
-  ] as const)('mirrors the Host transcript preference into its Settings row (desktop: $desktop)', async ({ desktop, initial, choice }) => {
+    { desktop: false, profile: 'official', initial: 'detailed', choice: 'standard' },
+    { desktop: true, profile: 'official', initial: 'standard', choice: 'detailed' },
+    { desktop: false, profile: 'suiyi', initial: 'compact', choice: 'detailed' },
+    { desktop: true, profile: 'suiyi', initial: 'compact', choice: 'standard' },
+  ] as const)('mirrors the Host transcript preference into its Settings row (desktop: $desktop, profile: $profile)', async ({ desktop, profile, initial, choice }) => {
+    vi.stubEnv('DSH_CLIENT_BUILD_PROFILE', profile)
+    onTestFinished(() => { vi.unstubAllEnvs() })
     if (desktop) {
       vi.stubGlobal('dshDesktop', {})
       onTestFinished(() => { vi.unstubAllGlobals() })

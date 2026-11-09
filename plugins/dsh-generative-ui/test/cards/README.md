@@ -1,5 +1,7 @@
 # Cards the model actually wrote
 
+English | [中文](README.zh.md)
+
 Six real generations, kept as fixed input for `scripts/replay-stream.ts` and
 `scripts/compile-cards.ts`. They are here because between them they exercise every runtime rule
 added on 2026-08-22:

@@ -1,6 +1,8 @@
-import { existsSync, mkdtempSync, rmSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { afterEach, expect, it, vi } from 'vitest'
 import { smokePreparedRuntime } from '../scripts/smoke-prepared-runtime.ts'
 import { smokeDesktopRuntime } from '../scripts/smoke-runtime.ts'
@@ -44,6 +46,20 @@ it('retains payload progress and termination details when the child fails', asyn
   expect(smokeDesktopRuntime).not.toHaveBeenCalled()
 })
 
+it('requires --expose-internals before loading the payload smoke', () => {
+  const root = mkdtempSync(join(tmpdir(), 'prepared-runtime-flag-'))
+  roots.push(root)
+  writeFileSync(join(root, 'desktop-runtime.json'), `${JSON.stringify({
+    release: { nodeVersion: process.versions.node },
+    platform: process.platform,
+    arch: process.arch,
+  })}\n`)
+  const fixture = fileURLToPath(new URL('./fixtures/runtime-payload-smoke.mjs', import.meta.url))
+  const result = spawnSync(process.execPath, [fixture, root], { encoding: 'utf8' })
+  expect(result.status).not.toBe(0)
+  expect(`${result.stdout}${result.stderr}`).toContain('runtime payload smoke requires --expose-internals')
+})
+
 it('smokes an x64 target verified on an arm64 build host without revalidating against the host', async () => {
   const root = mkdtempSync(join(tmpdir(), 'prepared-runtime-target-'))
   roots.push(root)
@@ -58,7 +74,7 @@ it('smokes an x64 target verified on an arm64 build host without revalidating ag
   const resources = join(root, 'runtime')
   await smokePreparedRuntime(root, electron, resources, descriptor)
   expect(payload.mock.calls[0]![0]).toBe(electron)
-  expect(payload.mock.calls[0]![1]).toEqual(expect.arrayContaining([root, resources]))
+  expect(payload.mock.calls[0]![1]).toEqual(expect.arrayContaining(['--expose-internals', root, resources]))
   expect(smokeDesktopRuntime).toHaveBeenCalledWith(root, electron, descriptor, expect.any(Object), resources)
   const environment = vi.mocked(smokeDesktopRuntime).mock.calls[0]![3]
   expect(existsSync(environment.NARB_NATIVE_CACHE_DIR!)).toBe(false)

@@ -32,6 +32,8 @@ import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 // Type-only: pulls the Workspace UI navigation service merge (ctx.uiWorkspace).
 import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
 import type {} from '@deepseek-ai/dsh-client-ui-plugin-manager/client'
+import type { MainPanelId } from '@deepseek-ai/dsh-client-ui-layout/client'
+import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import { AgentPresetLabel } from './AgentPresetLabel.tsx'
 import { CreatePluginMenuItem } from './CreatePluginMenuItem.tsx'
@@ -39,6 +41,9 @@ import type { AgentPresetLabelInjected } from './AgentPresetLabel.tsx'
 import { AgentPresetSeat } from './AgentPresetSeat.tsx'
 import type { AgentPresetSeatInjected } from './AgentPresetSeat.tsx'
 import { AgentPresetSection } from './AgentPresetSection.tsx'
+import { AgentPresetsPage, type AgentPresetsPageInjected } from './AgentPresetsPage.tsx'
+import { AgentPresetsPanelIcon } from './AgentPresetsPanelIcon.tsx'
+import { AgentDefaultItem } from './AgentDefaultItem.tsx'
 import type { AgentPresetSectionInjected } from './AgentPresetSection.tsx'
 import { AgentPresetSeatController, type AgentPresetStage } from './seat-store.ts'
 import { AgentPresetSectionController } from './section-store.ts'
@@ -290,4 +295,40 @@ export function apply(ctx: ClientContext): void {
     locale: 'settings.agentPreset',
     inject: sectionInjected,
   }, AgentPresetSection))
+
+  // General settings exposes the real new-task default beside the other
+  // preference rows; it reads the same roster store and writes the same
+  // selectedDefault field as the management section.
+  ctx.slots.inject('settings.general.item', () => ctx.slots.register({
+    name: 'settings.general.item',
+    id: 'default-agent',
+    order: 100,
+    locale: 'settings.agentPreset',
+    inject: () => ({
+      hooks: {
+        agentPresetSection: section.store,
+        developerTools: ctx.configForms.developerTools.enabled,
+      },
+      load: () => section.load(),
+      makeDefault: (id: string) => section.makeDefault(id, captureBlankSessionSync()),
+    }),
+  }, AgentDefaultItem))
+
+  // The Agents page reuses the settings section's roster and actions. It is
+  // exposed outside official artifacts; a fallback profile still shows it so a
+  // build without the recorded env never silently drops the real surface.
+  if (process.env.DSH_CLIENT_BUILD_PROFILE !== 'official') {
+    const AGENTS_PANEL_ID = 'agents' as MainPanelId
+    const agentsPageInjected = (): AgentPresetsPageInjected => ({
+      ...sectionInjected(),
+      closePage: () => { ctx.get('layout')?.selectPanel(null) },
+    })
+    ctx.slots.inject('main', () => ctx.slots.register({
+      name: 'main', key: AGENTS_PANEL_ID, locale: 'settings.agentPreset', inject: agentsPageInjected,
+    }, AgentPresetsPage))
+    ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({
+      name: 'sidebar.panellist', id: AGENTS_PANEL_ID, order: 8, locale: 'settings.agentPreset',
+      label: () => ctx.locale.bind('settings.agentPreset')('nav.agents'),
+    }, AgentPresetsPanelIcon))
+  }
 }

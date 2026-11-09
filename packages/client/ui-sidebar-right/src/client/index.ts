@@ -224,7 +224,11 @@ export function apply(ctx: ClientContext): void {
       },
       reportAutoFullscreen: (value) => { autoFullscreen = value },
       splitPane: (paneId) => { controller.split(paneId) },
-      toggleFullscreen: () => { const target = controller.commandTarget(); if (target !== undefined) controller.toggleFullscreen(target) },
+      toggleFullscreen: (sessionId, paneId) => {
+        if (sessionId !== undefined && paneId !== undefined) { controller.toggleFullscreenFor(sessionId, paneId); return }
+        const target = controller.commandTarget()
+        if (target !== undefined) controller.toggleFullscreen(target)
+      },
       openTab: (kind, options) => { controller.openTab(kind, options) },
     }
     const tabTypes = { subscribe: (listener: () => void) => tabs.subscribe(listener), getSnapshot: () => tabs.entries() }
@@ -237,6 +241,16 @@ export function apply(ctx: ClientContext): void {
         inject: (): RightbarRootInjected => ({
           hooks: { views: views.source },
           mountView: reference => views.mount(reference),
+          openWorkbench: (sessionId) => {
+            layout.selectPanel(null)
+            controller.expandWorkbench(sessionId)
+          },
+          labels: {
+            workbench: t('chrome.workbench'),
+            expand: t('chrome.expand'),
+            expandAria: t('chrome.expandAria'),
+            noSession: t('command.noSession'),
+          },
         }),
       }, RightbarRoot)
       yield ctx.slots.register({

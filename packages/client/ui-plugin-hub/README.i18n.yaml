@@ -1,0 +1,61 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/client/ui-plugin-hub/README.md
+/:
+  en: d95961cc4170b550
+  zh: ab6b55fb4f69ed47
+/deepseek-ai-dsh-client-ui-plugin-hub:
+  en: 5e7a2c3842f91e38
+  zh: 2982ba7a2c760c3b
+/deepseek-ai-dsh-client-ui-plugin-hub/summary:
+  en: 7afb5e8a5c8a3ec3
+  zh: 45a90be302403c55
+/deepseek-ai-dsh-client-ui-plugin-hub/table-of-contents:
+  en: 76368b6b1da79c80
+  zh: 52384aee991ac542
+/deepseek-ai-dsh-client-ui-plugin-hub/use-this-package:
+  en: 19092eb7bc0ba7d0
+  zh: cd78dbd1ee216f44
+/deepseek-ai-dsh-client-ui-plugin-hub/use-this-package/empty-loading-and-error-states:
+  en: 10fcfefafa29d378
+  zh: 9c4036b30f1de6f3
+/deepseek-ai-dsh-client-ui-plugin-hub/use-this-package/narrow-screens-and-long-text:
+  en: a02feba316a987fa
+  zh: 6cb553fb0f7e88e1
+/deepseek-ai-dsh-client-ui-plugin-hub/understand-the-implementation:
+  en: 42b15ac6321706aa
+  zh: 1b15d3d4f76191dd
+/deepseek-ai-dsh-client-ui-plugin-hub/understand-the-implementation/registration:
+  en: 336f801bc607a829
+  zh: d1ced1285082842c
+/deepseek-ai-dsh-client-ui-plugin-hub/understand-the-implementation/state-and-reads:
+  en: d8d56b8d30a98d0d
+  zh: 151fb800483c6748
+/deepseek-ai-dsh-client-ui-plugin-hub/understand-the-implementation/lifecycle-actions:
+  en: d5c60abc34b5f491
+  zh: 6413db484f3fff71
+/deepseek-ai-dsh-client-ui-plugin-hub/understand-the-implementation/seam-ownership:
+  en: 3d1bcce0b7cc2a6b
+  zh: 06eb773b05ade6f8
+/deepseek-ai-dsh-client-ui-plugin-hub/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-client-ui-plugin-hub/model-experience/plugin-tools-enabled-through-the-host:
+  en: 7d45eb0b99a7c9cd
+  zh: a4ef2d74fe65a400
+/deepseek-ai-dsh-client-ui-plugin-hub/model-experience/plugin-tools-enabled-through-the-host/what-the-model-sees:
+  en: d839f0e454c2559b
+  zh: c940158dc8054d0c
+/deepseek-ai-dsh-client-ui-plugin-hub/model-experience/plugin-tools-enabled-through-the-host/token-effect:
+  en: fbe9c2d7486e9881
+  zh: d9de743c8df5d26c
+/deepseek-ai-dsh-client-ui-plugin-hub/model-experience/plugin-tools-enabled-through-the-host/kv-cache-effect:
+  en: c5aa96a6ce64dac6
+  zh: 823bcf7782c3a2fb
+/deepseek-ai-dsh-client-ui-plugin-hub/known-limitations-and-deferred-work:
+  en: 23a5bfb0cc27fbc8
+  zh: 76777064a34a774b
+/deepseek-ai-dsh-client-ui-plugin-hub/known-limitations-and-deferred-work/dev-note:
+  en: 4574884b1ce2c372
+  zh: 074fefbe906875d6

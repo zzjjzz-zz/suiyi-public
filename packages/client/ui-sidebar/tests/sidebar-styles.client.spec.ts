@@ -26,16 +26,17 @@ function declarations(selector: string): Map<string, string> | undefined {
 }
 
 describe('SidebarRoot.module.css', () => {
-  it('uses a compact expanded navigation gap without shrinking the collapsed rail spacing', () => {
-    expect(declarations('.panelList')?.get('gap')).toBe('2px')
+  it('uses the prototype navigation gap without shrinking the collapsed rail spacing', () => {
+    expect(declarations('.panelList')?.get('gap')).toBe('4px')
     expect(declarations('.collapsed .panelList')?.get('gap')).toBe('12px')
   })
 
-  it('fits expanded navigation into 32px rows while retaining 36px rail controls', () => {
+  it('fits expanded navigation into 41px rows while retaining 36px rail controls', () => {
     const row = declarations('.panelRow')
-    expect(row?.get('min-height')).toBe('32px')
-    expect(row?.get('padding')).toBe('5px calc(var(--dsh-sidebar-row-padding) - var(--dsh-sidebar-paint-inset))')
-    expect(row?.get('line-height')).toBe('22px')
+    expect(row?.get('min-height')).toBe('41px')
+    expect(row?.get('padding')).toBe('11px calc(var(--dsh-sidebar-row-padding) - var(--dsh-sidebar-paint-inset))')
+    expect(row?.get('gap')).toBe('12px')
+    expect(row?.get('line-height')).toBe('19px')
     expect(row?.get('box-sizing')).toBe('border-box')
     expect(row?.get('border')).toBe('none')
     expect(declarations('.collapsed .panelRow')?.get('width')).toBe('36px')
@@ -46,11 +47,11 @@ describe('SidebarRoot.module.css', () => {
   it('owns a shared scrollport whose gaps scroll away', () => {
     const root = declarations('.root')
     const scrollport = declarations('.scrollArea')
-    expect(root?.get('--dsh-sidebar-inline-padding')).toBe('8px')
-    expect(root?.get('--dsh-sidebar-row-padding')).toBe('12px')
+    expect(root?.get('--dsh-sidebar-inline-padding')).toBe('15px')
+    expect(root?.get('--dsh-sidebar-row-padding')).toBe('13px')
     expect(root?.get('--dsh-sidebar-label-gap')).toBe('6px')
-    expect(root?.get('--dsh-sidebar-paint-inset')).toBe('3px')
-    expect(root?.get('padding')).toBe('6px var(--dsh-sidebar-inline-padding)')
+    expect(root?.get('--dsh-sidebar-paint-inset')).toBe('0px')
+    expect(root?.get('padding')).toBe('28px var(--dsh-sidebar-inline-padding) 12px')
     expect(declarations('.scrollRegion')?.get('min-height')).toBe('0')
     expect(declarations('.root:not(.collapsed) .scrollRegion')?.get('container-type')).toBe('size')
     expect(declarations('.scrollRegion')?.get('container-type')).toBeUndefined()
@@ -58,8 +59,8 @@ describe('SidebarRoot.module.css', () => {
     expect(scrollport?.get('overflow-y')).toBe('auto')
     expect(scrollport?.get('overflow-x')).toBe('hidden')
     expect(scrollport?.get('grid-template-columns')).toBe('4px minmax(0, 1fr) calc(var(--dsh-sidebar-inline-padding) - 2px)')
-    expect(scrollport?.get('grid-template-rows')).toBe('8px max-content 2px max-content')
-    expect(declarations('.scrollRegion')?.get('margin-top')).toBe('4px')
+    expect(scrollport?.get('grid-template-rows')).toBe('0 max-content 2px max-content')
+    expect(declarations('.scrollRegion')?.get('margin-top')).toBe('0')
     expect(declarations('.collapsed .scrollRegion')?.get('margin-top')).toBe('0')
     expect(scrollport?.get('margin-left')).toBe('-4px')
     expect(scrollport?.get('margin-right')).toBe('calc(2px - var(--dsh-sidebar-inline-padding))')
@@ -86,10 +87,10 @@ describe('SidebarRoot.module.css', () => {
   })
 
   it('keeps the reviewed expanded spacing separate from rail and caption controls', () => {
-    expect(declarations('.logoRow')?.get('padding')).toBe('8px 0 8px 8px')
+    expect(declarations('.logoRow')?.get('padding')).toBe('22px 13px 18px')
     expect(declarations('.logoRow')?.get('margin-bottom')).toBe('0')
-    expect(declarations('.newSession')?.get('margin')).toBe('0 calc(var(--dsh-sidebar-paint-inset) + 1px)')
-    expect(declarations('.newSessionContent')?.get('justify-content')).toBe('center')
+    expect(declarations('.newSession')?.get('margin')).toBe('0')
+    expect(declarations('.newSessionContent')?.get('justify-content')).toBe('flex-start')
     expect(declarations(":global(html[data-platform='darwin']:not([data-fullscreen])) .root:not(.collapsed) > .topStrip > .toggle")?.get('transform')).toBe('translateX(4px)')
     expect(css).not.toContain(':not(.fading)')
     expect(declarations(':global([data-windows-titlebar]) .root:not(.collapsed) .newSession')?.has('margin-left')).toBe(false)
@@ -121,13 +122,17 @@ describe('SidebarRoot.module.css', () => {
     expect(declarations('.collapsed .newSession')?.get('width')).toBe('36px')
   })
 
-  it('keeps full-size brand artwork with a compact mark-to-name gap', () => {
-    expect(declarations('.brandIdentity')?.get('gap')).toBe('5px')
-    expect(declarations('.brandIdentity')?.get('height')).toBe('24px')
-    expect(declarations('.brandName')?.get('height')).toBe('24px')
-    expect(declarations('.brandName')?.get('line-height')).toBe('24px')
-    expect(declarations('.brandName')?.get('font-size')).toBe('18px')
-    expect(declarations('.fallbackBrandName')?.get('font-size')).toBe('17px')
+  it('keeps the prototype 42px mark and one-line 22px wordmark with a 7px gap', () => {
+    expect(declarations('.brandIdentity')?.get('gap')).toBe('7px')
+    expect(declarations('.brandIdentity')?.get('height')).toBe('42px')
+    expect(declarations('.brandMark')?.get('width')).toBe('42px')
+    expect(declarations('.brandMark svg')?.get('width')).toBe('32px')
+    expect(declarations('.brandName')?.get('height')).toBe('30px')
+    expect(declarations('.brandName')?.get('line-height')).toBe('30px')
+    expect(declarations('.brandName')?.get('font-size')).toBe('22px')
+    expect(declarations('.brandName')?.get('font-weight')).toBe('500')
+    expect(declarations('.brandName')?.get('letter-spacing')).toBe('0.04em')
+    expect(declarations('.fallbackBrandName')?.get('font-size')).toBe('20px')
     expect(declarations('.fallbackBrandName')?.get('white-space')).toBe('nowrap')
   })
 })

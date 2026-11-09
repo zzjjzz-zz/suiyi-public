@@ -3,6 +3,7 @@
 import { resolveSuiyiOidcIssuer } from './oidc-config.ts'
 import { runAuthorizationCodeLogin, type OidcFailure, type OidcIdentity } from './oidc-client.ts'
 import type { SuiyiVerifiedIdentity } from '../paths.ts'
+import type { SuiyiLoginFailure } from '../welcome-api.ts'
 
 /**
  * Copy shown while a login attempt runs or fails. Kept English-only: the
@@ -51,8 +52,10 @@ export function loginFailureText(failure: OidcFailure): string {
     case 'issuer-mismatch': return 'the identity center reported a different issuer'
     case 'callback-aborted': return 'sign-in was cancelled'
     case 'callback-timeout': return 'sign-in timed out'
+    case 'callback-server': return 'the local sign-in callback could not start'
     case 'callback-replay': return 'the sign-in response was already used'
     case 'callback-malformed': return 'the sign-in response was malformed'
+    case 'browser-unavailable': return 'the system browser could not open the sign-in page'
     case 'token-network': return 'the identity center rejected the token request'
     case 'token-invalid': return 'the identity center returned an invalid token'
     case 'token-rejected': return 'the identity token failed verification'
@@ -64,34 +67,115 @@ export function loginFailureText(failure: OidcFailure): string {
 export interface SuiyiLoginResult extends SuiyiVerifiedIdentity {
   /** Access-token expiry in epoch milliseconds; 0 when the provider omitted it. */
   readonly expiresAt: number
+  /** Verified bearer token; memory-only, never logged, persisted, or exposed to a renderer. */
+  readonly accessToken: string
+  /** Safe display name from the verified ID token; absent when the provider supplies none. */
+  readonly displayName?: string
+}
+
+/** One login attempt as the pre-workspace window reports it. */
+export type SuiyiLoginAttemptResult =
+  | { readonly ok: true; readonly login: SuiyiLoginResult }
+  | {
+    readonly ok: false
+    /** Renderer classification of the failed attempt. */
+    readonly failure: SuiyiLoginFailure
+    /** Human-safe reason without provider, token, or account detail. */
+    readonly message: string
+    /** True when the local issuer setting stopped the attempt before any browser request. */
+    readonly issuer: boolean
+  }
+
+/** Inputs of one attempt; the gate adds retry prompting around it. */
+export interface SuiyiLoginAttemptOptions {
+  /** Shared pre-login userData holding the optional issuer override. */
+  readonly appData: string
+  /** Browser opener for the identity center's authorization page. */
+  readonly openBrowser: (url: string) => Promise<void>
+  /** Aborts discovery, the callback wait, or the token exchange. */
+  readonly signal?: AbortSignal
+  /** File reader override for the issuer setting; tests inject failures. */
+  readonly readIssuerFile?: (path: string) => Promise<string>
+  /** Deadline control and transport for tests; omitted values use production defaults. */
+  readonly loginOptions?: { readonly timeoutMs?: number }
+}
+
+/**
+ * Classify an identity-center failure for the login page. The renderer owns only these six
+ * categories; provider-specific detail stays in the host-side message.
+ * @param failure - transport failure reported by the OIDC client.
+ * @returns the renderer classification.
+ */
+export function classifySuiyiLoginFailure(failure: OidcFailure): SuiyiLoginFailure {
+  switch (failure) {
+    case 'discovery-network':
+    case 'token-network': return 'unreachable'
+    case 'discovery-invalid':
+    case 'issuer-mismatch': return 'configuration'
+    case 'callback-aborted': return 'cancelled'
+    case 'callback-timeout': return 'timeout'
+    case 'callback-server':
+    case 'browser-unavailable':
+    case 'callback-replay':
+    case 'callback-malformed': return 'unknown'
+    case 'token-invalid':
+    case 'token-rejected': return 'rejected'
+  }
+}
+
+/**
+ * Run one full PKCE authorization-code login without retrying. A failed attempt leaves no state
+ * behind. The verified access token is returned for the Host's private channel and stays in
+ * memory only; the refresh token is not retained.
+ * @param options - issuer setting location, browser opener, cancellation, and test hooks.
+ * @returns the verified login, or a classified failure with human-safe copy.
+ */
+export async function runSuiyiLoginAttempt(options: SuiyiLoginAttemptOptions): Promise<SuiyiLoginAttemptResult> {
+  const issuerResolution = await resolveSuiyiOidcIssuer(options.appData, options.readIssuerFile)
+  if (!issuerResolution.ok) {
+    return { ok: false, failure: 'configuration', message: `${issuerResolution.reason}.`, issuer: true }
+  }
+  if (options.signal?.aborted === true) {
+    return { ok: false, failure: 'cancelled', message: 'sign-in was cancelled', issuer: false }
+  }
+  const login = await runAuthorizationCodeLogin({
+    issuer: issuerResolution.issuer,
+    clientId: 'suiyi-desktop',
+    openBrowser: options.openBrowser,
+    ...(options.loginOptions?.timeoutMs === undefined ? {} : { timeoutMs: options.loginOptions.timeoutMs }),
+    ...(options.signal === undefined ? {} : { signal: options.signal }),
+  })
+  if (login.ok) {
+    return {
+      ok: true,
+      login: {
+        issuer: login.identity.issuer,
+        sub: login.identity.sub,
+        expiresAt: login.identity.expiresAt,
+        accessToken: login.identity.accessToken,
+        ...(login.identity.name === undefined ? {} : { displayName: login.identity.name }),
+      },
+    }
+  }
+  return { ok: false, failure: classifySuiyiLoginFailure(login.failure), message: loginFailureText(login.failure), issuer: false }
 }
 
 /**
  * Run interactive Suiyi logins until one succeeds or the user stops retrying.
- * Every attempt is a full PKCE authorization-code login with ID token
- * verification; a failed attempt leaves no state behind. Tokens themselves
- * are dropped at the return: only the verified identity and the expiry reach
- * the caller.
+ * Every attempt is a full PKCE authorization-code login with ID token verification; a failed
+ * attempt leaves no state behind. The verified identity, expiry, and access token reach the
+ * caller; the access token must stay in memory and never be logged or persisted.
  * @param options - provider transport and dialog hooks.
- * @returns the verified identity of the completed login, or undefined when the user declined to retry.
+ * @returns the verified login, or undefined when the user declined to retry.
  */
 export async function runSuiyiLoginGate(options: LoginGateOptions): Promise<SuiyiLoginResult | undefined> {
-  const issuerResolution = await resolveSuiyiOidcIssuer(options.appData, options.readIssuerFile)
-  if (!issuerResolution.ok) {
-    const retry = await options.showRetry({ message: `${issuerResolution.reason}. Try again?` })
-    if (retry === 0) return await runSuiyiLoginGate(options)
-    return undefined
-  }
   while (true) {
-    const login = await runAuthorizationCodeLogin({
-      issuer: issuerResolution.issuer,
-      clientId: 'suiyi-desktop',
-      openBrowser: options.openBrowser,
-      ...(options.loginOptions?.timeoutMs === undefined ? {} : { timeoutMs: options.loginOptions.timeoutMs }),
-    })
-    if (login.ok) return { issuer: login.identity.issuer, sub: login.identity.sub, expiresAt: login.identity.expiresAt }
+    const attempt = await runSuiyiLoginAttempt(options)
+    if (attempt.ok) return attempt.login
     const retry = await options.showRetry({
-      message: LOGIN_GATE_COPY.retryPrompt.replace('{reason}', loginFailureText(login.failure)),
+      message: attempt.issuer
+        ? `${attempt.message} Try again?`
+        : LOGIN_GATE_COPY.retryPrompt.replace('{reason}', attempt.message),
     })
     if (retry !== 0) return undefined
   }
@@ -132,18 +216,30 @@ export interface SuiyiLoginSession {
   readonly identity: SuiyiVerifiedIdentity
   /** Re-login deadline in epoch milliseconds computed from the token expiry. */
   readonly deadline: number
+  /**
+   * Verified bearer token for user-scoped upstream APIs. The main process keeps it in memory and
+   * hands it to the Host through the private IPC channel; it never reaches a renderer, log, argv,
+   * environment variable, or file.
+   */
+  readonly accessToken: string
+  /** Safe display name carried from the verified ID token; never an email or username. */
+  readonly displayName?: string
 }
 
 /**
- * Shape the gate's raw login outcome into the main-process session record.
- * The access and refresh tokens are deliberately dropped here: nothing after
- * the gate may hold, persist, or pass them on.
+ * Shape the gate's raw login outcome into the main-process session record. The refresh token is
+ * dropped; the access token is retained for the Host's private channel and must not be logged,
+ * persisted, or passed to a renderer.
  * @param identity - verified identity from the completed login.
  * @param now - current clock reading in epoch milliseconds.
  */
-export function suiyiLoginSession(identity: OidcIdentity, now: number): SuiyiLoginSession {
+export function suiyiLoginSession(identity: OidcIdentity | SuiyiLoginResult, now: number): SuiyiLoginSession {
+  const displayName = ('name' in identity ? identity.name : undefined)
+    ?? ('displayName' in identity ? identity.displayName : undefined)
   return { identity: { issuer: identity.issuer, sub: identity.sub },
-    deadline: suiyiSessionDeadline({ expiresAt: identity.expiresAt, now }) }
+    deadline: suiyiSessionDeadline({ expiresAt: identity.expiresAt, now }),
+    accessToken: identity.accessToken,
+    ...(displayName === undefined ? {} : { displayName }) }
 }
 
 /**

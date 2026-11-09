@@ -169,6 +169,10 @@ export function createElectronBuilderConfig(
     extraResources: [
       { from: buildPaths.runtime, to: 'runtime' },
       { from: windowsIcon, to: 'icon.png' },
+      // The native installer embeds Noto Sans SC; carry its OFL with the installed application too.
+      ...(packagesWindows
+        ? [{ from: fileURLToPath(new URL('../installer/fonts/NotoSansSC-OFL.txt', import.meta.url)), to: 'licenses/NotoSansSC-OFL.txt' }]
+        : []),
       // Windows tray bitmaps; macOS keeps the Dock and ships no menu bar icon.
       ...(packagesWindows ? [{ from: trayIcon, to: 'tray.ico' }] : []),
     ],

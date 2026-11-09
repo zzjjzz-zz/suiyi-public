@@ -36,6 +36,9 @@ export const remoteDefaultResponses: RemoteTable = {
     'web/listProviders': ok({ search: [], fetch: [] }),
     // ui-permission-presets `PermissionCatalogDirectory` on its first read for a connection generation.
     'permissionPresets/catalog': ok({ options: [] }),
+    // ui-plugin-hub `PluginHubController.ensure()` on first mount: the hub is
+    // explicitly opt-in, so the default fixture boots with it disabled.
+    'pluginHub/catalog': ok({ plugins: [], catalogVersion: '', instances: [], enabled: false }),
     // ui-settings-account refreshes details after a stored-grant snapshot.
     'account/getProfile': ok(null),
     'account/getBalance': ok(null),
@@ -57,5 +60,7 @@ export const remoteDefaultResponses: RemoteTable = {
     'workspace/follow': openStream([{ type: 'baseline', value: { items: [], archivedSessionIds: [], pinnedSessionIds: [] } }]),
     // api-remote-access client `mountAccess`: the owner's access snapshot, then open.
     'remoteAccess/follow': openStream([{ type: 'baseline', owner: true }]),
+    // ui-plugin-hub `watchCatalog` at apply: one disabled/not-configured snapshot, then open.
+    'pluginHub/watch': openStream([{ plugins: [], catalogVersion: '', instances: [], enabled: false }]),
   },
 }

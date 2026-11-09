@@ -29,7 +29,7 @@ const request = (method: string, url: string, headers: Record<string, string> = 
         if (body !== "") yield Buffer.from(body);
       })();
     },
-  }) as unknown as IncomingMessage;
+  }) as IncomingMessage;
 const response = (): ServerResponse & { status?: number; ended?: boolean } => {
   const res = Object.assign(new EventEmitter(), {
     writableEnded: false,
@@ -50,7 +50,7 @@ const response = (): ServerResponse & { status?: number; ended?: boolean } => {
       return res;
     },
     statusCode: 0,
-  }) as unknown as ServerResponse & { status?: number; ended?: boolean };
+  }) as ServerResponse & { status?: number; ended?: boolean };
   return res;
 };
 
@@ -89,7 +89,7 @@ describe("the Suiyi connection fence (registered in front of every route)", () =
   test("an unauthenticated request (401 verdict) is refused before the route body runs", async () => {
     const { apply, CANVAS_READ_PATH } = (await import("../src/index.ts")) as { apply: (c: unknown, config: unknown) => void; CANVAS_READ_PATH: string };
     const { stub, registered } = fencedHost(401);
-    apply(stub, { allowExec: false });
+    apply(stub, { allowExec: false, allowData: true });
     const canvasRoute = registered.find((route) => route.path === CANVAS_READ_PATH);
     expect(canvasRoute).toBeDefined();
     const res = response();
@@ -100,10 +100,10 @@ describe("the Suiyi connection fence (registered in front of every route)", () =
 
   test("every registered HTTP route rejects unauthenticated requests", async () => {
     const { apply } = await import("../src/index.ts");
-    const { ASSET_PREFIX, CANVAS_READ_PATH, CARD_ERROR_PATH, FS_PATH, AI_STREAM_PATH, WEB_SEARCH_PATH } = await import("../src/contract-assets.ts");
+    const { ASSET_PREFIX, CANVAS_READ_PATH, CARD_ERROR_PATH, FS_PATH, AI_STREAM_PATH, WEB_SEARCH_PATH, SANDBOX_PATH, VISUAL_OUTPUT_PATH } = await import("../src/contract-assets.ts");
     const { stub, registered } = fencedHost(401);
-    apply(stub, { allowExec: false });
-    for (const path of [ASSET_PREFIX, CANVAS_READ_PATH, CARD_ERROR_PATH, FS_PATH, AI_STREAM_PATH, WEB_SEARCH_PATH]) {
+    apply(stub, { allowExec: false, allowData: true });
+    for (const path of [ASSET_PREFIX, CANVAS_READ_PATH, CARD_ERROR_PATH, FS_PATH, AI_STREAM_PATH, WEB_SEARCH_PATH, SANDBOX_PATH, VISUAL_OUTPUT_PATH]) {
       const route = registered.find((entry) => entry.path === path);
       expect(route).toBeDefined();
       const res = response();
@@ -116,7 +116,7 @@ describe("the Suiyi connection fence (registered in front of every route)", () =
   test("a malicious-Host request (403 verdict) is refused the same way", async () => {
     const { apply, CANVAS_READ_PATH } = (await import("../src/index.ts")) as { apply: (c: unknown, config: unknown) => void; CANVAS_READ_PATH: string };
     const { stub, registered } = fencedHost(403);
-    apply(stub, { allowExec: false });
+    apply(stub, { allowExec: false, allowData: true });
     const canvasRoute = registered.find((route) => route.path === CANVAS_READ_PATH);
     const res = response();
     canvasRoute!.handler(request("GET", `${CANVAS_READ_PATH}?cwd=/ws`, { host: "evil.example.com" }), res as ServerResponse);
@@ -148,7 +148,7 @@ describe("the Suiyi connection fence (registered in front of every route)", () =
       agentDefaultModel: { currentSelection: () => ({ provider: "p", model: "m" }) },
       web: { search: async () => ({ sources: [], truncated: false }) },
     };
-    apply(stub, { allowExec: false });
+    apply(stub, { allowExec: false, allowData: true });
     const canvasRoute = registered.find((route) => route.path === CANVAS_READ_PATH);
     const res = response();
     canvasRoute!.handler(request("GET", `${CANVAS_READ_PATH}?cwd=/ws`), res as ServerResponse);

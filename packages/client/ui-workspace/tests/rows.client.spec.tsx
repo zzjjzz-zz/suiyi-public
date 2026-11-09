@@ -268,11 +268,11 @@ describe('workspace browser rows', () => {
       runningSubagentCount: 0, completed: false, updatedAt: 0, pinned: false, archived: false,
     }
     const view = render(<SessionNodeItem node={idle} currentId={undefined} now={0} onOpen={vi.fn()} t={t} />)
-    // The cell is the row's first element and holds nothing while the row is
-    // idle without an occupant; the title follows it.
+    // The cell is the row's first element and carries the recent glyph while
+    // the row is idle; the title follows it.
     const cell = screen.getByText('Flat Session').previousElementSibling
     expect(cell?.className).toMatch(/slot/)
-    expect(cell?.children).toHaveLength(0)
+    expect(cell?.querySelector('svg')).toBeTruthy()
 
     view.rerender(<SessionNodeItem node={{ ...idle, running: true }} currentId={undefined} now={0}
       onOpen={vi.fn()} t={t} />)
@@ -1443,6 +1443,14 @@ describe('session row decoration seats', () => {
       expect(fireEvent.keyDown(row, { key, ...modifiers })).toBe(true)
     }
     expect(onOpen).not.toHaveBeenCalled()
+  })
+
+  it('draws the recent glyph when no leading-seat occupant is registered', () => {
+    const renderSlot = (() => null) as RowRenderSlot
+    renderRow(idle, renderSlot)
+    const row = screen.getByRole('treeitem')
+    expect(row.firstElementChild?.querySelector('svg')).toBeTruthy()
+    expect(row.querySelector('[data-state]')).toBeNull()
   })
 
   it('offers the leading seat only while the row is idle, and no state dot beside it', () => {

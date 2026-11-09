@@ -10,6 +10,11 @@ export type AgentPresetSettingsKey =
   | 'seatHint'
   | 'headerHint'
   | 'nav'
+  | 'nav.agents'
+  | 'defaultAgent.title'
+  | 'defaultAgent.description'
+  | 'defaultAgent.loading'
+  | 'defaultAgent.empty'
   | 'sectionIntro'
   | 'setDefault'
   | 'view'
@@ -42,6 +47,12 @@ export const en: Record<AgentPresetSettingsKey, string> = {
 
   seatHint: 'Choose the agent preset for your new task',
   headerHint: 'The agent preset chosen when this task started',
+  'defaultAgent.title': 'Default agent',
+  'defaultAgent.description': 'The agent preset new tasks use.',
+  'defaultAgent.loading': 'Loading presets…',
+  'defaultAgent.empty': 'No presets available',
+
+  'nav.agents': 'Agents',
   nav: 'Agent presets',
 
   setDefault: 'Set as new task default',
@@ -87,6 +98,12 @@ export const zh: Record<AgentPresetSettingsKey, string> = {
 
   seatHint: '选择新任务使用的 Agent 预设',
   headerHint: '本任务的 Agent 预设，在任务开始时确定',
+  'defaultAgent.title': '默认助手',
+  'defaultAgent.description': '新建任务默认使用的智能体预设。',
+  'defaultAgent.loading': '正在读取预设…',
+  'defaultAgent.empty': '当前没有可选预设',
+
+  'nav.agents': '智能体',
   nav: 'Agent 预设',
 
   setDefault: '设为新任务默认',
@@ -134,6 +151,12 @@ export const ja = {
   'sectionIntro': 'エージェントのツールと動作を選択します。日々のタスクには標準モードを、DSH に機能を追加するにはクリエイターモードを使用してください。',
   'seatHint': '新しいタスクで使用するエージェントプリセットを選択',
   'headerHint': 'このタスクの開始時に選択されたエージェントプリセット',
+  'defaultAgent.title': 'デフォルトエージェント',
+  'defaultAgent.description': '新しいタスクで使用するエージェントプリセット。',
+  'defaultAgent.loading': 'プリセットを読み込み中…',
+  'defaultAgent.empty': '利用できるプリセットがありません',
+
+  'nav.agents': 'エージェント',
   'nav': 'エージェントプリセット',
   'setDefault': '新しいタスクの既定に設定',
   'view': '設定を表示',
@@ -167,6 +190,12 @@ export const es = {
 
   seatHint: 'Elija el agente preestablecido para su nueva tarea',
   headerHint: 'El agente preestablecido elegido cuando comenzó esta tarea',
+  'defaultAgent.title': 'Agente predeterminado',
+  'defaultAgent.description': 'Las tareas nuevas usan este preset de agente.',
+  'defaultAgent.loading': 'Cargando presets…',
+  'defaultAgent.empty': 'No hay presets disponibles',
+
+  'nav.agents': 'Agentes',
   nav: 'Ajustes preestablecidos del agente',
 
   setDefault: 'Establecer como nueva tarea predeterminada',
@@ -212,6 +241,12 @@ export const fr = {
 
   seatHint: "Choisissez le préréglage d'agent pour votre nouvelle tâche",
   headerHint: "Le préréglage d'agent choisi au démarrage de cette tâche",
+  'defaultAgent.title': 'Agent par défaut',
+  'defaultAgent.description': 'Le preset d’agent utilisé par les nouvelles tâches.',
+  'defaultAgent.loading': 'Chargement des presets…',
+  'defaultAgent.empty': 'Aucun preset disponible',
+
+  'nav.agents': 'Agents',
   nav: "Préréglages d'agent",
 
   setDefault: 'Définir comme nouvelle tâche par défaut',
@@ -257,6 +292,12 @@ export const de = {
 
   seatHint: 'Wählen Sie die Agentenvoreinstellung für Ihre neue Aufgabe',
   headerHint: 'Die Agentenvoreinstellung, die beim Start dieser Aufgabe ausgewählt wurde',
+  'defaultAgent.title': 'Standard-Agent',
+  'defaultAgent.description': 'Das Agent-Preset für neue Aufgaben.',
+  'defaultAgent.loading': 'Presets werden geladen…',
+  'defaultAgent.empty': 'Keine Presets verfügbar',
+
+  'nav.agents': 'Agenten',
   nav: 'Agentenvoreinstellungen',
 
   setDefault: 'Als Standard für neue Aufgabe festlegen',
@@ -302,6 +343,12 @@ export const ru = {
 
   seatHint: 'Выберите предустановку агента для вашей новой задачи',
   headerHint: 'Предварительная настройка агента, выбранная при запуске этой задачи',
+  'defaultAgent.title': 'Агент по умолчанию',
+  'defaultAgent.description': 'Пресет агента для новых задач.',
+  'defaultAgent.loading': 'Загрузка пресетов…',
+  'defaultAgent.empty': 'Нет доступных пресетов',
+
+  'nav.agents': 'Агенты',
   nav: 'Настройки агента',
 
   setDefault: 'Установить в качестве новой задачи по умолчанию',
@@ -347,6 +394,12 @@ export const pt = {
 
   seatHint: 'Escolha a predefinição de agente para sua nova tarefa',
   headerHint: 'A predefinição do agente escolhida quando esta tarefa foi iniciada',
+  'defaultAgent.title': 'Agente padrão',
+  'defaultAgent.description': 'O preset de agente usado por novas tarefas.',
+  'defaultAgent.loading': 'Carregando presets…',
+  'defaultAgent.empty': 'Nenhum preset disponível',
+
+  'nav.agents': 'Agentes',
   nav: 'Predefinições de agente',
 
   setDefault: 'Definir como nova tarefa padrão',

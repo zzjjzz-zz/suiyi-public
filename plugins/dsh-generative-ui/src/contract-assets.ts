@@ -5,6 +5,31 @@
 export const ASSET_PREFIX = "/dsh-generative-ui/assets";
 export const WASM_PATH = `${ASSET_PREFIX}/tsx_bg.wasm`;
 
+/**
+ * The opaque-origin document generated UI renders in.
+ *
+ * `sandbox="allow-scripts"` and no `allow-same-origin` is what makes the frame's
+ * origin opaque: `document.cookie`, `localStorage`, the parent DOM and any
+ * credentialed request are unavailable by construction, not by a runtime check.
+ * The route is the only document that may be framed; see `serveSandbox`.
+ */
+export const SANDBOX_PATH = "/dsh-generative-ui/sandbox";
+
+/** The sandbox runtime module, served beside the document so a relative module load works. */
+export const SANDBOX_SCRIPT_PATH = `${SANDBOX_PATH}/runtime.js`;
+
+/** Trusted wrapper document; it frames only `SANDBOX_PATH` and runs no generated code. */
+export const SANDBOX_WRAPPER_PATH = `${SANDBOX_PATH}/frame`;
+
+/** The tsx compiler wasm the bundled runtime resolves beside itself. */
+export const SANDBOX_WASM_PATH = `${SANDBOX_PATH}/tsx_bg.wasm`;
+
+/**
+ * The provider's accepted visual-output preference. Read and written by the
+ * settings row through the `visualOutput` seam; never enables execution.
+ */
+export const VISUAL_OUTPUT_PATH = "/dsh-generative-ui/visual-output";
+
 /** Reads one canvas file from the session's workspace: `?cwd=<workspace>&id=<canvas>`. */
 export const CANVAS_READ_PATH = "/dsh-generative-ui/canvas";
 

@@ -17,29 +17,19 @@ import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from
 import { createPortal } from 'react-dom'
 import clsx from 'clsx'
 import {
-  ConnectionIndicator, Tooltip, useModalLayer,
-  IconAgentPresetOutlineMedium, IconArchiveOutlineMedium, IconCloseOutlineRegular, IconDataOutlineMedium,
-  IconPersonalizationOutlineMedium, IconSettingsOutlineMedium, IconUserOutlineMedium,
+  ConnectionIndicator, Tooltip, useModalLayer, IconCloseOutlineRegular,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ConnectionIndicatorState } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { SettingsRootComponentProps, SettingsSectionRow } from './shell-contract.ts'
+import { navIcon } from './settings-icons.tsx'
 import css from './SettingsRoot.module.css'
 import { DesktopUpdateIndicator } from './DesktopUpdateIndicator.tsx'
+import { SuiyiAccountRow } from './SuiyiAccountRow.tsx'
 
 const RECOVERY_CONFIRMATION_MS = 2_000
 
 /** Minimum visible time for the connecting pill; shorter attempts read as flicker. */
 const CONNECTING_MIN_VISIBLE_MS = 800
-
-/** Nav glyph by section id; unknown ids fall back to the settings gear. */
-function navIcon(id: string) {
-  if (id === 'account') return <IconUserOutlineMedium size={16} />
-  if (id === 'models') return <IconDataOutlineMedium size={16} />
-  if (id === 'agent-presets') return <IconAgentPresetOutlineMedium size={16} />
-  if (id === 'plugins') return <IconPersonalizationOutlineMedium size={16} />
-  if (id === 'archived-sessions') return <IconArchiveOutlineMedium size={16} />
-  return <IconSettingsOutlineMedium size={16} />
-}
 
 type PanelProps = {
   rows: readonly SettingsSectionRow[]
@@ -121,11 +111,16 @@ function SettingsPanel({ rows, renderSlot, activeId, onSelect, onClose }: PanelP
 export function SettingsRoot(props: SettingsRootComponentProps) {
   const {
     wide, reconnect, useConnectionState, useSections, useOnboardingSteps, useSessions, renderSlot, t,
-    useDesktopUpdate, openDesktopUpdate, useStore, actions, useShortcuts,
+    useDesktopUpdate, openDesktopUpdate, useStore, actions, useShortcuts, page,
+    useSuiyiIdentity, signIn, signOut,
   } = props
   const { open, activeId } = useStore(state => state)
   const shortcut = useShortcuts(rows => rows.find(row => row.id === 'settings.open'))
   const { close, openSection } = actions
+  const openSectionPage = (id: string): void => {
+    openSection(id)
+    if (page !== undefined) page.open()
+  }
   const [requestedOnboarding, setRequestedOnboarding] = useState<string | undefined>()
   const [completedOnboarding, setCompletedOnboarding] = useState<ReadonlySet<string>>(() => new Set())
   const [showRecovery, setShowRecovery] = useState(false)
@@ -136,6 +131,7 @@ export function SettingsRoot(props: SettingsRootComponentProps) {
   // freshly localized text on locale change, and the trigger/header/close
   // seats re-render through their own outlets' subscriptions.
   const rows = useSections(s => s)
+  const suiyiIdentity = useSuiyiIdentity(state => state)
   const desktopUpdate = useDesktopUpdate(state => state)
   const connectionState = useConnectionState(state => state)
   const previousConnectionState = useRef(connectionState)
@@ -163,8 +159,11 @@ export function SettingsRoot(props: SettingsRootComponentProps) {
   useEffect(() => {
     const appeared = onboardingStepSeen.current === undefined && onboardingStep !== undefined
     onboardingStepSeen.current = onboardingStep
-    if (appeared && open) close()
-  }, [onboardingStep, open, close])
+    if (appeared && open) {
+      if (page !== undefined) page.close()
+      else close()
+    }
+  }, [onboardingStep, open, close, page])
 
   useLayoutEffect(() => {
     const previous = previousConnectionState.current
@@ -222,37 +221,68 @@ export function SettingsRoot(props: SettingsRootComponentProps) {
 
   return (
     <>
-      <div className={clsx(css.triggerRow, !wide && css.railRow)}>
-        {renderSlot('settings.launcher', {
-          wide, settingsOpen: open, openSettings: actions.open,
-          ...(shortcut?.keys.length ? { settingsShortcut: { keys: shortcut.keys, aria: shortcut.aria } } : {}),
-          openOnboarding: (id) => { close(); setRequestedOnboarding(id) },
-        }, { fallback: <Tooltip disabled={open} label={t('trigger')} shortcutKeys={shortcut?.keys}>
-          <button
-            type="button"
-            className={clsx(css.trigger, !wide && css.rail)}
-            aria-label={t('trigger')}
-            aria-keyshortcuts={shortcut?.aria}
-            aria-haspopup="dialog"
-            aria-expanded={open}
-            onClick={() => { actions.open() }}
-          >
-            {renderSlot('settings.trigger', { wide })}
-          </button>
-        </Tooltip> })}
-        <ConnectionIndicator
-          state={wide && desktopUpdate.presentation?.phase !== 'installing' ? connectionIndicator : undefined}
-          disconnectedLabel={t('connection.error')}
-          connectingLabel={t('connection.connecting')}
-          recoveredLabel={t('connection.connected')}
-          reconnectActionLabel={t('connection.reconnect')}
-          restartActionLabel={t('connection.restart')}
-          onReconnect={reconnect}
-        />
-        <DesktopUpdateIndicator wide={wide} hidden={connectionIndicator !== undefined && desktopUpdate.presentation?.phase !== 'installing'}
-          t={t} view={desktopUpdate} onOpen={openDesktopUpdate} />
-      </div>
-      {open && (
+      {page === undefined ? (
+        <div className={clsx(css.triggerRow, !wide && css.railRow)}>
+          {renderSlot('settings.launcher', {
+            wide, settingsOpen: open, openSettings: actions.open,
+            ...(shortcut?.keys.length ? { settingsShortcut: { keys: shortcut.keys, aria: shortcut.aria } } : {}),
+            openOnboarding: (id) => { close(); setRequestedOnboarding(id) },
+          }, { fallback: <Tooltip disabled={open} label={t('trigger')} shortcutKeys={shortcut?.keys}>
+            <button
+              type="button"
+              className={clsx(css.trigger, !wide && css.rail)}
+              aria-label={t('trigger')}
+              aria-keyshortcuts={shortcut?.aria}
+              aria-haspopup="dialog"
+              aria-expanded={open}
+              onClick={() => { actions.open() }}
+            >
+              {renderSlot('settings.trigger', { wide })}
+            </button>
+          </Tooltip> })}
+          <ConnectionIndicator
+            state={wide && desktopUpdate.presentation?.phase !== 'installing' ? connectionIndicator : undefined}
+            disconnectedLabel={t('connection.error')}
+            connectingLabel={t('connection.connecting')}
+            recoveredLabel={t('connection.connected')}
+            reconnectActionLabel={t('connection.reconnect')}
+            restartActionLabel={t('connection.restart')}
+            onReconnect={reconnect}
+          />
+          <DesktopUpdateIndicator wide={wide} hidden={connectionIndicator !== undefined && desktopUpdate.presentation?.phase !== 'installing'}
+            t={t} view={desktopUpdate} onOpen={openDesktopUpdate} />
+        </div>
+      ) : (
+        <div className={css.pageFoot}>
+          <div className={css.footRow}>
+            <button
+              type="button"
+              className={css.settingsEntry}
+              aria-label={t('trigger')}
+              aria-keyshortcuts={shortcut?.aria}
+              aria-expanded={open}
+              onClick={() => { page.open() }}
+            >
+              {renderSlot('settings.trigger', { wide })}
+            </button>
+            <ConnectionIndicator
+              state={wide && desktopUpdate.presentation?.phase !== 'installing' ? connectionIndicator : undefined}
+              disconnectedLabel={t('connection.error')}
+              connectingLabel={t('connection.connecting')}
+              recoveredLabel={t('connection.connected')}
+              reconnectActionLabel={t('connection.reconnect')}
+              restartActionLabel={t('connection.restart')}
+              onReconnect={reconnect}
+            />
+            <DesktopUpdateIndicator wide={wide} hidden={connectionIndicator !== undefined && desktopUpdate.presentation?.phase !== 'installing'}
+              t={t} view={desktopUpdate} onOpen={openDesktopUpdate} />
+          </div>
+          <div className={css.footRow}>
+            <SuiyiAccountRow t={t} state={suiyiIdentity} signIn={signIn} signOut={signOut} />
+          </div>
+        </div>
+      )}
+      {open && page === undefined && (
         <SettingsPanel
           rows={rows}
           renderSlot={renderSlot}
@@ -268,7 +298,7 @@ export function SettingsRoot(props: SettingsRootComponentProps) {
         stepId: onboardingStep.id,
         explicit: requestedOnboarding !== undefined,
         complete: () => { completeOnboardingStep(onboardingStep.id) },
-        openSection,
+        openSection: openSectionPage,
       }, { only: onboardingStep.id })}
     </>
   )

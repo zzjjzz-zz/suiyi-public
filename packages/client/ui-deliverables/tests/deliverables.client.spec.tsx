@@ -856,7 +856,12 @@ describe('plugin registration', () => {
     } as never, () => null)
     const registerTab = vi.fn(() => () => { registered = undefined })
     let registered: unknown
-    ctx.provide('sidebarRightTabs', { register: (definition: unknown) => { registered = definition; return registerTab() } } as never)
+    const registeredKinds: string[] = []
+    ctx.provide('sidebarRightTabs', { register: (definition: unknown) => {
+      registered = definition
+      registeredKinds.push((definition as { kind: string }).kind)
+      return registerTab()
+    } } as never)
     const openResource = vi.fn()
     ctx.provide('sidebarRight', { openResource } as never)
     // ui-theme's Appearance row binds a durable scope through these two.
@@ -879,8 +884,14 @@ describe('plugin registration', () => {
     expect(ctx.slots.entries('tool.call.toolview')).toHaveLength(1)
     expect(entry?.inject).toBeDefined()
     expect(registered).toMatchObject({ kind: 'changes-review', patterns: ['dsh-resource://changes-review/**'] })
-    const [tabEntry] = ctx.slots.entries('sidebar.right.pane.tab')
-    expect(tabEntry?.options.key).toBe('@deepseek-ai/dsh-client-ui-deliverables')
+    expect(registeredKinds).toEqual(['artifacts', 'changes', 'changes-review'])
+    const tabEntries = ctx.slots.entries('sidebar.right.pane.tab')
+    expect(tabEntries.map(entry => entry.options.key)).toEqual([
+      '@deepseek-ai/dsh-client-ui-deliverables',
+      '@deepseek-ai/dsh-client-ui-deliverables/artifacts',
+      '@deepseek-ai/dsh-client-ui-deliverables/changes',
+    ])
+    const [tabEntry] = tabEntries
 
     // The prose face is live while the plugin is: a produced turn yields a
     // resolver whose matches open through the owner-supplied opener.

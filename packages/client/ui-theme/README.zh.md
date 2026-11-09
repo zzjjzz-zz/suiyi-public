@@ -29,7 +29,9 @@ kind: "package-reference"
 
 ### 外观与字号
 
-窄屏浏览器设置中，三个外观选项同排显示，字号标签使用较小的间距。视口宽度不超过 767 CSS px 时（包括窄桌面窗口），字体输入行按标题、说明、输入框纵向排列，输入框占满可用宽度；字号步进器保持在标签右侧。更宽的视口保留字体输入行的横向排列。Windows 和 macOS 桌面窗口的外观选项保留换行，字号标签保留标准间距。主指针精度较低的设备上，字体输入框使用 16 px 文字。
+外观行展示原型的三张卡片——浅色、深色与跟随系统——每张都是窗口缩略图加文字（缩略图 59 px、卡片 2 px 描边、选中态使用品牌色描边）。缩略图配色是两套主题各自的固定缩影，不跟随当前激活主题的 token，因此不会随所选偏好改变。窄屏浏览器设置中三张卡片保持同排，间距与缩略图缩小（47 px），上下内边距为 14 px。视口宽度不超过 767 CSS px 时（包括窄桌面窗口），字体输入行按标题、说明、输入框纵向排列，输入框占满可用宽度；字号步进器保持在标签右侧。更宽的视口保留字体输入行的横向排列。Windows 和 macOS 桌面窗口的外观卡片保留换行，字号标签保留标准间距。主指针精度较低的设备上，字体输入框使用 16 px 文字。
+
+遂意用紧凑下拉框显示正文字号：默认 14 px 显示为「标准」，仍可选择 10–22 px 的全部整数；「更多字体设置」展开或收起既有高级字体控件。选中值以 Host 接受的设置为准。
 
 插件在「通用」分区注册外观偏好方块与正文字号步进器。步进器后的「更多字体设置」按钮在其下方展开一个区域，每次打开设置时均为折叠状态，其中包含正文、代码与终端各自的字体行，以及代码与终端的字号步进器。正文步进器接受 10 至 22 px 的整数，默认值为 14 px。它以相同增量调整会话标题与基础文本，包括用户气泡与 composer 草稿；流内行的标题、摘要与表格跟随比正文低一档的字号，小号文本保持固定字号。代码步进器（10–16 px，默认 11）设置代码块字号；行内代码保持大 1 px，工具输出的小号变体使用相同字号。终端步进器（10–20 px，默认 13）设置侧栏终端的单元格字号；修改后保留 shell 与输出，并重新适配网格。每次通过的变更都经 Host settings API 写入。连续快速变更按操作顺序携带命名空间 revision 串行写入，最新写入被拒时重新加载持久值。
 
@@ -38,6 +40,8 @@ Desktop 的固定快捷键 `Cmd`/`Ctrl` + `+`（或 `=`）和 `Cmd`/`Ctrl` + `-`
 ### 字体
 
 三行分别独立设置正文字体（界面与会话正文）、代码字体（代码块、行内代码及其他使用 `--ds-font-family-code` 的文本）与侧栏终端字体。每个输入框接受逗号分隔的字体名，失焦或按 Enter 时提交；清空输入框即恢复内置字体栈。服务会规范化每个列表：去掉引号、反斜杠、尖括号与控制字符，并给 CSS 通用字体族以外的名称加双引号，然后存入 `textFontFamily`、`codeFontFamily` 或 `terminalFontFamily`。用户列表排在该类内置字体栈之前，因此本机缺少的字体会回退到默认字体。输入框接受任何已安装字体的名称，但不枚举本地字体。
+
+遂意构建通过其品牌层为界面文字与页面标题选用 Noto Sans SC；其他构建保留各类角色的内置系统字体栈。
 
 ### 注册主题
 
@@ -65,7 +69,9 @@ Desktop 的固定快捷键 `Cmd`/`Ctrl` + `+`（或 `=`）和 `Cmd`/`Ctrl` + `-`
 
 `base.css` 持有共享圆角尺度、字体 token 与设置卡片材质别名。`--dsh-font-family-text-default` 与 `--dsh-font-family-code-default` 在 `:root` 上保存内置字体栈；在 `body` 上，`--dsw-font-family` 与 `--ds-font-family-code` 把 `--dsh-font-family-text` 与 `--dsh-font-family-code` 排在这些字体栈之前，未设置的列表解析为内置字体栈（重复一次，字体匹配会忽略重复项）。材质别名在 `body` 上随当前色板解析。组件圆角选择遵循 [Web 样式参考](../../../docs/web-styling.zh.md#corner-radii-and-settings-cards)。
 
-`src/styles/` 下有八张样式表，由 ui-theme 的动态客户端 entry 依次导入：`base.css`、`corner-shape.css`、`design-platform.css`、`focus.css`、`onboarding.css`、`scrollbar.css`、`gradient-shadow-text.css` 与 `shiki.css`。客户端 bundle 将其编译并注入为插件持有的全局样式，因此卸载与 HMR（热模块替换）会随 ui-theme 一同移除。`scrollbar.css` 消费 `--dsw-alias-scrollbar-*` token，必须排在声明这些 token 的 `design-platform.css` 之后。状态标记使用各自的语义状态 token；`--dsw-alias-state-done-primary` 标记已完成的工作（例如已合并的变更请求），浅色主题为 violet-600，深色主题为 violet-400。`--dsw-alias-bg-document-selection` 在两种主题中均使用 40% 不透明度的 blue-500，供保留文档原色的选区使用。`design-platform.css` 还负责代码差异底色的别名及其静态透明度色阶，以及文件对比所用的 `--dsw-alias-file-diff-*` 代码区、行号区和标记配色；`shiki.css` 负责语法颜色。
+`src/styles/` 下有九张样式表，由 ui-theme 的动态客户端 entry 依次导入：`base.css`、`corner-shape.css`、`design-platform.css`、`focus.css`、`onboarding.css`、`scrollbar.css`、`gradient-shadow-text.css`、`shiki.css` 与 `brand-identity.css`。客户端 bundle 将其编译并注入为插件持有的全局样式，因此卸载与 HMR（热模块替换）会随 ui-theme 一同移除。`scrollbar.css` 消费 `--dsw-alias-scrollbar-*` token，必须排在声明这些 token 的 `design-platform.css` 之后。状态标记使用各自的语义状态 token；`--dsw-alias-state-done-primary` 标记已完成的工作（例如已合并的变更请求），浅色主题为 violet-600，深色主题为 violet-400。`--dsw-alias-bg-document-selection` 在两种主题中均使用 40% 不透明度的 blue-500，供保留文档原色的选区使用。`design-platform.css` 还负责代码差异底色的别名及其静态透明度色阶，以及文件对比所用的 `--dsw-alias-file-diff-*` 代码区、行号区和标记配色；`shiki.css` 负责语法颜色。
+
+`brand-identity.css` 声明供功能包消费的 `--dsw-brand-*` 契约，避免它们硬编码某个产品身份：品牌字体栈、标题与字标字重、字标度量、背景基色、晕带端点、遮罩几何与色调、强度（桌面与紧凑布局）、会话底色、页面底色、玻璃填充、强调 ink/soft、输入框与快捷药丸材质，以及图形投影。每个默认值都是中性的官方身份，并引用既有别名 token，因此构建 profile 品牌插件只需在自己的作用域内覆盖同名 token。同一张表还声明 `--dsw-app-frame-fill`（应用框架背景）：默认值为 `var(--dsw-alias-bg-base)`，AppFrame 以该别名为回退绘制它，品牌 profile 因此可以清空框架、让一层背景场景铺满窗口，而不影响其他 profile。输入框（`--dsw-brand-composer-*`）与首页快捷药丸（`--dsw-brand-shortcut-*`）的 token 默认值复现当前会话材质，会话包可直接消费而不改变品牌 profile 之外的观感；品牌 profile 以两套配色提供原型值。该契约声明在 `body` 而不是 `:root` 上，因为 `--dsw-font-family` 会在 `body` 上携带用户字体列表；在根节点计算会先解析内置字体栈。
 
 [`focus.css`](src/styles/focus.css) 提供 `:focus-visible` 兜底：通过 `var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary))` 声明焦点环颜色，并通过 `--dsw-focus-ring-width` 声明标准宽度，但不声明轮廓样式——因此禁用轮廓的控件仍然不绘制，而没有自有焦点环的控件保持标准几何，而不是落到 Chromium 的 `auto 1px`。主题将该蓝色解析为浅色模式的 `#4176E6` 和深色模式的 `#7AAAFF`。组件轮廓与焦点环阴影使用同一颜色表达式，包括后代和伪元素上的环。`--dsw-focus-ring-width`（2px）是标准宽度；密集表格与工具栏可以保留 1px，offset 仍由组件决定。
 
@@ -84,6 +90,8 @@ Desktop 的固定快捷键 `Cmd`/`Ctrl` + `+`（或 `=`）和 `Cmd`/`Ctrl` + `-`
 `--dsw-alias-turn-trigger-*` token 分别定义深浅主题下轮次触发通知的常态和悬停底色。 深色提示使用更亮的交互层色，使静止卡片与文本记录背景保持区分。
 
 `brand-font.css` 导出本地 Montserrat Light、Regular 和 Medium 字体（正体、字重 300、400 和 500），`lib/styles/` 同时提供 `montserrat-light.woff2`、`montserrat-regular.woff2`、`montserrat-medium.woff2` 及其 SIL Open Font License。Desktop 将同一份样式表、字体和许可证打包，用于欢迎页品牌文字的离线显示；普通界面保留系统字体栈。
+
+`brand-font.css` 还导入 `noto-sans-sc.css`：`lib/styles/noto-sans-sc/` 下随包发布的 Noto Sans SC 本地子集（字重 300–600、按 `unicode-range` 拆分、`font-display: swap`）及其 SIL Open Font License。子集随包发布，因此 Web 应用可离线渲染该字体；仅有声明不会触发下载，只有选择该字体族的样式表才会请求对应子集。
 
 `corner-shape.css` 平滑所有圆角：在 `@supports (corner-shape: superellipse(1.5))` 内定义 `--dsw-corner-shape`，并通过通配选择器应用到所有元素及其 `::before`/`::after`，因此不支持 `corner-shape` 的引擎保持普通圆弧。正圆形状——`border-radius: 50%` 的圆与胶囊半径——因超级椭圆会使其变形，须在所属组件样式表中把 `corner-shape: round` 与半径声明配对；corner-shape 样式表 spec 跨全部包样式表强制这一配对。
 
@@ -113,6 +121,7 @@ Desktop 的固定快捷键 `Cmd`/`Ctrl` + `+`（或 `=`）和 `Cmd`/`Ctrl` + `-`
 - [ui-layout](../ui-layout/README.zh.md)——应用解析后主题快照的展示转换器。
 - [ui-sidebar](../ui-sidebar/README.zh.md)——滚动条重新绑定约定的消费方。
 - [ui-conversation](../ui-conversation/README.zh.md)——为 composer 席位消费 `--dsh-scrollbar-width` 的消费方。
+- [ui-brand-suiyi](../ui-brand-suiyi/README.zh.md)——为该构建 profile 覆盖品牌身份契约的遂意品牌填充。
 - [Web 样式](../../../docs/web-styling.zh.md)——Web 客户端组件的权威样式规则。
 - [已认证浏览器 Host 偏好](../../../.agents/notes/implemented/bug-fix/2026-09-15-authenticated-browser-host-preferences.zh.md)——持久化策略决策。
 

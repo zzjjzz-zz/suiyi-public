@@ -1,4 +1,6 @@
 @import url('./assets/window-material.css');
+/* Offline Noto Sans SC subsets for the Suiyi login page; no runtime font request. */
+@import url('./assets/noto-sans-sc.css');
 
 /* Figma 2121:39336 / 2138:44626, Platform modes. Native material supplies the blur. */
 body {
@@ -341,3 +343,782 @@ body {
 .actions .welcome-loading { color: inherit; }
 
 .auth-waiting .copy-link:disabled { cursor: default; }
+
+/*
+ * Suiyi Keycloak login page, restored from the frozen prototype cascade
+ * (prototype: styles.css :root tokens, product-pages.css .sy-auth/.sy-auth-card).
+ * Values are the prototype's final computed sizes, colors, and radii.
+ */
+.sy-login {
+  --sy-bg: #f6f7fa;
+  --sy-text: #20242d;
+  --sy-muted: #53667d;
+  --sy-accent: #2367d9;
+  --sy-accent-ink: #1655b8;
+  --sy-accent-wash: #e4efff;
+  --sy-glass: rgba(255, 255, 255, 0.76);
+  --sy-card: rgba(255, 255, 255, 0.87);
+  --sy-border: rgba(124, 156, 194, 0.25);
+  --sy-shadow: 0 28px 80px rgba(37, 82, 142, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  --sy-cyan: #15a3be;
+  --sy-warning: #9a6515;
+  --sy-warning-bg: #fff5df;
+  --sy-focus: #4285f4;
+  --sy-font-ui: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --sy-scene-base: #edf5ff;
+  --sy-scene-blue: 31 118 246;
+  --sy-scene-cyan: 37 183 230;
+  --sy-scene-ice: 192 240 255;
+  --sy-scene-veil: rgba(250, 253, 255, 0.44);
+  --sy-scene-strength: 0.86;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--sy-scene-base);
+  color: var(--sy-text);
+  color-scheme: light;
+  font-family: var(--sy-font-ui);
+  font-size: 14px;
+  line-height: 1.7;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  -webkit-font-smoothing: antialiased;
+}
+
+@media (prefers-color-scheme: dark) {
+  .sy-login {
+    --sy-bg: #111318;
+    --sy-text: #edf0f7;
+    --sy-muted: #a8bfd8;
+    --sy-accent: #a0c7ff;
+    --sy-accent-ink: #b8d6ff;
+    --sy-accent-wash: #203a59;
+    --sy-glass: rgba(18, 34, 54, 0.8);
+    --sy-card: rgba(22, 39, 61, 0.93);
+    --sy-border: rgba(141, 184, 234, 0.22);
+    --sy-shadow: 0 28px 80px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(181, 217, 255, 0.1);
+    --sy-cyan: #6bdeec;
+    --sy-warning: #f2c071;
+    --sy-warning-bg: #3d3020;
+    --sy-focus: #8ab4f8;
+    --sy-scene-base: #061122;
+    --sy-scene-blue: 22 104 247;
+    --sy-scene-cyan: 26 177 229;
+    --sy-scene-ice: 151 224 255;
+    --sy-scene-veil: rgba(5, 16, 33, 0.27);
+    --sy-scene-strength: 0.98;
+    color-scheme: dark;
+  }
+}
+
+.sy-login *,
+.sy-login *::before,
+.sy-login *::after {
+  box-sizing: border-box;
+}
+
+.sy-ambient {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  isolation: isolate;
+  pointer-events: none;
+  background: var(--sy-scene-base);
+}
+
+.sy-ambient-field {
+  position: absolute;
+  inset: -6%;
+  opacity: var(--sy-scene-strength);
+}
+
+.sy-halo-cloud {
+  position: absolute;
+  inset: -9%;
+  background:
+    radial-gradient(ellipse 38% 45% at 86% 18%, rgb(var(--sy-scene-cyan) / 0.52), transparent 75%),
+    radial-gradient(ellipse 42% 39% at 21% 87%, rgb(var(--sy-scene-blue) / 0.55), transparent 75%),
+    radial-gradient(ellipse 30% 26% at 66% 68%, rgb(var(--sy-scene-ice) / 0.38), transparent 77%);
+  filter: blur(28px);
+  animation: sy-halo-cloud-drift 24s ease-in-out infinite alternate;
+}
+
+.sy-halo-ribbon {
+  position: absolute;
+  left: -13%;
+  top: 11%;
+  width: 126%;
+  height: 132%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 50%,
+    transparent 33%, rgb(var(--sy-scene-ice) / 0.10) 37%,
+    rgb(var(--sy-scene-ice) / 0.76) 41%, rgb(var(--sy-scene-cyan) / 0.62) 45%,
+    rgb(var(--sy-scene-blue) / 0.56) 50%, rgb(var(--sy-scene-blue) / 0.16) 57%, transparent 67%);
+  filter: blur(24px);
+  transform: rotate(-26deg) scaleY(0.64);
+  transform-origin: 50% 50%;
+  animation: sy-halo-ribbon-drift 26s ease-in-out infinite alternate;
+}
+
+.sy-halo-ribbon::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(ellipse at 50% 50%, transparent 38.5%,
+    rgb(var(--sy-scene-ice) / 0.83) 40.5%, rgb(var(--sy-scene-ice) / 0.12) 43%, transparent 47%);
+  opacity: 0.58;
+}
+
+.sy-halo-ribbon--far {
+  left: 30%;
+  top: -62%;
+  width: 110%;
+  height: 119%;
+  opacity: 0.64;
+  transform: rotate(-32deg) scaleY(0.65);
+  filter: blur(31px);
+  animation: sy-halo-far-drift 31s ease-in-out infinite alternate;
+}
+
+.sy-halo-veil {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 43% 39% at 58% 33%, var(--sy-scene-veil), transparent 85%);
+}
+
+@keyframes sy-halo-cloud-drift {
+  from { transform: translate3d(-1.5%, -1%, 0) scale(1); }
+  to { transform: translate3d(2.8%, 2%, 0) scale(1.045); }
+}
+
+@keyframes sy-halo-ribbon-drift {
+  from { transform: translate3d(-1.5%, 1%, 0) rotate(-26deg) scaleY(0.64); }
+  to { transform: translate3d(3%, -2%, 0) rotate(-18deg) scaleY(0.69); }
+}
+
+@keyframes sy-halo-far-drift {
+  from { transform: translate3d(1%, -1%, 0) rotate(-32deg) scaleY(0.65); }
+  to { transform: translate3d(-3%, 3%, 0) rotate(-24deg) scaleY(0.71); }
+}
+
+/* Final parity.css ambient cascade: minimal mode dims and desaturates the scene. */
+.sy-ambient-field {
+  opacity: calc(var(--sy-scene-strength) * 0.52);
+  filter: saturate(0.86);
+}
+
+.sy-halo-cloud {
+  opacity: 0.7;
+}
+
+.sy-halo-ribbon {
+  opacity: 0.65;
+}
+
+.sy-halo-ribbon--far {
+  opacity: 0.24;
+}
+
+/* styles.css dark veil and parity.css dark ambient, after the base scene rules. */
+@media (prefers-color-scheme: dark) {
+  .sy-ambient-field {
+    opacity: calc(var(--sy-scene-strength) * 0.70);
+  }
+  .sy-halo-veil {
+    background: radial-gradient(ellipse 45% 35% at 58% 32%, rgba(5, 17, 35, 0.52), transparent 85%);
+  }
+}
+
+.sy-login > .titlebar,
+.sy-login-body {
+  position: relative;
+  z-index: 1;
+}
+
+.sy-login > .titlebar {
+  flex: 0 0 62px;
+}
+
+.sy-login-body {
+  padding-bottom: 30px;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: grid;
+  align-items: start;
+}
+
+.sy-auth {
+  margin: 0 auto;
+  min-height: 100%;
+  align-content: center;
+  width: 100%;
+  max-width: 1230px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(340px, 0.85fr);
+  gap: 8%;
+  align-items: center;
+  padding: 62px 58px 72px;
+}
+
+.sy-auth h1,
+.sy-auth h2 {
+  margin: 0;
+  color: var(--sy-text);
+  font-weight: 600;
+  letter-spacing: -0.035em;
+}
+
+.sy-auth p {
+  margin: 0;
+  color: var(--sy-muted);
+}
+
+.sy-auth-story {
+  position: relative;
+  isolation: isolate;
+  align-self: center;
+  min-width: 0;
+  margin-top: 16px;
+}
+
+.sy-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.sy-brand img {
+  width: 43px;
+  height: 43px;
+  object-fit: contain;
+  filter: drop-shadow(0 5px 10px rgba(35, 168, 213, 0.15));
+}
+
+.sy-brand strong {
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  line-height: 1.4;
+}
+
+.sy-auth-story h1 {
+  margin: 34px 0 20px;
+  font-size: clamp(30px, 3.2vw, 42px);
+  line-height: 1.27;
+  font-weight: 300;
+  letter-spacing: 0.01em;
+}
+
+.sy-auth-story > p {
+  max-width: 365px;
+  font-size: 14px;
+  line-height: 1.9;
+}
+
+.sy-orbit-scene {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 360px;
+  max-width: 100%;
+  height: 245px;
+  margin: 32px 0 -8px -26px;
+}
+
+.sy-orbit-scene::before,
+.sy-orbit-scene::after {
+  content: '';
+  position: absolute;
+  width: 93%;
+  height: 48%;
+  border: 1px solid color-mix(in srgb, var(--sy-accent) 21%, transparent);
+  border-radius: 50%;
+  transform: rotate(-26deg);
+  box-shadow:
+    0 0 35px color-mix(in srgb, var(--sy-cyan) 6%, transparent),
+    inset 0 0 35px color-mix(in srgb, var(--sy-cyan) 5%, transparent);
+}
+
+.sy-orbit-scene::after {
+  width: 73%;
+  height: 77%;
+  transform: rotate(25deg);
+  border-color: color-mix(in srgb, var(--sy-cyan) 20%, transparent);
+}
+
+.sy-orbit-scene img {
+  position: relative;
+  z-index: 1;
+  width: 145px;
+  height: 145px;
+  filter: drop-shadow(0 18px 24px rgba(26, 157, 208, 0.21));
+  animation: sy-float 7s ease-in-out infinite;
+}
+
+.sy-auth-proof {
+  display: flex;
+  gap: 17px;
+  flex-wrap: wrap;
+  color: var(--sy-muted);
+  font-size: 11px;
+}
+
+.sy-auth-proof span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sy-auth-proof svg {
+  width: 14px;
+  height: 14px;
+  color: var(--sy-accent-ink);
+}
+
+.sy-auth-card {
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+  min-height: 592.25px;
+  padding: 36px 34px;
+  border: 1px solid var(--sy-border);
+  border-radius: 28px;
+  background: var(--sy-card);
+  box-shadow: var(--sy-shadow);
+  backdrop-filter: blur(32px);
+}
+
+.sy-auth-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 15%;
+  right: 15%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--sy-cyan), var(--sy-accent), transparent);
+}
+
+.sy-auth-card h2 {
+  margin: 10px 0 9px;
+  font-size: 25px;
+  font-weight: 400;
+  line-height: 42.5px;
+  letter-spacing: 0;
+}
+
+.sy-auth-card > p {
+  font-size: 13px;
+  line-height: 1.9;
+}
+
+.sy-auth-tabs {
+  display: flex;
+  gap: 20px;
+  margin: 29px 0 25px;
+  border-bottom: 1px solid var(--sy-border);
+}
+
+.sy-auth-tab {
+  display: inline-flex;
+  align-items: flex-end;
+  min-height: 38px;
+  padding: 0 0 12px;
+  border-bottom: 2px solid var(--sy-accent);
+  color: var(--sy-accent-ink);
+  font-size: 13px;
+}
+
+.sy-idp {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 16px 0 23px;
+}
+
+.sy-idp-symbol {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 43px;
+  height: 43px;
+  border: 1px solid var(--sy-border);
+  border-radius: 13px;
+  background: var(--sy-accent-wash);
+  color: var(--sy-accent-ink);
+}
+
+.sy-idp-symbol svg {
+  width: 20px;
+  height: 20px;
+}
+
+.sy-idp strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.sy-idp small {
+  display: block;
+  margin-top: 3px;
+  color: var(--sy-muted);
+  font-size: 11px;
+}
+
+.sy-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 42px;
+  padding: 10px 17px;
+  border: 1px solid var(--sy-border);
+  border-radius: 12px;
+  background: var(--sy-glass);
+  color: var(--sy-text);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: normal;
+  cursor: pointer;
+  transition: background 0.18s, box-shadow 0.18s, transform 0.18s;
+}
+
+.sy-btn svg {
+  flex-shrink: 0;
+  width: 17px;
+  height: 17px;
+}
+
+.sy-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.sy-btn.primary {
+  border-color: var(--sy-accent);
+  background: var(--sy-accent);
+  color: #fff;
+  box-shadow: 0 7px 20px rgba(35, 103, 217, 0.14);
+}
+
+.sy-btn.ghost {
+  border-color: transparent;
+  background: transparent;
+  color: var(--sy-muted);
+}
+
+.sy-btn.wide {
+  width: 100%;
+}
+
+.sy-login button:focus-visible {
+  outline: 2px solid var(--sy-focus);
+  outline-offset: 4px;
+}
+
+@media (hover: hover) {
+  .sy-btn:hover:not(:disabled) {
+    background: var(--sy-accent-wash);
+    transform: translateY(-1px);
+  }
+  .sy-btn:active:not(:disabled) {
+    transform: translateY(0) scale(0.98);
+  }
+  .sy-btn.primary:hover:not(:disabled) {
+    background: var(--sy-accent);
+    box-shadow: 0 10px 24px rgba(35, 103, 217, 0.21);
+  }
+  .sy-btn.ghost:hover:not(:disabled) {
+    background: var(--sy-accent-wash);
+  }
+}
+
+.sy-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.sy-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 18px;
+  padding: 13px 15px;
+  border-radius: 12px;
+  background: var(--sy-accent-wash);
+  color: var(--sy-muted);
+  font-size: 11px;
+  line-height: 1.8;
+}
+
+.sy-note svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 3px;
+  color: var(--sy-accent-ink);
+}
+
+.sy-note.warning {
+  background: var(--sy-warning-bg);
+  color: var(--sy-warning);
+}
+
+.sy-note.warning svg {
+  color: var(--sy-warning);
+}
+
+.sy-auth-state {
+  padding: 5px 0;
+  text-align: center;
+}
+
+.sy-auth-state h2 {
+  margin-top: 20px;
+  font-size: 25px;
+}
+
+.sy-auth-state p {
+  margin: 12px 0 23px;
+  font-size: 13px;
+}
+
+.sy-state-icon {
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  margin: 12px auto 6px;
+  border: 1px solid var(--sy-border);
+  border-radius: 24px;
+  background: var(--sy-accent-wash);
+  color: var(--sy-accent-ink);
+}
+
+.sy-state-icon svg {
+  width: 33px;
+  height: 33px;
+}
+
+.sy-state-icon.error {
+  background: var(--sy-warning-bg);
+  color: var(--sy-warning);
+}
+
+.sy-spinner {
+  display: inline-block;
+  width: 19px;
+  height: 19px;
+  border: 2px solid var(--sy-border);
+  border-top-color: var(--sy-accent);
+  border-radius: 50%;
+  animation: sy-spin 0.9s linear infinite;
+}
+
+.sy-auth-state .sy-spinner {
+  width: 35px;
+  height: 35px;
+  border-width: 3px;
+}
+
+.sy-auth-handoff {
+  display: block;
+  margin: 0 auto;
+}
+
+.sy-auth-flow {
+  display: grid;
+  gap: 14px;
+  margin: 24px 0;
+  padding: 0;
+  list-style: none;
+  color: var(--sy-muted);
+  font-size: 12px;
+  text-align: left;
+}
+
+.sy-auth-flow li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sy-auth-flow svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--sy-accent-ink);
+}
+
+.sy-auth-error {
+  overflow-wrap: anywhere;
+  color: var(--sy-warning) !important;
+}
+
+.sy-auth-actions {
+  margin-top: 25px;
+}
+
+@keyframes sy-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes sy-float {
+  0%, 100% { transform: translateY(0) rotate(-2deg); }
+  50% { transform: translateY(-9px) rotate(3deg); }
+}
+
+@media (max-width: 1100px) {
+  .sy-auth {
+    gap: 5%;
+    padding: 40px 35px;
+  }
+  .sy-auth-card {
+    padding: 30px 26px;
+  }
+}
+
+@media (max-width: 900px) {
+  .sy-auth {
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+    gap: 24px;
+    max-width: 560px;
+    padding: 30px 24px 34px;
+  }
+  .sy-auth-story h1 {
+    margin: 22px 0 12px;
+    font-size: 30px;
+  }
+  .sy-auth-story > p {
+    max-width: none;
+    font-size: 13px;
+  }
+  .sy-orbit-scene {
+    width: 240px;
+    height: 160px;
+    margin: 8px 0 -4px -12px;
+  }
+  .sy-orbit-scene img {
+    width: 104px;
+    height: 104px;
+  }
+}
+
+@media (max-width: 640px) {
+  .sy-login > .titlebar {
+    flex-basis: 55px;
+  }
+  .sy-login-body {
+    padding-bottom: 27px;
+  }
+  .sy-ambient-field {
+    inset: -3%;
+    opacity: calc(var(--sy-scene-strength) * 0.45);
+  }
+  .sy-halo-cloud {
+    filter: blur(19px);
+    animation-duration: 32s;
+  }
+  .sy-halo-ribbon {
+    left: -83%;
+    top: 18%;
+    width: 250%;
+    height: 110%;
+    filter: blur(18px);
+    animation-duration: 34s;
+  }
+  .sy-halo-ribbon--far {
+    left: 12%;
+    top: -50%;
+    width: 210%;
+    height: 105%;
+    filter: blur(22px);
+    animation-duration: 40s;
+  }
+  .sy-halo-veil {
+    background: radial-gradient(ellipse 80% 35% at 50% 30%, var(--sy-scene-veil), transparent 82%);
+  }
+  .sy-auth {
+    display: block;
+    padding: 26px 20px 35px;
+  }
+  .sy-auth-story {
+    margin-top: 7px;
+    margin-bottom: 25px;
+  }
+  .sy-brand {
+    display: none;
+  }
+  .sy-auth-story h1 {
+    margin: 0 0 12px;
+    font-size: 30px;
+    line-height: 1.35;
+  }
+  .sy-auth-story > p {
+    font-size: 14px;
+    line-height: 1.9;
+  }
+  .sy-orbit-scene,
+  .sy-auth-proof {
+    display: none;
+  }
+  .sy-auth-card {
+    min-height: 581.046875px;
+    padding: 26px 24px;
+    border-radius: 23px;
+  }
+  .sy-auth-tabs {
+    margin-top: 22px;
+  }
+  .sy-auth-card h2 {
+    font-size: 25px;
+    line-height: 42.5px;
+  }
+  .sy-auth-state h2 {
+    font-size: 23px;
+  }
+}
+
+@media (max-width: 640px) and (prefers-color-scheme: dark) {
+  .sy-ambient-field {
+    opacity: calc(var(--sy-scene-strength) * 0.60);
+  }
+  .sy-halo-veil {
+    background: radial-gradient(ellipse 80% 36% at 50% 27%, rgba(5, 17, 35, 0.45), transparent 86%);
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .sy-btn.primary {
+    color: #102a49;
+    box-shadow: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sy-halo-cloud,
+  .sy-halo-ribbon,
+  .sy-orbit-scene img,
+  .sy-spinner {
+    animation: none;
+  }
+  .sy-btn {
+    transition: none;
+  }
+}
+
+@media (pointer: coarse) {
+  .sy-btn {
+    min-height: 44px;
+  }
+}

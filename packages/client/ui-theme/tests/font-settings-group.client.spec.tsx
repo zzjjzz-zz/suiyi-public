@@ -19,6 +19,7 @@ const useResource = (() => ({ status: 'none' as const, value: undefined, failure
 const usePanelInfo: GlobalStandardProps['usePanelInfo'] = selector => selector({ activePanelId: null })
 
 afterEach(cleanup)
+afterEach(() => { vi.unstubAllEnvs() })
 
 const COPY: Record<string, string> = {
   'fontSize.more': 'More font settings',
@@ -65,10 +66,25 @@ function mount() {
     setFontSize,
   }
   render(<FontSettingsGroup {...props} />)
-  return { setFontFamily, setFontSize, header: screen.getByRole('button', { name: 'More font settings' }) }
+  return { setFontFamily, setFontSize,
+    header: process.env.DSH_CLIENT_BUILD_PROFILE === 'suiyi'
+      ? screen.getByRole('combobox', { name: 'Font size' })
+      : screen.getByRole('button', { name: 'More font settings' }) }
 }
 
 describe('FontSettingsGroup', () => {
+  it('Suiyi keeps advanced font controls reachable from the size selector', () => {
+    vi.stubEnv('DSH_CLIENT_BUILD_PROFILE', 'suiyi')
+    const g = mount()
+    fireEvent.change(g.header, { target: { value: 'more' } })
+    expect(screen.getAllByRole('textbox')).toHaveLength(3)
+    fireEvent.click(screen.getByRole('button', { name: 'Increase code font size' }))
+    expect(g.setFontSize).toHaveBeenCalledWith('code', 12)
+    fireEvent.change(g.header, { target: { value: 'more' } })
+    expect(screen.queryByRole('textbox')).toBeNull()
+    expect(g.setFontSize).not.toHaveBeenCalledWith('text', expect.anything())
+  })
+
   it('starts collapsed and toggles the font rows from the font-size row', () => {
     const g = mount()
     expect(screen.getByText('Font size')).toBeDefined()

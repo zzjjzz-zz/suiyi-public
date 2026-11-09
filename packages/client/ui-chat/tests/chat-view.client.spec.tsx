@@ -13,7 +13,7 @@ import type {
   AssistantMessageNode, ChatFlowHookContext, ChatFlowOwnerProps, ChatFlowSlotProps,
   ChatNode, ChatNodeHookContext, ChatNodeOwnerProps, ChatSnapshot, UserBeforeOwnerProps,
   ChatViewSlotProps, CommandNode, CompactionSummaryNode, ContextMessageNode, ConversationNode,
-  LegacyConversationSlice, ModelRetryNode, StartedToolCall, SteeringMessageNode,
+  LegacyConversationSlice, ModelRetryNode, ReasoningBodyOwnerProps, StartedToolCall, SteeringMessageNode,
   ToolCallBlock, ToolResultNode, TurnErrorNode, TurnMaxTokensNode,
   TranscriptViewMode, UserContentInput, UserMessageNode,
 } from '@deepseek-ai/dsh-client-ui-chat/client'
@@ -269,12 +269,18 @@ type ImageRenderer = (owner: MessageImagesOwnerProps) => React.ReactNode
 declare const userChainDispatch: PropsRenderSlots<'conversation.chat.user.before'>['renderSlotChain']
 type UserChainRenderer = typeof userChainDispatch<'conversation.chat.user.before'>
 type UserChainState = { readonly renderer: UserChainRenderer | undefined }
-type HarnessStandardProps = ChatViewSlotProps & PropsRenderFactories & Pick<React.ComponentProps<typeof AssistantNodeView>, 'fileMentions'>
+type HarnessStandardProps = ChatViewSlotProps & PropsRenderFactories & Pick<ChatFlowSlotProps, 'readChatGroup'> & Pick<React.ComponentProps<typeof AssistantNodeView>, 'fileMentions'>
 
 function isImageOwner(owner: object): owner is MessageImagesOwnerProps {
   return 'images' in owner && Array.isArray(owner.images)
     && 'loadImage' in owner && typeof owner.loadImage === 'function'
     && 'align' in owner && (owner.align === 'start' || owner.align === 'end')
+}
+
+function isReasoningOwner(owner: object): owner is ReasoningBodyOwnerProps {
+  return 'rawText' in owner && typeof owner.rawText === 'string'
+    && 'text' in owner && typeof owner.text === 'string'
+    && 'running' in owner && typeof owner.running === 'boolean'
 }
 type ToolOwner = Pick<ChatNodeOwnerProps, 'openFile' | 'inspectCall'> & {
   readonly callId: string
@@ -452,8 +458,15 @@ function makeHarness(
     }
     return imageSlotOverride?.(owner) ?? options?.fallback ?? null
   }
-  const renderAssistantSlot: React.ComponentProps<typeof AssistantNodeView>['renderSlot'] = (name, owner, options) =>
-    name === 'conversation.chat.message.images' ? renderImages(name, owner, options) : renderReasoningSlot(name, owner, options)
+  const renderAssistantSlot: React.ComponentProps<typeof AssistantNodeView>['renderSlot'] = (name, owner, options) => {
+    if (name === 'conversation.chat.message.images') return renderImages(name, owner, options)
+    if (name === 'conversation.chat.assistant.mark') return options?.fallback ?? null
+    if (name === 'conversation.chat.reasoning.body') {
+      if (!isReasoningOwner(owner)) throw new Error('Unexpected Chat reasoning owner')
+      return renderReasoningSlot(name, owner, options)
+    }
+    return null
+  }
   const renderNodeSlot: NodeRenderer = (key, owner, opts) => {
     if (nodeSlotOverride !== undefined) return nodeSlotOverride(key, owner, opts)
     return <HarnessChatNode standard={props} owner={owner}
@@ -468,6 +481,7 @@ function makeHarness(
     if (key === 'conversation.chat.node') {
       return renderNodeSlot(key, owner as RoutedChatNodeOwner, opts as Parameters<NodeRenderer>[2])
     }
+    if (key === 'conversation.chat.waiting.mark') return opts?.fallback ?? null
     throw new Error(`Undeclared flow child: ${key}`)
   }
   const renderUserChain: PropsRenderSlots<'conversation.chat.user.before'>['renderSlotChain'] = (key, owner, opts) => {
@@ -504,6 +518,7 @@ function makeHarness(
     useChatNodeBottom: bindKeyedSnapshotSelector(key => chatSource.source.getSnapshot().nodes.bottomSource(key)),
     useChatNodeProcess,
     useChatGroup,
+    readChatGroup: key => grouped?.groupSource(key as GroupKey)?.getSnapshot(),
     useConversation: bindSnapshotSelector(conversation),
     useTrajectory: (() => { throw new Error('unused') }),
     useSessions: emptySessions(),
@@ -2675,6 +2690,82 @@ describe('ChatView', () => {
     expect(branchButtons.map(button => button.getAttribute('aria-disabled'))).toEqual([null, null])
   })
 
+  it('replaces the Suiyi waiting mark with one reply mark when text starts', () => {
+    vi.stubEnv('DSH_CLIENT_BUILD_PROFILE', 'suiyi')
+    try {
+      const h = makeHarness({ nodes: [user(1, 'go')], running: true })
+      const view = render(<h.ChatView {...h.props} />)
+      expect(view.getByRole('progressbar', { name: '正在思考…' }).hasAttribute('aria-valuenow')).toBe(false)
+      expect(view.container.querySelector('[data-chat-thinking]')?.textContent).toMatchInlineSnapshot('"正在思考…"')
+      act(() => { h.setChat({ partial: { turn: 1, step: 1, blocks: [{ kind: 'reasoning', text: 'considering' }] } }) })
+      expect(view.container.querySelectorAll('[data-chat-assistant-mark]')).toHaveLength(0)
+      expect(view.getByRole('progressbar', { name: '正在思考…' })).toBeTruthy()
+      act(() => { h.setChat({ partial: { turn: 1, step: 1, blocks: [{ kind: 'text', text: 'answer' }] } }) })
+      expect(view.container.querySelector('[data-chat-thinking]')).toBeNull()
+      expect(view.container.querySelectorAll('[data-chat-assistant-mark]')).toHaveLength(1)
+      expect(view.getByText('answer')).toBeTruthy()
+      act(() => { h.set({ partial: null, nodes: [user(1, 'go'), assistant(2, 'answer')], running: false }) })
+      expect(view.container.querySelector('[data-chat-thinking]')).toBeNull()
+    } finally { vi.unstubAllEnvs() }
+  })
+
+  it('uses one Suiyi thinking indicator to disclose the current process without remounting its contents', () => {
+    vi.stubEnv('DSH_CLIENT_BUILD_PROFILE', 'suiyi')
+    try {
+      const h = makeCompletionHarness('compact')
+      const view = render(<h.ChatView {...h.props} />)
+      const waiting = view.getByRole('button', { name: '正在思考…' })
+      const group = waiting.closest('[data-chat-group-key]')!
+      const body = group.querySelector('[data-step-process-body]')!
+      expect(view.getAllByRole('progressbar')).toHaveLength(1)
+      expect(waiting.textContent).toMatchInlineSnapshot('"正在思考…"')
+      expect(waiting.getAttribute('aria-controls')).toBe(body.id)
+      expect(body.hasAttribute('hidden')).toBe(true)
+      fireEvent.click(waiting)
+      expect(waiting.getAttribute('aria-expanded')).toBe('true')
+      expect(body.hasAttribute('hidden')).toBe(false)
+      expect(body.textContent).toContain('current analysis')
+      act(() => { h.setTranscriptView('detailed') })
+      expect(view.getAllByRole('progressbar')).toHaveLength(1)
+      expect(view.queryByRole('button', { name: '正在思考…' })).toBeNull()
+      expect(group.querySelector('[data-step-process-body]')).toBe(body)
+      act(() => { h.setTranscriptView('compact') })
+      expect(view.getByRole('button', { name: '正在思考…' }).getAttribute('aria-expanded')).toBe('true')
+      act(() => { h.setSession({ running: false }) })
+      expect(view.queryByRole('progressbar')).toBeNull()
+      expect(group.querySelector('[data-chat-thinking]')?.getAttribute('aria-hidden')).toBe('true')
+      act(() => { h.complete() })
+      expect(view.queryByRole('progressbar')).toBeNull()
+      expect(view.getByText('current answer')).toBeTruthy()
+      expect(group.querySelector('[data-step-process-body]')).toBe(body)
+    } finally { vi.unstubAllEnvs() }
+  })
+
+  it('marks a visible Assistant reply and animates the mark only while streaming', () => {
+    const running = makeHarness({
+      nodes: [user(1, 'go')],
+      partial: { turn: 1, step: 1, blocks: [{ kind: 'text', text: 'working' }] },
+      running: true,
+    })
+    const view = render(<running.ChatView {...running.props} />)
+    const mark = view.container.querySelector<HTMLElement>('[data-chat-assistant-mark]')
+    expect(mark).not.toBeNull()
+    expect(mark?.hasAttribute('data-streaming')).toBe(true)
+    expect(mark?.querySelector('svg')).not.toBeNull()
+    cleanup()
+
+    const settled = makeHarness({ nodes: [assistant(1, 'done')] })
+    const settledView = render(<settled.ChatView {...settled.props} />)
+    const settledMark = settledView.container.querySelector<HTMLElement>('[data-chat-assistant-mark]')
+    expect(settledMark).not.toBeNull()
+    expect(settledMark?.hasAttribute('data-streaming')).toBe(false)
+    cleanup()
+
+    const reasoning = makeHarness({ nodes: [reasoningAssistant(1, 'private thought')] })
+    const reasoningView = render(<reasoning.ChatView {...reasoning.props} />)
+    expect(reasoningView.container.querySelector('[data-chat-assistant-mark]')).toBeNull()
+  })
+
   it('keeps every Assistant reply visible while the whole Turn folds its process', () => {
     const progress = {
       ...assistant(2, 'stage reply', 1, 1),
@@ -2981,6 +3072,46 @@ describe('ChatView', () => {
       expect(visibleOrder()).toEqual(order)
     },
   )
+
+  it('moves Suiyi process rows below the answer while keeping the group and its controls mounted', () => {
+    vi.stubEnv('DSH_CLIENT_BUILD_PROFILE', 'suiyi')
+    try {
+      const nodes = [user(1, 'question'), reasoningAssistant(2, 'inspect', 1, 1),
+        toolResult(3, 'a'), assistant(4, 'final answer', 1, 2)]
+      const builder = new ChatSnapshotBuilder()
+      const groups = new ConversationGroupStore<ProcessGroupData>()
+      const state = new ProcessState()
+      const project = (closed: boolean) => installGroupedSnapshot(builder, state, groups, chatSnapshotFixture({
+        nodes, turnTimings: new Map([[1, { startTime: 0, ...closed ? { endTime: 5_000 } : {} }]]),
+        turnEnds: new Map(closed ? [[1, 5]] : []),
+      }))
+      const h = makeHarness({ chat: project(false) }, { running: true })
+      h.setGrouped(groups)
+      h.setTranscriptView('compact')
+      const view = render(<h.ChatView {...h.props} />)
+      const group = view.container.querySelector<HTMLElement>('[data-chat-group-key]')!
+      const answer = view.getByText('final answer').closest('[data-chat-flow-kind]')!
+      expect(group.compareDocumentPosition(answer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      act(() => { h.set({ chat: project(true), running: false }) })
+      expect(view.container.querySelector('[data-chat-group-key]')).toBe(group)
+      expect(answer.compareDocumentPosition(group) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      const toggle = turnProcessControl(view.container)!
+      expect(toggle).not.toBeNull()
+      expect(answer.compareDocumentPosition(toggle) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      fireEvent.click(toggle)
+      expect(toggle.getAttribute('aria-expanded')).toBe('true')
+      const groupToggle = group.querySelector<HTMLButtonElement>('[data-process-activity]')!
+      fireEvent.click(groupToggle)
+      expect(groupToggle.getAttribute('aria-expanded')).toBe('true')
+      expect(view.getByText('inspect').closest('[hidden]')).toBeNull()
+      act(() => { h.setTranscriptView('standard') })
+      expect(turnProcessControl(view.container)).toBe(toggle)
+      expect(toggle.getAttribute('aria-expanded')).toBe('true')
+      expect(view.container.querySelector('[data-chat-group-key]')).toBe(group)
+    } finally {
+      vi.unstubAllEnvs()
+    }
+  })
 
   it('keeps a live Turn expanded and folds it once at turn/end', withClock(3_000, () => {
     const process = reasoningAssistant(2, 'inspect', 1, 1)

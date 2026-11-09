@@ -103,8 +103,9 @@ const rewritePlainGenericArrows = (code: string) => {
     let arrow = close + 1;
     while (/\s/.test(code[arrow] ?? "")) arrow += 1;
     if (code.slice(arrow, arrow + 2) !== "=>") continue;
-    if (hasDirectJsxClose(code, arrow + 2, match[1])) continue;
-    next += code.slice(cursor, index) + `<${match[1]},>`;
+    const name = match[1];
+    if (name === undefined || hasDirectJsxClose(code, arrow + 2, name)) continue;
+    next += code.slice(cursor, index) + `<${name},>`;
     cursor = index + match[0].length;
     index = cursor - 1;
   }

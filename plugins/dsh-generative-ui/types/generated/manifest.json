@@ -1,0 +1,16 @@
+{
+  "formatVersion": 1,
+  "generator": "plugins/dsh-generative-ui/scripts/generate-dependency-types.mjs",
+  "packages": {
+    "partial-react": {
+      "version": "0.0.12",
+      "sourceSha256": "edcc312cc42fd1c12410e90ff120e5f4ea0b43ba47cbd2fc6ee46953eb77eee6",
+      "declarationsSha256": "0a8e4fc92c4873120b8f21f40c2bcb60913cc6f0484d5e47d5e60755659b4ef7"
+    },
+    "partial-tsx": {
+      "version": "0.0.9",
+      "sourceSha256": "cbbe446667e805be7f84d9a4af6951d4b7916b43d1b7793595440c4f0f98cb6b",
+      "declarationsSha256": "a155c91c868b52f903d2f63be24f4194910a663dd70bfde28b9e740e51eda45a"
+    }
+  }
+}

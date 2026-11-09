@@ -143,3 +143,58 @@ export function disposeUnoStyles(): void {
   themeWritten = "";
   tokens.clear();
 }
+
+/**
+ * A per-surface CSS stream for the isolated renderer.
+ *
+ * The module-level sheet above is shared by every card in the host document, which
+ * is wrong once each surface renders in its own opaque frame: one card's delta
+ * must never be the only CSS another frame receives. Each frame owns one of these,
+ * and the generator (the expensive part) stays shared.
+ */
+export function createUnoCssDelta(): { next: (code: string, streaming: boolean) => Promise<string>; dispose: () => void } {
+  const seen = new Set<string>();
+  let theme = "";
+  let preflighted = false;
+  let disposed = false;
+  return {
+    async next(code, streaming) {
+      if (disposed || typeof document === "undefined") return "";
+      const uno = await (generator ??= createGenerator(unoConfig(`.${UI4A_ROOT_CLASS}`)));
+      const extracted = await uno.applyExtractors(code);
+      const fresh = [...extracted].filter((token) => !seen.has(token));
+      for (const token of fresh) seen.add(token);
+      if (streaming) {
+        // The first streaming frame must carry the preflights AND the utilities for
+        // the tokens already extracted into `fresh`; returning only the preflight
+        // marked those tokens seen and they were never generated again.
+        if (preflighted && fresh.length === 0) return "";
+        const first = !preflighted;
+        const generated = await uno.generate(fresh, { preflights: true });
+        preflighted = true;
+        // The first frame carries the preflight/base layers plus this frame's
+        // utilities. Later frames carry only their own fresh utilities; sending
+        // preflight/base again would duplicate them in the frame's sheet.
+        let out = splitVendorRules(
+          first
+            ? generated.getLayers(undefined, ["theme"])
+            : generated.getLayers(undefined, ["preflights", "base", "theme"]),
+        );
+        const layer = generated.getLayer("theme") ?? "";
+        if (layer !== "" && layer !== theme) {
+          theme = layer;
+          out += splitVendorRules(layer);
+        }
+        return out;
+      }
+      preflighted = true;
+      const { css, getLayer } = await uno.generate(seen, { preflights: true });
+      theme = getLayer("theme") ?? "";
+      return splitVendorRules(css);
+    },
+    dispose() {
+      disposed = true;
+      seen.clear();
+    },
+  };
+}

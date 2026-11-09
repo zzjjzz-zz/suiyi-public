@@ -1,0 +1,82 @@
+/* Assistant reply: the brand mark occupies the leading column and the reply
+   body starts directly beside it, with no name row between them. The mark
+   drifts while the step streams and settles to a still frame when it stops;
+   reduced motion keeps it still throughout. */
+
+.root {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  column-gap: 12px;
+  align-items: start;
+  min-width: 0;
+}
+
+.mark {
+  grid-column: 1;
+  grid-row: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  color: var(--dsw-alias-state-idle-primary);
+}
+
+.markGlyph {
+  width: 32px;
+  height: auto;
+  max-height: 32px;
+  object-fit: contain;
+  transform-origin: center;
+}
+
+.body {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+}
+
+/* Only the fallback fish owns the chat-layer drift. A brand occupant receives
+   `running` and applies its own orbit/settle motion inside its artwork; the
+   chat wrapper must not add a second transform to the whole SVG. */
+.root[data-streaming] .markFallback {
+  animation: assistant-think-drift 2.8s ease-in-out infinite;
+  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--dsw-alias-state-idle-primary) 30%, transparent));
+}
+
+@keyframes assistant-think-drift {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-3deg) scale(0.96);
+    opacity: 0.8;
+  }
+
+  50% {
+    transform: translateY(-2px) rotate(4deg) scale(1.05);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .root[data-streaming] .markFallback {
+    animation: none;
+    filter: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .root {
+    grid-template-columns: 26px minmax(0, 1fr);
+    column-gap: 8px;
+  }
+
+  .mark {
+    width: 26px;
+    height: 26px;
+  }
+
+  .markGlyph {
+    width: 26px;
+    max-height: 26px;
+  }
+}

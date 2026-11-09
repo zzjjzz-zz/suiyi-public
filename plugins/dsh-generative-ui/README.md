@@ -1,5 +1,7 @@
 # dsh-generative-ui
 
+English | [中文](README.zh.md)
+
 [![npm](https://img.shields.io/npm/v/dsh-generative-ui)](https://www.npmjs.com/package/dsh-generative-ui)
 [![Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](./LICENSE)
 
@@ -20,7 +22,7 @@ The `ui4a` in that fence is the harness this implements — **UI for Agent**, fr
 dsh plugin --profile web add dsh-generative-ui
 ```
 
-Published npm releases carry provenance. To try an unreleased commit while preview publishing
+Published npm releases carry a build-source attestation. To try an unreleased commit while preview publishing
 is unavailable for the transferred repository, point the profile at a local checkout — `lib/` is
 built by `prepare`, so the profile does not care that this package uses bun and dsh uses pnpm:
 

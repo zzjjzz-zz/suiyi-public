@@ -47,10 +47,13 @@ function Start-Setup([string]$Theme, [string]$Path = $installPath) {
     }
     [InstallerCapture]::Reveal($window)
     $languages = @($localizedCopy.Keys | Where-Object {
-        [InstallerCapture]::FindButton($process.Id, $localizedCopy[$_].INSTALLER_INSTALL) -ne [IntPtr]::Zero
+        [InstallerCapture]::FindButton($process.Id, $localizedCopy[$_].INSTALLER_CONTINUE) -ne [IntPtr]::Zero
     })
     if ($languages.Count -ne 1) { throw "Cannot identify installer language: $([InstallerCapture]::VisibleText($process.Id))" }
     $script:copy = $localizedCopy[$languages[0]]
+    [void](Wait-Control $process $copy.INSTALLER_CONTINUE)
+    [void][InstallerCapture]::Save($window, (Join-Path $OutputDirectory ($Theme + '-platform.png')))
+    Click-Control $process $copy.INSTALLER_CONTINUE
     [void](Wait-Control $process $copy.INSTALLER_INSTALL)
     return $process
 }
@@ -133,7 +136,6 @@ try {
     $results.Add('welcome-presented-on-first-show')
     $window = [InstallerCapture]::Find($process.Id)
     [void][InstallerCapture]::Save($window, (Join-Path $OutputDirectory 'light-welcome.png'))
-    Click-Control $process $copy.INSTALLER_CHOOSE_PATH
     $edit = Wait-Control $process $installPath
     [void][InstallerCapture]::Save($window, (Join-Path $OutputDirectory 'light-path.png'))
     Click-Control $process $copy.INSTALLER_BROWSE
@@ -178,7 +180,6 @@ try {
     $results.Add('locked-directory-shows-error-and-copy-control-and-preserves-installation')
 
     $process = Start-Setup dark ''
-    Click-Control $process $copy.INSTALLER_CHOOSE_PATH
     $edit = Wait-Control $process $installPath
     [void][InstallerCapture]::SendMessage($edit, 0xC, [IntPtr]::Zero, ($installPath + '\\'))
     [void][InstallerCapture]::Save([InstallerCapture]::Find($process.Id), (Join-Path $OutputDirectory 'dark-welcome.png'))

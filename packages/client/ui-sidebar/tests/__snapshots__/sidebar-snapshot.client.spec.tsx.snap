@@ -54,6 +54,25 @@ exports[`sidebar shell snapshots > renders Windows caption controls in expanded 
         </span>
       </span>
     </button>
+    <button
+      aria-current="page"
+      aria-label="Conversation"
+      class="conversationRail"
+      type="button"
+    >
+      <svg
+        aria-hidden="true"
+        data-content="c3850951"
+        fill="none"
+        height="18"
+        stroke="currentColor"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="1.65"
+        viewBox="0 0 24 24"
+        width="18"
+      />
+    </button>
     <div
       class="scrollRegion"
     >
@@ -195,19 +214,47 @@ exports[`sidebar shell snapshots > renders Windows caption controls in expanded 
         <span
           class="newSessionContent"
         >
-          <svg
+          <span
             aria-hidden="true"
-            data-content="532cf99a"
-            data-icon="dsw-icon-new-chat-outline-medium"
-            height="14"
-            width="14"
-          />
+            class="newSessionPlus"
+          >
+            ＋
+          </span>
           <span
             class="newSessionLabel wide"
           >
-            New Session
+            New chat
           </span>
         </span>
+      </span>
+    </button>
+    <button
+      aria-current="page"
+      aria-label="Conversation"
+      class="conversationRow"
+      type="button"
+    >
+      <span
+        aria-hidden="true"
+        class="conversationGlyph"
+      >
+        <svg
+          aria-hidden="true"
+          data-content="c3850951"
+          fill="none"
+          height="18"
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="1.65"
+          viewBox="0 0 24 24"
+          width="18"
+        />
+      </span>
+      <span
+        class="panelTitle"
+      >
+        Conversation
       </span>
     </button>
     <div
@@ -326,6 +373,25 @@ exports[`sidebar shell snapshots > renders the collapsed rail after the crossfad
           />
         </span>
       </span>
+    </button>
+    <button
+      aria-current="page"
+      aria-label="Conversation"
+      class="conversationRail"
+      type="button"
+    >
+      <svg
+        aria-hidden="true"
+        data-content="c3850951"
+        fill="none"
+        height="18"
+        stroke="currentColor"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="1.65"
+        viewBox="0 0 24 24"
+        width="18"
+      />
     </button>
     <div
       class="scrollRegion"
@@ -468,19 +534,47 @@ exports[`sidebar shell snapshots > renders the expanded column (wordmark, capsul
         <span
           class="newSessionContent"
         >
-          <svg
+          <span
             aria-hidden="true"
-            data-content="532cf99a"
-            data-icon="dsw-icon-new-chat-outline-medium"
-            height="14"
-            width="14"
-          />
+            class="newSessionPlus"
+          >
+            ＋
+          </span>
           <span
             class="newSessionLabel wide"
           >
-            New Session
+            New chat
           </span>
         </span>
+      </span>
+    </button>
+    <button
+      aria-current="page"
+      aria-label="Conversation"
+      class="conversationRow"
+      type="button"
+    >
+      <span
+        aria-hidden="true"
+        class="conversationGlyph"
+      >
+        <svg
+          aria-hidden="true"
+          data-content="c3850951"
+          fill="none"
+          height="18"
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="1.65"
+          viewBox="0 0 24 24"
+          width="18"
+        />
+      </span>
+      <span
+        class="panelTitle"
+      >
+        Conversation
       </span>
     </button>
     <div
@@ -625,19 +719,47 @@ exports[`sidebar shell snapshots > renders the expanded column in the default lo
         <span
           class="newSessionContent"
         >
-          <svg
+          <span
             aria-hidden="true"
-            data-content="532cf99a"
-            data-icon="dsw-icon-new-chat-outline-medium"
-            height="14"
-            width="14"
-          />
+            class="newSessionPlus"
+          >
+            ＋
+          </span>
           <span
             class="newSessionLabel wide"
           >
-            新会话
+            新建对话
           </span>
         </span>
+      </span>
+    </button>
+    <button
+      aria-current="page"
+      aria-label="对话"
+      class="conversationRow"
+      type="button"
+    >
+      <span
+        aria-hidden="true"
+        class="conversationGlyph"
+      >
+        <svg
+          aria-hidden="true"
+          data-content="c3850951"
+          fill="none"
+          height="18"
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="1.65"
+          viewBox="0 0 24 24"
+          width="18"
+        />
+      </span>
+      <span
+        class="panelTitle"
+      >
+        对话
       </span>
     </button>
     <div

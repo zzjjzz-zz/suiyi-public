@@ -33,6 +33,9 @@ export const inject = ['slots', 'locale']
  * @param ctx - the browser plugin context.
  */
 export function apply(ctx: ClientContext): void {
+  // The Suiyi product client shows only its business plugin catalog; internal
+  // built-in bundles and their configuration stay out of the settings surface.
+  if (process.env.DSH_CLIENT_BUILD_PROFILE === 'suiyi') return
   const t = ctx.locale.bind(NS)
   ctx.effect(() => ctx.locale.register(NS, { zh, en, ja, es, fr, de, ru, pt }), 'ui-settings-plugins: section dictionaries')
 

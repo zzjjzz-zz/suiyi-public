@@ -134,6 +134,8 @@ export interface SettingsHeaderOwnerProps {
 export interface SettingsSectionOwnerProps {
   /** Close the settings panel (the shell owns the open state). */
   close: () => void
+  /** General page category when the shell splits the General ledger into prototype pages. */
+  category?: 'general' | 'permissions' | 'runtime' | 'desktop' | undefined
 }
 
 /** Icon presentation supplied by the settings navigation row. */

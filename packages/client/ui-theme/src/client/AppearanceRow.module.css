@@ -1,11 +1,10 @@
-/* Appearance row (figma 'Frame 2117131228': title + cube row, column gap 8,
- * pad 16/0, hairline separator; the section column strips it when last). */
+/* Appearance row: three window previews with a fixed-width selection border. */
 
 .group {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 16px 0;
+  padding: 18px 0;
   border-bottom: 0.5px solid var(--dsw-alias-border-l2);
 }
 
@@ -16,54 +15,103 @@
   color: var(--dsw-alias-label-primary);
 }
 
-.cubeRow {
-  display: flex;
-  align-items: stretch;
-  gap: 8px;
-  flex-wrap: wrap;
+.cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 11px;
 }
 
-/* Appearance cube (figma '.Selector Cube' 276x82, pad 20/32, centered
- * icon-over-label column, gap 4); flexed down from the figma width so all
- * three sit on one row in the 800 panel, wrapping when narrower. */
-.themeCube {
+/* The three preview palettes describe the fixed light and dark themes, so they
+ * are literal miniature colours rather than active-theme aliases; a preview
+ * that followed the active tokens could not depict the other option. */
+.cards {
+  --appearance-preview-light: #fafbfd;
+  --appearance-preview-light-strip: #e9edf5;
+  --appearance-preview-dark: #171b24;
+  --appearance-preview-dark-strip: #242b38;
+  --appearance-preview-bar: #dce6f9;
+}
+
+.themeCard {
   box-sizing: border-box;
-  flex: 1 1 180px;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: 20px 32px;
-  border: 0.5px solid var(--dsw-alias-border-l4);
-  border-radius: var(--dsw-radius-xl);
+  padding: 7px 7px 9px;
+  border: 2px solid var(--dsw-alias-border-l2);
+  border-radius: 11px;
   background: transparent;
   font: inherit;
-  font-size: 14px;
-  line-height: 22px;
+  font-size: 10px;
+  line-height: 15px;
   color: var(--dsw-alias-label-primary);
+  text-align: center;
   cursor: pointer;
+  transition: border-color 0.2s;
 }
 
-@media (hover: hover) {
-  .themeCube:hover:not(.selected) {
-    background: var(--dsw-alias-interactive-bg-hover);
-  }
-}
-
-/* Selected cube: #F5F6F7 fill + #ADB2B8 border (static token — the bluish-400
- * step has no alias-layer name). */
 .selected {
-  background: var(--dsw-alias-bg-module-platform);
-  border-color: var(--dsw-static-neutral-bluish-400);
+  border-color: var(--dsw-alias-brand-primary);
 }
 
-/* Narrow settings panel: all three cubes share one row instead of wrapping to
-   two. The equal basis and the tighter horizontal padding keep a four-glyph
-   label ("跟随系统") on one line at a 390px viewport. */
-@media (max-width: 767px) {
-  :global(html:not([data-windows-titlebar]):not([data-platform='darwin'])) .themeCube {
-    flex: 1 1 0;
-    padding: 12px 6px;
+/* Miniature window: a sidebar strip and a content bar over each palette. */
+.preview {
+  position: relative;
+  display: flex;
+  height: 59px;
+  margin-bottom: 8px;
+  overflow: hidden;
+  border-radius: 6px;
+  corner-shape: round;
+}
+
+.preview::before {
+  content: '';
+  width: 27%;
+  height: 100%;
+  background: var(--appearance-preview-light-strip);
+}
+
+.preview::after {
+  content: '';
+  position: absolute;
+  right: 12%;
+  bottom: 12px;
+  left: 38%;
+  height: 10px;
+  border-radius: 5px;
+  background: var(--appearance-preview-bar);
+}
+
+.preview[data-preview='light'] {
+  background: var(--appearance-preview-light);
+}
+
+.preview[data-preview='dark'] {
+  background: var(--appearance-preview-dark);
+}
+
+.preview[data-preview='dark']::before {
+  background: var(--appearance-preview-dark-strip);
+}
+
+.preview[data-preview='system'] {
+  background: linear-gradient(90deg, var(--appearance-preview-light) 50%, var(--appearance-preview-dark) 50%);
+}
+
+.label {
+  display: block;
+}
+
+@media (max-width: 640px) {
+  .group {
+    padding-block: 14px;
+  }
+
+  .cards {
+    gap: 8px;
+  }
+
+  .preview {
+    height: 47px;
   }
 }

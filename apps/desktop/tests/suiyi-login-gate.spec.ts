@@ -8,7 +8,9 @@ import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
 import {
   LOGIN_GATE_COPY,
   SESSION_LOCK_COPY,
+  classifySuiyiLoginFailure,
   loginFailureText,
+  runSuiyiLoginAttempt,
   runSuiyiLoginGate,
   suiyiLoginSession,
   suiyiSessionActive,
@@ -30,12 +32,69 @@ const BOB = { issuer: ISSUER, sub: '0badcafe-4321-4fed-cba-9876543210fe' }
 
 it('loginFailureText maps every failure to nonempty human-safe copy', () => {
   for (const failure of ['discovery-network', 'discovery-invalid', 'issuer-mismatch', 'callback-aborted',
-    'callback-timeout', 'callback-replay', 'callback-malformed', 'token-network', 'token-invalid', 'token-rejected'] as const) {
+    'callback-server', 'callback-timeout', 'browser-unavailable', 'callback-replay', 'callback-malformed',
+    'token-network', 'token-invalid', 'token-rejected'] as const) {
     const text = loginFailureText(failure)
     expect(text.length).toBeGreaterThan(0)
     // The mapping is total: no failure code falls into generic copy.
     expect(text).not.toBe('unknown error')
   }
+})
+
+it('classifies every OIDC failure for the login page', () => {
+  const cases = {
+    'discovery-network': 'unreachable',
+    'token-network': 'unreachable',
+    'discovery-invalid': 'configuration',
+    'issuer-mismatch': 'configuration',
+    'callback-aborted': 'cancelled',
+    'callback-timeout': 'timeout',
+    'callback-server': 'unknown',
+    'browser-unavailable': 'unknown',
+    'callback-replay': 'unknown',
+    'callback-malformed': 'unknown',
+    'token-invalid': 'rejected',
+    'token-rejected': 'rejected',
+  } as const
+  for (const [failure, expected] of Object.entries(cases)) {
+    expect(classifySuiyiLoginFailure(failure as keyof typeof cases)).toBe(expected)
+  }
+})
+
+it('one attempt reports the issuer stage separately and opens no browser for it', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'suiyi-attempt-issuer-'))
+  const openBrowser = vi.fn(async () => {})
+  try {
+    const result = await runSuiyiLoginAttempt({
+      appData: root,
+      openBrowser,
+      readIssuerFile: async () => { throw Object.assign(new Error('permission denied'), { code: 'EACCES' }) },
+    })
+    expect(result).toMatchObject({ ok: false, failure: 'configuration', issuer: true })
+    expect('message' in result ? result.message : '').toContain('suiyi-oidc-issuer.json')
+    expect(openBrowser).not.toHaveBeenCalled()
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})
+
+it('one attempt maps a network failure and honors an already-aborted signal', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'suiyi-attempt-network-'))
+  try {
+    writeFileSync(join(root, 'suiyi-oidc-issuer.json'), JSON.stringify({ issuer: 'https://127.0.0.1:9/realms/identity' }))
+    const failed = await runSuiyiLoginAttempt({ appData: root, openBrowser: vi.fn(), loginOptions: { timeoutMs: 200 } })
+    expect(failed).toMatchObject({ ok: false, failure: 'unreachable', issuer: false })
+
+    const controller = new AbortController()
+    controller.abort()
+    const openBrowser = vi.fn()
+    const cancelled = await runSuiyiLoginAttempt({
+      appData: root,
+      openBrowser,
+      signal: controller.signal,
+      readIssuerFile: async () => JSON.stringify({ issuer: ISSUER }),
+    })
+    expect(cancelled).toMatchObject({ ok: false, failure: 'cancelled', issuer: false })
+    expect(openBrowser).not.toHaveBeenCalled()
+  } finally { rmSync(root, { recursive: true, force: true }) }
 })
 
 it('the gate returns undefined without opening the browser when the issuer override is unreadable', async () => {
@@ -206,7 +265,7 @@ describe('session expiry watcher', () => {
       openBrowser: vi.fn(async () => {}),
     }
     const watcher = watchSuiyiSession({
-      session: suiyiLoginSession({ issuer: ISSUER, sub: ALICE.sub, expiresAt }, clock),
+      session: suiyiLoginSession({ issuer: ISSUER, sub: ALICE.sub, expiresAt, accessToken: 'access-token' }, clock),
       effects,
       timer,
       now: () => clock,
@@ -237,7 +296,7 @@ describe('session expiry watcher', () => {
 
   it('expiry locks without quitting: windows close, the Host stops, storage clears, and the same user resumes', async () => {
     const test = fixture()
-    test.nextLogin = { issuer: ISSUER, sub: ALICE.sub, expiresAt: Date.now() + 300_000 }
+    test.nextLogin = { issuer: ISSUER, sub: ALICE.sub, expiresAt: Date.now() + 300_000, accessToken: 'access-token' }
     test.schedule.mock.calls[0]![1]()
     await test.drain()
     // Lock order: windows die first, then the Host, then browser storage, and
@@ -255,7 +314,7 @@ describe('session expiry watcher', () => {
   it('a cancelled re-login keeps the application locked without spinning, and sign-in re-enters', async () => {
     const test = fixture()
     test.lockReturn.mockReturnValueOnce(1).mockReturnValue(0)
-    test.nextLogin = { issuer: ISSUER, sub: ALICE.sub, expiresAt: Date.now() + 300_000 }
+    test.nextLogin = { issuer: ISSUER, sub: ALICE.sub, expiresAt: Date.now() + 300_000, accessToken: 'access-token' }
     test.schedule.mock.calls[0]![1]()
     await test.drain()
     // Cancel exits the re-login loop; nothing runs in the background and the
@@ -287,14 +346,14 @@ describe('session expiry watcher', () => {
     expect(test.calls.stopped).toBe(1)
     // A later explicit sign-in as Bob verifies but never resumes Alice's storage.
     // The user then declines further attempts, so no re-login storm can run.
-    test.nextLogin = { issuer: ISSUER, sub: BOB.sub, expiresAt: Date.now() + 300_000 }
+    test.nextLogin = { issuer: ISSUER, sub: BOB.sub, expiresAt: Date.now() + 300_000, accessToken: 'access-token' }
     test.lockReturn.mockReturnValueOnce(0).mockReturnValueOnce(1)
     test.watcher.promptWhileLocked()
     await test.drain()
     expect(test.calls.logins).toBe(2)
     expect(test.calls.resumes.length).toBe(0)
     // The same Alice finally re-verifies and resumes her own workspace.
-    test.nextLogin = { issuer: ISSUER, sub: ALICE.sub, expiresAt: Date.now() + 300_000 }
+    test.nextLogin = { issuer: ISSUER, sub: ALICE.sub, expiresAt: Date.now() + 300_000, accessToken: 'access-token' }
     test.watcher.promptWhileLocked()
     await test.drain()
     expect(test.calls.logins).toBe(3)
@@ -306,7 +365,7 @@ describe('session expiry watcher', () => {
 
   it('repeated expiry callbacks lock only once', async () => {
     const test = fixture()
-    test.nextLogin = { issuer: ISSUER, sub: ALICE.sub, expiresAt: Date.now() + 300_000 }
+    test.nextLogin = { issuer: ISSUER, sub: ALICE.sub, expiresAt: Date.now() + 300_000, accessToken: 'access-token' }
     test.schedule.mock.calls[0]![1]()
     test.schedule.mock.calls[0]![1]()
     await test.drain()
@@ -319,7 +378,7 @@ describe('session expiry watcher', () => {
     const log = vi.spyOn(console, 'error').mockImplementation(() => {})
     try {
       test.effects.stopHost.mockRejectedValueOnce(new Error('child still running'))
-      test.nextLogin = { issuer: ISSUER, sub: ALICE.sub, expiresAt: Date.now() + 300_000 }
+      test.nextLogin = { issuer: ISSUER, sub: ALICE.sub, expiresAt: Date.now() + 300_000, accessToken: 'access-token' }
       test.schedule.mock.calls[0]![1]()
       await test.drain()
       expect(test.calls.closed).toBe(1)
@@ -338,7 +397,7 @@ describe('session expiry watcher', () => {
     const log = vi.spyOn(console, 'error').mockImplementation(() => {})
     try {
       test.effects.closeWorkspace.mockRejectedValueOnce(new Error('view cleanup failed'))
-      test.nextLogin = { issuer: ISSUER, sub: ALICE.sub, expiresAt: Date.now() + 300_000 }
+      test.nextLogin = { issuer: ISSUER, sub: ALICE.sub, expiresAt: Date.now() + 300_000, accessToken: 'access-token' }
       test.schedule.mock.calls[0]![1]()
       await test.drain()
       expect(test.effects.stopHost).toHaveBeenCalledOnce()

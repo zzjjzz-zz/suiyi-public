@@ -1,0 +1,32 @@
+{
+  "source": "https://raw.githubusercontent.com/notofonts/noto-cjk/main/Sans/Variable/TTF/Subset/NotoSansSC-VF.ttf",
+  "fonts": [
+    {
+      "weight": 300,
+      "path": "NotoSansSC-Light.ttf",
+      "bytes": 10601304,
+      "sha256": "75b3664c23e6dffe85ae68e22692efe5199e0f0c0642c45ff5649874e6db40da",
+      "family": "Noto Sans SC Light",
+      "subfamily": "Regular",
+      "version": "Version 2.004;hotconv 1.0.118;makeotfexe 2.5.65603"
+    },
+    {
+      "weight": 400,
+      "path": "NotoSansSC-Regular.ttf",
+      "bytes": 10596252,
+      "sha256": "718b715ebd1c348d895378206faaee155cedb05786013f8fb2f786a0abc86aef",
+      "family": "Noto Sans SC",
+      "subfamily": "Regular",
+      "version": "Version 2.004;hotconv 1.0.118;makeotfexe 2.5.65603"
+    },
+    {
+      "weight": 500,
+      "path": "NotoSansSC-Medium.ttf",
+      "bytes": 10589452,
+      "sha256": "b92ede986f7d64591f49b381d38c4e9a02ed3b550d8be772747fd2118c1e6034",
+      "family": "Noto Sans SC Medium",
+      "subfamily": "Regular",
+      "version": "Version 2.004;hotconv 1.0.118;makeotfexe 2.5.65603"
+    }
+  ]
+}

@@ -20,12 +20,14 @@ import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import { changesReviewAddress } from '../changes.ts'
+import { ArtifactsTab, type ArtifactsInjected } from './ArtifactsTab.tsx'
 import { ChangesDiffStore } from './changes-diff.ts'
 import { ChangesSummaryStore } from './changes-summary.ts'
 import { PresentedOpenController } from './present-open.ts'
 import { PresentRow } from './PresentRow.tsx'
 import { DeliverablesTail, type DeliverablesInjected } from './Deliverables.tsx'
 import { ReviewTab, type ReviewInjected } from './ReviewTab.tsx'
+import { WorkbenchChangesTab } from './WorkbenchChangesTab.tsx'
 import { CHANGES_REVIEW_ID, changesReviewDefinition } from './review-definition.ts'
 import { createReviewStore } from './review-store.ts'
 import { en, ja, es, fr, de, ru, pt, NS, zh, type DeliverablesKey } from './locales.ts'
@@ -41,6 +43,11 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
     'deliverables': DeliverablesKey
   }
 }
+
+/** The workbench Artifacts page identity and kind. */
+const ARTIFACTS_ID = '@deepseek-ai/dsh-client-ui-deliverables/artifacts'
+/** The workbench Changes resolver page identity and kind. */
+const CHANGES_ENTRY_ID = '@deepseek-ai/dsh-client-ui-deliverables/changes'
 
 /** Required services for the tail-slot and tab-type registrations and their dictionaries. */
 export const inject = ['slots', 'locale', 'uiConversation', 'remote', 'remote.session', 'sidebarRightTabs', 'sidebarRight', 'configForms']
@@ -86,6 +93,12 @@ export function apply(ctx: ClientContext): void {
     { name: 'tool.call.toolview', key: 'present', locale: NS }, PresentRow,
   ))
   const t = ctx.locale.bind(NS)
+  ctx.effect(() => ctx.sidebarRightTabs.register({
+    id: ARTIFACTS_ID, kind: 'artifacts', priority: 'builtin', title: () => t('artifacts.title'),
+  }), 'ui-deliverables: artifacts type')
+  ctx.effect(() => ctx.sidebarRightTabs.register({
+    id: CHANGES_ENTRY_ID, kind: 'changes', priority: 'builtin', title: () => t('changes.tabTitle'),
+  }), 'ui-deliverables: changes entry type')
   ctx.effect(() => ctx.sidebarRightTabs.register(changesReviewDefinition(t)), 'ui-deliverables: changes-review type')
   ctx.effect(() => ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register(
     {
@@ -101,6 +114,17 @@ export function apply(ctx: ClientContext): void {
     },
     ReviewTab,
   )), 'ui-deliverables: changes-review body')
+  const artifactsInjected: ArtifactsInjected = {
+    hooks: { presentedOpen: opener.state, presentedHost: opener.host },
+    reloadPresentedHost: () => opener.loadHost(),
+    openPresented: (sessionId, seq, index) => opener.open(sessionId, seq, index),
+  }
+  ctx.effect(() => ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register({
+    name: 'sidebar.right.pane.tab', key: ARTIFACTS_ID, locale: NS, inject: () => artifactsInjected,
+  }, ArtifactsTab)), 'ui-deliverables: artifacts body')
+  ctx.effect(() => ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register({
+    name: 'sidebar.right.pane.tab', key: CHANGES_ENTRY_ID, locale: NS,
+  }, WorkbenchChangesTab)), 'ui-deliverables: changes entry body')
   // The prose side of the same vocabulary: the chat view reaches this face
   // via ctx.get, so its absence — this plugin composed out — is the off state.
   const mentions: ChatFileMentions = {

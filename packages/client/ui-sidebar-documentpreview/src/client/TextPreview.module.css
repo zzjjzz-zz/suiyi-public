@@ -31,27 +31,28 @@
   min-width: 0;
 }
 
-/* One 38px row flush under the pane's strip: the path, then the type's
-   controls at its end. With the strip's 38px above, its rule lies where the
+/* One 36px toolbar flush under the pane's strip: the path at 10px, then the
+   type's controls at its end. With the strip above, its rule lies where the
    conversation header's does (ui-conversation ConversationRoot `.header`,
    76px with the same rule), so the two lines meet at the column edge.
 
-   The same row, path, and controls are drawn by the files tab
-   (ui-sidebar-files FilesBody `.header`); TODO: once the artifact and slot
-   surfaces settle, one copy in ui-primitives could serve every pane header. */
+   The files tab draws the same row (ui-sidebar-files FilesBody `.header`);
+   TODO: once the artifact and slot surfaces settle, one copy in ui-primitives
+   could serve every pane header. */
 .header {
   display: flex;
   flex: 0 0 auto;
-  gap: 4px;
+  gap: 5px;
   align-items: center;
   box-sizing: border-box;
-  height: 38px;
-  padding: 0 6px 0 16px;
+  height: 36px;
+  padding: 0 6px 0 12px;
   border-bottom: 0.5px solid var(--dsw-alias-border-l3);
 }
 
-.path {
-  margin-right: 12px;
+.header .path {
+  margin-right: 8px;
+  font-size: 10px;
 }
 
 /* Announced, not applied: the reader keeps the text they are looking at. */
@@ -63,7 +64,7 @@
   margin: 0;
   padding: 6px 10px;
   color: var(--dsw-alias-label-secondary);
-  font-size: 12px;
+  font-size: 11px;
   background: var(--dsw-alias-bg-layer-2);
   border-bottom: 0.5px solid var(--dsw-alias-border-l1);
 }
@@ -83,9 +84,9 @@
   --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
   --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
   color: var(--dsw-alias-label-primary);
-  font-size: var(--dsh-content-font-size-secondary, 13px);
+  font-size: 11px;
   font-family: var(--dsw-font-mono, ui-monospace, monospace);
-  line-height: 1.6;
+  line-height: 1.7;
   white-space: pre;
 }
 
@@ -110,13 +111,14 @@
   word-break: break-word;
 }
 
-/* Plain text keeps the shared document inset while edge-to-edge renderers can
-   fill the scroller themselves. */
+/* Plain text keeps the preview's inset on the pane's background, like the
+   workbench's source view; rendered documents add their own card in
+   MarkdownBody. Edge-to-edge renderers can fill the scroller themselves. */
 .textDocument {
   box-sizing: border-box;
   min-width: 100%;
   min-height: 100%;
-  padding: 8px;
+  padding: 12px;
 }
 
 /* One page of lines; pages abut so the file reads as one. */
@@ -126,9 +128,10 @@
   white-space: inherit;
 }
 
-/* The files tree row's 10px side inset, so a line's text sits where a row's does. */
+/* The files tree row's 7px side inset, so a line's text sits where a row's
+   does inside the preview's 12px inset. */
 .line {
-  padding: 0 10px;
+  padding: 0 7px;
 }
 
 /* A navigated line's mark: a band in the scrollport over the line, so renderer
@@ -168,7 +171,7 @@
   height: 100%;
   padding: 0 24px;
   color: var(--dsw-alias-label-secondary);
-  font-size: var(--dsh-content-font-size-secondary, 13px);
+  font-size: 11px;
   font-family: var(--dsw-font-family);
   line-height: 1.6;
   text-align: center;
@@ -204,7 +207,7 @@
   height: 32px;
   padding: 0 14px 0 12px;
   color: var(--dsw-alias-label-primary);
-  font-size: var(--dsh-content-font-size-secondary, 13px);
+  font-size: 11px;
   font-family: inherit;
   background: transparent;
   border: 0.5px solid var(--dsw-alias-border-l2);
@@ -231,7 +234,7 @@
   margin: 0;
   padding: 6px 10px;
   color: var(--dsw-alias-label-secondary);
-  font-size: var(--dsh-content-font-size-secondary, 13px);
+  font-size: 11px;
   line-height: 1.6;
   white-space: normal;
 }
@@ -254,7 +257,7 @@
 .action {
   padding: 4px 10px;
   color: var(--dsw-alias-label-primary);
-  font-size: var(--dsh-content-font-size-secondary, 13px);
+  font-size: 11px;
   font-family: var(--dsw-font, inherit);
   white-space: normal;
   background: var(--dsw-alias-bg-layer-2);
@@ -275,7 +278,7 @@
   margin: 8px 10px;
   padding: 4px 10px;
   color: var(--dsw-alias-label-secondary);
-  font-size: 12px;
+  font-size: 11px;
   font-family: var(--dsw-font, inherit);
   white-space: normal;
   background: var(--dsw-alias-bg-layer-2);
@@ -338,7 +341,7 @@
   padding: 0 6px;
   overflow: hidden;
   color: var(--dsw-alias-label-secondary);
-  font-size: 12px;
+  font-size: 10px;
   white-space: nowrap;
   text-overflow: ellipsis;
 }

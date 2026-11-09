@@ -225,6 +225,7 @@ function DialogPill({ stat, icon, label, text, title, titleValue, children }: Pi
           ref={panelRef}
           className={dialogCss.panel}
           role="dialog"
+          data-stat-dialog=""
           aria-label={title}
           style={{ positionAnchor: anchorName }}
         >

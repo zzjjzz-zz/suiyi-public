@@ -72,6 +72,14 @@ export default defineConfig([
                 source: await readFile(new URL(`../../packages/client/ui-theme/src/styles/${name}`, import.meta.url)),
               })
             }
+            // brand-font.css imports the brand layer's full Noto sheet. The welcome
+            // renderer already ships its own local subsets under renderer/assets;
+            // map that import instead of duplicating the font payload in lib/welcome.
+            this.emitFile({
+              type: 'asset',
+              fileName: 'noto-sans-sc.css',
+              source: "/* Maps to the welcome renderer's local Noto subsets; no second font payload. */\n@import url('../../renderer/assets/noto-sans-sc.css');\n",
+            })
           },
         }],
         root: fileURLToPath(new URL('.', import.meta.url)),
@@ -99,7 +107,7 @@ export default defineConfig([
     clean: false,
     deps: { neverBundle: ['electron'] },
   },
-  ...(['preload-app', 'preload-welcome', 'preload-platform-account', 'preload-mandatory', 'preload-update-dialog'] as const).map(name => ({
+  ...(['preload-app', 'preload-welcome', 'preload-suiyi-login', 'preload-platform-account', 'preload-mandatory', 'preload-update-dialog'] as const).map(name => ({
     // Sandboxed Electron preloads run as CommonJS even though the application package is ESM.
     entry: { [name]: `lib/types/${name}.js` },
     define: clientVersionDefine,

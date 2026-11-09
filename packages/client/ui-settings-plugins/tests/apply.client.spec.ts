@@ -1,7 +1,7 @@
 /** What the browser half registers, and that it all leaves with the fiber. */
 
 import { Context } from '@deepseek-ai/cordis'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { resolveSlotLabel } from '@deepseek-ai/dsh-client-ui-slots'
 import { SlotRegistry } from '@deepseek-ai/dsh-client-ui-renderer/client'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
@@ -30,7 +30,20 @@ function declareRoot(slots: SlotRegistry): () => void {
   } as never, () => null)
 }
 
+afterEach(() => { vi.unstubAllEnvs() })
+
 describe('ui-settings-plugins apply', () => {
+  it('registers no internal Built-in plugins surface in the Suiyi build', async () => {
+    vi.stubEnv('DSH_CLIENT_BUILD_PROFILE', 'suiyi')
+    const { ctx, slots } = await bench()
+    declareRoot(slots)
+
+    await ctx.plugin({ inject: [...inject], apply }).await()
+
+    expect(slots.entries('settings.section')).toHaveLength(0)
+    expect(slots.spec('settings.plugins.tab')).toBeUndefined()
+  })
+
   it('keeps the host Loader entry inert', () => {
     expect(hostApply).not.toThrow()
   })

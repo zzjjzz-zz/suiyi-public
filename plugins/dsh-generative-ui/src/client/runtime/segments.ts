@@ -92,8 +92,9 @@ export function parseUi4aSegments(text: string): Ui4aSegment[] {
     // Leftovers after `ui4a/tsx` on the fence line: normally empty (or meta like `title=`),
     // but the model sometimes puts the first line of code there. If it looks like code,
     // hand it back as the body's first line rather than dropping it.
-    const trailing = open[2].trim();
+    const trailing = (open[2] ?? "").trim();
     const bodyStart = open.index + open[0].length;
+    if (open[1] === undefined) return segments;
     // A fence opener the model is *talking about* rather than opening. Measured: 19 of 405
     // openers in the corpus are prose, and 14 of them put the sentence right after the
     // language (`\`\`\`\`ui4a/tsx\`\`\`\` 块，原地渲染成…`). Anything that is not code and not
@@ -111,7 +112,7 @@ export function parseUi4aSegments(text: string): Ui4aSegment[] {
       continue;
     }
     const inlineCode = CODE_LINE.test(trailing) ? `${trailing}\n` : "";
-    const closeIndex = findClose(rest.slice(bodyStart), open[1]);
+    const closeIndex = open[1] === undefined ? -1 : findClose(rest.slice(bodyStart), open[1]);
     if (closeIndex === -1) {
       segments.push({ code: (inlineCode + rest.slice(bodyStart)).replace(TOOL_CALL_MARKUP, ""), complete: false });
       return segments;
@@ -153,7 +154,7 @@ export function parseFences(text: string): Fence[] {
     if (open === null) return fences;
     const lang = (open[2] ?? "").trim().split(/\s+/)[0] ?? "";
     const bodyStart = open.index + open[0].length;
-    const closeIndex = findClose(rest.slice(bodyStart), open[1]);
+    const closeIndex = open[1] === undefined ? -1 : findClose(rest.slice(bodyStart), open[1]);
     if (closeIndex === -1) {
       fences.push({ lang, code: rest.slice(bodyStart), complete: false });
       return fences;

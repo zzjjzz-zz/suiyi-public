@@ -19,6 +19,7 @@ import type { PropsStore } from '@deepseek-ai/dsh-client-store'
 import type { createSettingsShellStore } from './shell-store.ts'
 import type { ShortcutCatalogEntry } from '@deepseek-ai/dsh-client-shortcuts/client'
 import type { DesktopUpdateView } from '../types.ts'
+import type { SuiyiIdentityState } from './suiyi-identity.ts'
 
 /** One nav row projected from a settings.section registration's options. */
 export interface SettingsSectionRow {
@@ -41,6 +42,15 @@ export interface SettingsOnboardingStep {
 export type SettingsRootInjected = {
   /** Request the current shell-owned update action. */
   openDesktopUpdate: () => void
+  /**
+   * Suiyi full-page entry: opens the main-panel settings page instead of the
+   * modal. Absent in the official build, which keeps the modal shell.
+   */
+  page?: { open: () => void; close: () => void } | undefined
+  /** Suiyi Keycloak bridge actions; the row renders unavailable without a bridge. */
+  signIn: () => void
+  /** Clear the Suiyi identity through the real bridge. */
+  signOut: () => void
   /** Request a fresh logical generation and physical WebSocket immediately. */
   reconnect: () => void
   hooks: {
@@ -54,6 +64,8 @@ export type SettingsRootInjected = {
     sections: HostObservable<readonly SettingsSectionRow[]>
     /** settings.onboarding ledger projected into coordinator order. */
     onboardingSteps: HostObservable<readonly SettingsOnboardingStep[]>
+    /** Suiyi account view and in-flight state. */
+    suiyiIdentity: HostObservable<SuiyiIdentityState>
   }
 }
 

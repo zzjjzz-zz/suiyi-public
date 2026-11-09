@@ -29,6 +29,12 @@ import type {
 // Type-only service merge for ctx.slots.
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import { renderSessionArea } from './session-provider.tsx'
+import {
+  TurnCompletionObserver,
+  type SessionTurnCompletionListener,
+} from './turn-completions.ts'
+
+export type { SessionTurnCompletion, SessionTurnCompletionListener } from './turn-completions.ts'
 
 /** Selector hook over the Session Controller list and current selection. */
 export type UseSessions = SnapshotSelectorHook<SessionListState>
@@ -295,6 +301,7 @@ export class UiSession extends Service {
   private mainRetainId: SessionId | undefined
   private disposeMainRetain = (): void => {}
   private active = true
+  private readonly turnCompletions: TurnCompletionObserver
   /** Root source combining running, pending-interaction, and completion-reminder facts. */
   readonly sessionStatus: HostObservable<SessionStatusSnapshot> = {
     getSnapshot: () => this.statusSnapshot,
@@ -322,6 +329,14 @@ export class UiSession extends Service {
       bindingSource: target => this.bindingSource(target),
       renderArea: renderSessionArea,
     }
+    this.turnCompletions = new TurnCompletionObserver(sessions, () => this.running)
+    ctx.effect(() => {
+      const offReset = ctx.on('connection/reset', () => { this.turnCompletions.reset() })
+      return () => {
+        offReset()
+        this.turnCompletions.dispose()
+      }
+    }, 'ui-session: turn completions')
 
     ctx.effect(() => {
       const disposeList = sessions.list.subscribe(() => { this.publishMain() })
@@ -505,10 +520,21 @@ export class UiSession extends Service {
     this.publishStatus()
   }
 
+  /**
+   * Observe normally completed live turns. Retention starts only while a
+   * listener exists and a Session is running; history replay never emits.
+   * @param listener - live completion recipient.
+   * @returns disposer removing the listener and releasing its observations.
+   */
+  onTurnCompleted(listener: SessionTurnCompletionListener): () => void {
+    return this.turnCompletions.subscribe(listener)
+  }
+
   private observeRunning(sessionId: SessionId, running: boolean): void {
     const previous = this.running.get(sessionId)
     const beforeBaseline = this.sessions.list.getSnapshot().phase === 'pending'
     this.running.set(sessionId, running)
+    this.turnCompletions.observeRunning(sessionId, running)
     if (running) this.completionUnread.delete(sessionId)
     else if ((previous === true || (previous === undefined && beforeBaseline))
       && !this.isMain(sessionId)) this.completionUnread.add(sessionId)
@@ -524,6 +550,7 @@ export class UiSession extends Service {
       const previous = this.running.get(id)
       if (previous === undefined) this.running.set(id, row.running)
       else if (previous !== row.running) this.observeRunning(id, row.running)
+      this.turnCompletions.observeRunning(id, row.running)
     }
     for (const id of present) {
       if (this.isMain(id)) this.completionUnread.delete(id)
@@ -532,6 +559,7 @@ export class UiSession extends Service {
       for (const id of this.running.keys()) {
         if (present.has(id)) continue
         this.running.delete(id)
+        this.turnCompletions.forget(id)
         this.completionUnread.delete(id)
       }
     }

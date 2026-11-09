@@ -12,7 +12,7 @@ import { MutableSessionEventSource } from '@deepseek-ai/dsh-api-session-controll
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { StaticRemoteAccess } from '@deepseek-ai/dsh-client-test-runtime'
 import type { HostObservable, RootStandardSourceContribution } from '@deepseek-ai/dsh-client-ui-slots'
-import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import type { SessionEvent, SessionId } from '@deepseek-ai/dsh-session/types'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   apply,
@@ -21,13 +21,17 @@ import {
 } from '../src/client/index.ts'
 import { apply as nodeApply } from '../src/index.ts'
 
+type TestSessionBinding = SessionBinding & { readonly eventSource: MutableSessionEventSource }
+
 interface SessionsBench {
   readonly sessions: ISessions
   readonly list: ReturnType<typeof createSnapshotStore<SessionListState>>
   readonly resolveBinding: ReturnType<typeof vi.fn<(id: SessionId) => SessionBinding | undefined>>
   readonly createSession: ReturnType<typeof vi.fn<ISessions['create']>>
   readonly retainInfo: ReturnType<typeof vi.fn<ISessions['retainInfo']>>
-  binding(id: SessionId): SessionBinding
+  readonly retain: ReturnType<typeof vi.fn<ISessions['retain']>>
+  binding(id: SessionId): TestSessionBinding
+  replaceBinding(id: SessionId): TestSessionBinding
   reference(binding: SessionBinding): SessionReference
   setMainView(id: SessionId, count: number): void
   setRetainInfo(id: SessionId, count: number): void
@@ -56,7 +60,7 @@ function createSessionsBench(ctx: Context): SessionsBench {
     phase: 'ready',
     projectionsBySession: {},
   })
-  const bindings = new Map<SessionId, SessionBinding>()
+  const bindings = new Map<SessionId, TestSessionBinding>()
   const scopes = new Map<SessionId, Context>()
   const retention = new Map<SessionId, ReturnType<typeof createSnapshotStore<SessionRetainInfo>>>()
   const retainSource = (id: SessionId): ReturnType<typeof createSnapshotStore<SessionRetainInfo>> => {
@@ -71,20 +75,26 @@ function createSessionsBench(ctx: Context): SessionsBench {
   const createSession = vi.fn<ISessions['create']>(async options =>
     options?.sessionId ?? sessionId(`created-${String(options?.workspaceId ?? 'none')}`))
   const retainInfo = vi.fn<ISessions['retainInfo']>(id => retainSource(id))
+  const retain = vi.fn<ISessions['retain']>(target =>
+    bench.reference(bench.binding(typeof target === 'string' ? target : target.childSessionId)))
   const sessions = {
     list,
     create: createSession,
     binding: resolveBinding,
     retainInfo,
+    retain,
   } as unknown as ISessions
 
-  return {
+  const bench: SessionsBench = {
     sessions,
     list,
     resolveBinding,
     createSession,
     retainInfo,
+    retain,
     binding(id) {
+      const existing = bindings.get(id)
+      if (existing !== undefined) return existing
       const scopeCtx = new Context()
       ctx.effect(() => () => scopeCtx.fiber.dispose())
       const snapshot = createSnapshotStore<SessionSnapshot>({
@@ -119,7 +129,7 @@ function createSessionsBench(ctx: Context): SessionsBench {
         getSnapshot: () => snapshot.getSnapshot(),
         subscribe: (listener: () => void) => snapshot.subscribe(listener),
       } as unknown as SessionBinding['session']
-      const binding: SessionBinding = {
+      const binding: TestSessionBinding = {
         sessionId: id,
         session,
         eventSource: new MutableSessionEventSource(),
@@ -139,6 +149,10 @@ function createSessionsBench(ctx: Context): SessionsBench {
         }
       })
       return binding
+    },
+    replaceBinding(id) {
+      bindings.delete(id)
+      return this.binding(id)
     },
     reference(binding) {
       let released = false
@@ -182,6 +196,7 @@ function createSessionsBench(ctx: Context): SessionsBench {
       await scopeCtx?.fiber.dispose()
     },
   }
+  return bench
 }
 
 function createUiSession(ctx: Context, bench: SessionsBench): UiSession {
@@ -334,7 +349,7 @@ describe('UiSession bindings', () => {
     const service = createUiSession(ctx, bench)
     const oldBinding = bench.binding(sessionId('same'))
     const oldSource = service.bindingSource(bench.reference(oldBinding))
-    const replacement = bench.reference(bench.binding(oldBinding.sessionId))
+    const replacement = bench.reference(bench.replaceBinding(oldBinding.sessionId))
     const nextSource = service.bindingSource(replacement)
     const nextSnapshot = nextSource.getSnapshot()
     const changed = vi.fn()
@@ -602,6 +617,133 @@ describe('UiSession status', () => {
     })
     bench.list.update((draft) => { draft.phase = 'ready' })
     expect(service.sessionStatus.getSnapshot().has(id)).toBe(false)
+  })
+})
+
+describe('UiSession turn completions', () => {
+  const id = sessionId('turn-completion')
+  const completed = (seq: number, turn = 1): SessionEvent => ({
+    type: 'turn/end', seq, time: seq, data: { turn, reason: { kind: 'completed' } },
+  } as SessionEvent)
+
+  it('observes synchronous live events before ready settles and keeps queued turns observed', async () => {
+    const ctx = new Context()
+    const bench = createSessionsBench(ctx)
+    const service = createUiSession(ctx, bench)
+    const binding = bench.binding(id)
+    const seen = vi.fn()
+    const off = service.onTurnCompleted(seen)
+    try {
+      bench.emitStatus(id, true)
+      binding.eventSource.append({ type: 'event', event: completed(10) })
+      binding.eventSource.append({ type: 'event', event: completed(20, 2) })
+      expect(seen.mock.calls.map(call => call[0].turn)).toEqual([1, 2])
+      const reference = bench.retain.mock.results[0]!.value
+      expect(reference.release).not.toHaveBeenCalled()
+      await Promise.resolve()
+      bench.emitStatus(id, false)
+      expect(reference.release).toHaveBeenCalledOnce()
+      bench.emitStatus(id, true)
+      binding.eventSource.append({ type: 'event', event: completed(20, 2) })
+      binding.eventSource.append({ type: 'event', event: completed(30, 3) })
+      expect(seen.mock.calls.map(call => call[0].turn)).toEqual([1, 2, 3])
+    } finally { off(); await ctx.fiber.dispose() }
+  })
+
+  it('waits for a delayed terminal event after idle, then releases aborted turns without notifying', async () => {
+    const ctx = new Context()
+    const bench = createSessionsBench(ctx)
+    const service = createUiSession(ctx, bench)
+    const binding = bench.binding(id)
+    const seen = vi.fn()
+    const off = service.onTurnCompleted(seen)
+    try {
+      bench.emitStatus(id, true)
+      binding.eventSource.append({ type: 'event', event: {
+        type: 'turn/start', seq: 1, time: 1, data: { turn: 1 },
+      } as SessionEvent })
+      await Promise.resolve()
+      const reference = bench.retain.mock.results[0]!.value
+      bench.emitStatus(id, false)
+      expect(reference.release).not.toHaveBeenCalled()
+      binding.eventSource.append({ type: 'event', event: {
+        type: 'turn/end', seq: 2, time: 2, data: { turn: 1, reason: { kind: 'aborted', reason: { kind: 'user' } } },
+      } as SessionEvent })
+      expect(reference.release).toHaveBeenCalledOnce()
+      expect(seen).not.toHaveBeenCalled()
+    } finally { off(); await ctx.fiber.dispose() }
+  })
+
+  it('emits one live normally completed turn and ignores replay, duplicates, and non-success ends', async () => {
+    const ctx = new Context()
+    const bench = createSessionsBench(ctx)
+    const service = createUiSession(ctx, bench)
+    const binding = bench.binding(id)
+    const seen = vi.fn()
+    const off = service.onTurnCompleted(seen)
+    try {
+      bench.emitStatus(id, true)
+      await vi.waitFor(() => { expect(bench.retain).toHaveBeenCalledOnce() })
+      await Promise.resolve()
+      await Promise.resolve()
+
+      // Initial and historical windows never notify, even when they contain turn/end.
+      binding.eventSource.replace([{ type: 'event', event: completed(1) }], false)
+      binding.eventSource.prepend([{ type: 'event', event: completed(2, 2) }], false)
+      await Promise.resolve()
+      expect(seen).not.toHaveBeenCalled()
+
+      const end = completed(3)
+      binding.eventSource.append({ type: 'event', event: end })
+      await vi.waitFor(() => { expect(seen).toHaveBeenCalledOnce() })
+      expect(seen).toHaveBeenCalledWith({ sessionId: id, turn: 1, title: id, reason: 'completed' })
+
+      binding.eventSource.append({ type: 'event', event: end })
+      binding.eventSource.append({ type: 'event', event: { ...end, seq: 4, data: { turn: 2, reason: { kind: 'aborted', reason: { kind: 'user' } } } } as SessionEvent })
+      binding.eventSource.append({ type: 'event', event: { ...end, seq: 5, data: { turn: 3, reason: { kind: 'error', error: { message: 'fixture', code: 'UNKNOWN' } } } } as SessionEvent })
+      await Promise.resolve()
+      expect(seen).toHaveBeenCalledOnce()
+    } finally {
+      off()
+      await ctx.fiber.dispose()
+    }
+  })
+
+  it('retains only running Sessions while a listener exists, and reset/dispose releases them', async () => {
+    const ctx = new Context()
+    const bench = createSessionsBench(ctx)
+    const service = createUiSession(ctx, bench)
+    bench.emitStatus(id, true)
+    expect(bench.retain).not.toHaveBeenCalled()
+
+    const seen = vi.fn()
+    const off = service.onTurnCompleted(seen)
+    await vi.waitFor(() => { expect(bench.retain).toHaveBeenCalledOnce() })
+    const reference = bench.retain.mock.results[0]!.value as { release: ReturnType<typeof vi.fn> }
+
+    ctx.emit('connection/reset')
+    expect(reference.release).toHaveBeenCalledOnce()
+    expect(seen).not.toHaveBeenCalled()
+
+    off()
+    await ctx.fiber.dispose()
+  })
+
+  it('does not notify after the listener is removed', async () => {
+    const ctx = new Context()
+    const bench = createSessionsBench(ctx)
+    const service = createUiSession(ctx, bench)
+    const binding = bench.binding(id)
+    const seen = vi.fn()
+    const off = service.onTurnCompleted(seen)
+    try {
+      bench.emitStatus(id, true)
+      await vi.waitFor(() => { expect(bench.retain).toHaveBeenCalledOnce() })
+      off()
+      binding.eventSource.append({ type: 'event', event: completed(6) })
+      await Promise.resolve()
+      expect(seen).not.toHaveBeenCalled()
+    } finally { await ctx.fiber.dispose() }
   })
 })
 

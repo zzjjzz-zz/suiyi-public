@@ -10,7 +10,7 @@ import { expect, test } from "bun:test";
 import { FENCE_LANG } from "../src/contract.ts";
 import { inlinePrompt, type Capabilities } from "../src/prompt.ts";
 
-const ALL: Capabilities = { fs: true, ai: true, exec: true, web: true };
+const ALL: Capabilities = { fs: true, ai: true, exec: true, web: true, chat: true };
 const NO_EXEC: Capabilities = { ...ALL, exec: false };
 
 // Every rule below has to survive on the host that has the most text — commands on — because

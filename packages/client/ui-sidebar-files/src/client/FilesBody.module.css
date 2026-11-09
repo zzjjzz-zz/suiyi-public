@@ -7,8 +7,8 @@
   height: 100%;
   min-height: 0;
   color: var(--dsw-alias-label-primary);
-  font-size: var(--dsh-content-font-size-secondary, 13px);
-  line-height: 1.5;
+  font-size: 11px;
+  line-height: 1.6;
 }
 
 /* Below the header: the pane's navigator. Like the document preview's
@@ -37,8 +37,8 @@
   min-width: 0;
   min-height: 0;
   color: var(--dsw-alias-label-primary);
-  font-size: var(--dsh-content-font-size-secondary, 13px);
-  line-height: 1.5;
+  font-size: 11px;
+  line-height: 1.6;
   background: var(--dsw-alias-bg-base);
   border-left: 0.5px solid var(--dsw-alias-border-l3);
 }
@@ -154,23 +154,26 @@
   user-select: none;
 }
 
-/* The page's 38px row flush under the pane's strip: the root's path, then
-   reload and the directory actions. With the strip's 38px above, its rule lies where the conversation header's does
-   (ui-conversation ConversationRoot `.header`, 76px with the same rule). */
+/* The page's 36px toolbar flush under the pane's strip: the root's path, then
+   reload and the directory actions. With the strip above, its rule lies where
+   the conversation header's does (ui-conversation ConversationRoot `.header`,
+   76px with the same rule). The 10px path and 5px gaps match the preview
+   toolbar this page shares its position with. */
 .header {
   display: flex;
   flex: 0 0 auto;
-  gap: 4px;
+  gap: 5px;
   align-items: center;
   box-sizing: border-box;
-  height: 38px;
-  padding: 0 6px 0 16px;
+  height: 36px;
+  padding: 0 6px 0 12px;
   border-bottom: 0.5px solid var(--dsw-alias-border-l3);
 }
 
-/* The margin plus the header's gap keeps the path 16px clear of reload. */
-.path {
-  margin-right: 12px;
+/* The margin plus the header's gap keeps the path clear of reload. */
+.header .path {
+  margin-right: 8px;
+  font-size: 10px;
 }
 
 .body {
@@ -181,7 +184,7 @@
      stands in for the right padding so the rows keep their inset whether or
      not the tree overflows. */
   margin-right: 2px;
-  padding: 8px 0 8px 8px;
+  padding: 8px 8px 8px 10px;
   overflow: auto;
   scrollbar-gutter: stable;
 }
@@ -195,21 +198,22 @@
 /* The navigator's line before its tree starts, in the tree's note style (ui-primitives `.note`). */
 .note {
   margin: 0;
-  padding: 3px 10px;
+  padding: 8px 7px;
   color: var(--dsw-alias-label-tertiary);
-  font-size: 12px;
+  font-size: 11px;
+  line-height: 1.6;
 }
 
 .status {
   display: flex;
   flex-direction: column;
-  padding: 12px 10px;
+  padding: 20px 18px;
 }
 
 .statusLine {
   margin: 0;
   color: var(--dsw-alias-label-secondary);
-  font-size: var(--dsh-content-font-size-secondary, 13px);
+  font-size: 11px;
   line-height: 1.6;
 }
 

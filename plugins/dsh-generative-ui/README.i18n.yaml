@@ -1,0 +1,19 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write plugins/dsh-generative-ui/README.md
+/dsh-generative-ui:
+  en: c21abcfc38ef6f0f
+  zh: 3332554224f8dee7
+/dsh-generative-ui/install:
+  en: 36993e2bb56e5499
+  zh: b7b4f6e839eaf740
+/dsh-generative-ui/how-it-works:
+  en: eb013ccead5618dd
+  zh: 53ac2899597e3fce
+/dsh-generative-ui/development:
+  en: 13ef45957c136b7b
+  zh: aac1f9985c65eea0
+/dsh-generative-ui/license:
+  en: e1ab17fe41b86709
+  zh: 25ef74e158d5d9f3

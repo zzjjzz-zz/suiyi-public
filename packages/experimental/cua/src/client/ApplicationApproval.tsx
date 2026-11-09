@@ -1,8 +1,18 @@
 /** Computer Use presentation over the existing pending-question answer channel. */
 import type { PropsLocale, PropsRenderFactories, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ComposerChainProps } from '@deepseek-ai/dsh-client-ui-conversation/client'
-import type {} from '@deepseek-ai/dsh-client-ui-user-questions/client'
+import type { PendingQuestion } from '@deepseek-ai/dsh-client-ui-user-questions/client'
 import type {} from '@deepseek-ai/dsh-client-ui-approval/client'
+
+/**
+ * Narrow the elected interaction to the question carrier without relying on a declaration-merged
+ * registry that a declaration-only consumer can see as its empty base.
+ * @param pending The session's currently elected interaction.
+ * @returns Whether the interaction is the question carrier.
+ */
+function isPendingQuestion(pending: ComposerChainProps['pendingInteraction']): pending is PendingQuestion {
+  return pending?.kind === 'question'
+}
 
 /**
  * Select only the provider's fixed application question; other interactions keep their renderer.
@@ -10,7 +20,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-approval/client'
  * @returns Its application decision, or null for another interaction.
  */
 export function selectApplicationApproval(pending: ComposerChainProps['pendingInteraction']) {
-  if (pending?.kind !== 'question' || pending.questions.length !== 1) return null
+  if (!isPendingQuestion(pending) || pending.questions.length !== 1) return null
   const item = pending.questions[0] as (typeof pending.questions)[number]
   if (item.id !== 'cua-app-access' || item.intent?.kind !== 'approval') return null
   return { pending, item, intent: item.intent }

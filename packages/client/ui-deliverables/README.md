@@ -7,6 +7,8 @@ kind: "package-reference"
 
 English | [中文](README.zh.md)
 
+The workbench delivery list uses a 34 px heading and 65 px minimum border-box rows. Long content may grow a row without clipping its controls.
+
 ## Summary
 
 This package renders the changed-files card a finished turn ends with — the files the turn changed, with the Host's line counts, each opening the turn's review tab on that file — plus cards for explicitly delivered files, and links matching inline-code references in the closing prose so a mentioned file opens in the right Sidebar. Listed and linked paths come from the recorded summary, successful mutations, and explicit deliveries, never from the prose. Only the shipped Web patch loads this package; removing its cordis.yml entry removes the guidance, cards, and prose links together.
@@ -51,6 +53,10 @@ A row opens the turn's `changes-review` tab, addressed by the viewed Session and
 The selected-file title uses the shared `ui-primitives` [`PathLabel`](../ui-primitives/README.md#component-catalog): complete and left-aligned when it fits, otherwise clipped at the left with a fade that preserves trailing characters and the extension. Directories use subdued text, the filename uses primary text, and hovering reveals the complete displayed path. Resizing the pane or selecting another file updates the fade; the dropdown arrow, line counts, and toolbar actions retain their space.
 
 Without wrapping, the two columns synchronize vertical scrolling and horizontal offsets up to each side’s available range. Line backgrounds, including empty alignment rows, cover each column’s full scrollable width. Both columns suppress elastic edge feedback and scroll chaining on both axes; the browser retains control of native momentum within each column’s scrollable range. Both horizontal scrollbars remain at the bottom of the visible comparison; scrolling vertically preserves a long line’s horizontal offset when the other side fits without horizontal scrolling.
+
+### Workbench pages
+
+The package also registers two right-workbench pages. **Artifacts** reads the existing `deliverables` Turn projection from the assembled Chat timeline and lists the latest declaration of each delivered file; preview and safe Host open reuse the same `PresentedFileCard`, `PresentedOpenController`, and authenticated routes as the turn-tail card. **Changes** resolves the latest Turn that announced `workspace/changes` and opens that real `changes-review` tab with its recorded sequence and turn; without a recorded change it renders an empty state instead of guessing coordinates. Neither page synthesizes session artifacts, diffs, or a turn address.
 
 ### Inline-code links
 

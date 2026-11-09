@@ -82,7 +82,9 @@ function copySessionOrders(
 export function createWorkspaceViewStore(): EngineStoreHandle<WorkspaceViewState, WorkspaceViewActions> {
   return defineStore({
     init: (): WorkspaceViewState => ({
-      groupBy: 'workspace',
+      // The Suiyi prototype's sidebar is a flat recent list; other builds keep
+      // the grouped Workspace tree as their default.
+      groupBy: process.env.DSH_CLIENT_BUILD_PROFILE === 'suiyi' ? 'flat' : 'workspace',
       orderBy: 'updated',
       groupExpansion: {},
       sessionOrderByAccount: {},

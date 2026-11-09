@@ -19,8 +19,9 @@ import type { PluginManagerFace } from '../src/client/manager-store.ts'
 import type { createNavigationStore } from '../src/client/navigation-store.ts'
 
 usePinnedBrowserLanguages('zh-CN')
-beforeEach(() => { localStorage.clear() })
+beforeEach(() => { localStorage.clear(); vi.stubEnv('DSH_CLIENT_BUILD_PROFILE', 'local') })
 afterEach(cleanup)
+afterEach(() => { vi.unstubAllEnvs() })
 
 type AccessEffect = (() => void) | Iterable<() => void>
 
@@ -194,6 +195,17 @@ describe('ui-plugin-manager browser plugin', () => {
     const reloadedInjected: object = b.slots.entries('shell.overlay')[0]!.inject!()
     expect((reloadedInjected as PluginRefreshToastFace).hooks.pluginManager).not.toBe(face.hooks.pluginManager)
     expect((reloadedInjected as PluginRefreshToastFace).hooks.pluginManager.getSnapshot().notice).toBeNull()
+  })
+
+  it('registers no internal bundle surface in the Suiyi build', async () => {
+    vi.stubEnv('DSH_CLIENT_BUILD_PROFILE', 'suiyi')
+    const b = await bench()
+    declare(b.slots)
+    await b.ctx.plugin({ inject: [...inject], apply }).await()
+    expect(b.slots.entries('main')).toEqual([])
+    expect(b.slots.entries('sidebar.panellist')).toEqual([])
+    expect(b.slots.entries('shell.overlay')).toEqual([])
+    expect(b.ctx.get('pluginNavigation')).toBeUndefined()
   })
 
   it('declares only the services the page and its Remote methods use', () => {

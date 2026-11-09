@@ -133,12 +133,14 @@ function checkHtml() {
 }
 
 try {
-  // The packaged Host runs with --expose-internals. Match that path before requiring
-  // the native fallback, whose runtime fingerprint must remain strictly validated.
-  const esmLoader = process.execArgv.includes('--expose-internals')
-    ? requireRuntime('internal/modules/esm/loader')
-    : requireRuntime('node-addon-require-builtin').requireBuiltin('internal/modules/esm/loader')
-  assert.equal(typeof esmLoader.getOrInitializeCascadedLoader, 'function')
+  // Desktop launches with --expose-internals, so exercise the Loader's real internal-access helper
+  // instead of probing the addon's runtime fingerprint. The addon remains the non-exposing fallback.
+  assert.ok(process.execArgv.includes('--expose-internals'), 'runtime payload smoke requires --expose-internals')
+  const { ModuleLoader } = await import(pathToFileURL(requireRuntime.resolve('@deepseek-ai/cordis-plugin-loader')).href)
+  const internalLoader = ModuleLoader.fromInternal()
+  assert.ok(internalLoader, 'runtime payload: exposed Node internal ESM loader is reachable')
+  assert.ok(internalLoader.version === 'v1' || internalLoader.version === 'v2')
+  console.error('runtime payload: exposed internal loader')
   console.error('runtime payload: pnpm')
   await checkPnpm(resourcesRuntime)
   console.error('runtime payload: koffi')

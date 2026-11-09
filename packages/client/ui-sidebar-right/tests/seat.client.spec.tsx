@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { apply as applyMenus, inject as injectMenus } from '@deepseek-ai/dsh-client-ui-context-menu/client'
 /** Sidebar presentation and tab subscriptions through the production slot renderer. */
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, fireEvent, waitFor } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
+import { act, fireEvent, render, waitFor } from '@testing-library/react'
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import { SlotTestRuntime, type SlotView } from '@deepseek-ai/dsh-client-test-runtime'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
@@ -15,6 +15,7 @@ import { dockPaneIds, getPane } from '@deepseek-ai/dsh-client-ui-dockkit'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { apply, inject } from '../src/client/index.ts'
 import { intentsFor } from '../src/client/shell/SidebarRight.tsx'
+import { GlobalWorkbenchTrigger } from '../src/client/shell/RightbarRoot.tsx'
 import { registerSidebarShortcuts } from '../src/client/shortcuts.ts'
 import { ShortcutRegistry } from '@deepseek-ai/dsh-client-shortcuts/src/client/registry.ts'
 import type { SidebarRightTabInfo, SidebarRightTabMenuOwnerProps } from '../src/client/contract/slots.ts'
@@ -72,7 +73,7 @@ function transition(property = 'transform') {
 async function mountSeat(viewportWidth = 1440, canShow = true, entryCount = 0, opener = false, keepMounted = false) {
   const runtime = await SlotTestRuntime.create()
   runtimes.push(runtime)
-  const frame = { openRightbar: vi.fn(), closeRightbar: vi.fn(), panelInfo: runtime.panelInfo }
+  const frame = { openRightbar: vi.fn(), closeRightbar: vi.fn(), selectPanel: vi.fn(), panelInfo: runtime.panelInfo }
   const pin = vi.fn<(address: string, signal: AbortSignal) => void>()
   runtime.ctx.provide('layout', frame as never)
   runtime.ctx.provide('resources', { pin } as never)
@@ -333,6 +334,96 @@ function element(container: HTMLElement, selector: string): HTMLElement {
 }
 
 describe('RightbarSeat presentation', () => {
+  it('renders the persistent workbench bar over the seeded files page and keeps it across provider tabs', async () => {
+    const h = await mountSeat()
+    act(() => { h.registerPage('files'); h.registerPage('terminal', true) })
+    act(() => { h.controller.toggleExpanded() })
+    expect(h.controller.active()?.kind).toBe('files')
+    const bar = element(h.view.container, '[data-sidebar-workbench]')
+    expect(bar.querySelector('[data-workbench-tab="files"]')?.getAttribute('aria-current')).toBe('page')
+    fireEvent.click(element(bar, '[data-workbench-tab="terminal"]'))
+    expect(h.controller.active()?.kind).toBe('terminal')
+    // The bar lives above the dock content, not inside the replaced tab body.
+    expect(bar.isConnected).toBe(true)
+    expect(bar.querySelector('[data-workbench-tab="terminal"]')?.getAttribute('aria-current')).toBe('page')
+  })
+
+  it('explains real boundaries with the selected Session workspace without opening a guide', async () => {
+    const h = await mountSeat()
+    h.open()
+    const tabsBefore = Object.keys(h.layout().tabs).sort()
+    const footer = element(h.view.container, '[data-sidebar-workbench-footer]')
+    const boundary = footer.querySelector('button')
+    if (boundary === null) throw new Error('expected the boundary entry')
+    fireEvent.click(boundary)
+    const body = document.querySelector('[data-workbench-boundary-dialog]')
+    expect(body).not.toBeNull()
+    expect(body?.textContent).toContain('Workspace')
+    expect(body?.textContent).toContain('Artifacts come from the current conversation')
+    expect(body?.textContent).not.toContain('Host')
+    expect(body?.textContent).not.toContain('provider')
+    expect(body?.textContent).not.toContain('fake')
+    expect(Object.keys(h.layout().tabs).sort()).toEqual(tabsBefore)
+    expect(Object.values(h.layout().tabs).some(tab => tab.kind === 'guide')).toBe(false)
+  })
+
+  it('keeps one workbench entry on a global panel and opens the selected Session workbench', async () => {
+    const h = await mountSeat()
+    h.open()
+    act(() => { h.actions.setExpanded(SESSION, false) })
+    const corner = document.createElement('div')
+    corner.setAttribute('data-shell-header-corner', '')
+    document.body.append(corner)
+    onTestFinished(() => { corner.remove() })
+    act(() => { h.runtime.panelInfo.set({ activePanelId: 'settings' as MainPanelId }) })
+    await waitFor(() => { expect(corner.querySelector('[data-sidebar-right-expand]')).not.toBeNull() })
+    expect(corner.querySelectorAll('[data-sidebar-right-expand]')).toHaveLength(1)
+    const trigger = corner.querySelector<HTMLElement>('[data-sidebar-right-expand]')
+    if (trigger === null) throw new Error('expected the retained global trigger')
+    expect(trigger.hasAttribute('disabled')).toBe(false)
+    fireEvent.click(trigger)
+    expect(h.frame.selectPanel).toHaveBeenCalledWith(null)
+    expect(h.layout().expanded).toBe(true)
+  })
+
+  it('disables the retained global trigger when no Session is selected', async () => {
+    const corner = document.createElement('div')
+    corner.setAttribute('data-shell-header-corner', '')
+    document.body.append(corner)
+    const openWorkbench = vi.fn()
+    const view = render(<GlobalWorkbenchTrigger
+      sessionId={undefined}
+      labels={{ workbench: '工作台', expand: '打开', expandAria: '打开工作台', noSession: '请先选择会话' }}
+      openWorkbench={openWorkbench}
+    />)
+    onTestFinished(() => { view.unmount(); corner.remove() })
+    await waitFor(() => { expect(corner.querySelector('[data-sidebar-right-expand]')).not.toBeNull() })
+    const trigger = corner.querySelector<HTMLButtonElement>('[data-sidebar-right-expand]')
+    if (trigger === null) throw new Error('expected the retained global trigger')
+    expect(trigger.disabled).toBe(true)
+    expect(trigger.getAttribute('aria-label')).toBe('请先选择会话')
+    fireEvent.click(trigger)
+    expect(openWorkbench).not.toHaveBeenCalled()
+  })
+
+  it('activates only the selected Session supplied to the global trigger', async () => {
+    const corner = document.createElement('div')
+    corner.setAttribute('data-shell-header-corner', '')
+    document.body.append(corner)
+    const openWorkbench = vi.fn()
+    const view = render(<GlobalWorkbenchTrigger
+      sessionId={OTHER}
+      labels={{ workbench: '工作台', expand: '打开', expandAria: '打开工作台', noSession: '请先选择会话' }}
+      openWorkbench={openWorkbench}
+    />)
+    onTestFinished(() => { view.unmount(); corner.remove() })
+    await waitFor(() => { expect(corner.querySelector('[data-sidebar-right-expand]')).not.toBeNull() })
+    const trigger = corner.querySelector<HTMLButtonElement>('[data-sidebar-right-expand]')
+    if (trigger === null) throw new Error('expected the retained global trigger')
+    fireEvent.click(trigger)
+    expect(openWorkbench).toHaveBeenCalledExactlyOnceWith(OTHER)
+  })
+
   it('keeps a background retained body through standard-source registration and removal', async () => {
     const h = await mountSeat(1440, true, 0, false, true)
     const tab = h.open('retained.txt')
@@ -399,16 +490,17 @@ describe('RightbarSeat presentation', () => {
     expect(closeWindow).not.toHaveBeenCalled()
     act(() => { h.controller.toggleExpanded() })
     act(() => { h.controller.openTabFromTarget('browser', h.controller.commandTarget()!) })
-    expect(Object.values(h.layout().tabs).map(tab => tab.kind)).toEqual(['browser'])
+    // The workbench seeds its real Files page beside the Browser tab.
+    expect(Object.values(h.layout().tabs).map(tab => tab.kind)).toEqual(['files', 'browser'])
     expect(focusedPane()).toBe(h.layout().activePaneId)
     const input = document.createElement('input')
-    element(h.view.container, '[data-tab-body]').append(input)
+    element(h.view.container, '[data-dockkit-pane-active] [data-tab-body]').append(input)
     input.focus()
     act(() => { h.controller.openTabFromTarget('browser', h.controller.commandTarget()!) })
     expect(input.isConnected).toBe(false)
     expect(focusedPane()).toBe(h.layout().activePaneId)
     close()
-    expect(Object.values(h.layout().tabs).map(tab => tab.kind)).toEqual(['browser'])
+    expect(Object.values(h.layout().tabs).map(tab => tab.kind)).toEqual(['files', 'browser'])
     act(() => { h.controller.openTabFromTarget('files', h.controller.commandTarget()!) })
     const files = h.controller.active()!
     act(() => { h.controller.openTabFromTarget('browser', h.controller.commandTarget()!) })
@@ -668,13 +760,13 @@ describe('RightbarSeat presentation', () => {
   })
 
   it('derives narrow fullscreen without recording mode and returns to normal when widened', async () => {
-    const h = await mountSeat(767, false)
+    const h = await mountSeat(639, false)
     h.open()
     expect(h.layout().mode).toBe('push')
     expect(h.frame.openRightbar).toHaveBeenLastCalledWith(false, true)
     const stored = h.instance.getSnapshot()
     const body = element(h.view.container, '[data-tab-body]')
-    h.view.update({ width: 420, viewportWidth: 768, canShow: true })
+    h.view.update({ width: 420, viewportWidth: 640, canShow: true })
     expect(h.instance.getSnapshot()).toBe(stored)
     expect(element(h.view.container, '[data-tab-body]')).toBe(body)
     expect(h.frame.openRightbar).toHaveBeenLastCalledWith(true, false)
@@ -699,7 +791,7 @@ describe('RightbarSeat presentation', () => {
     const h = await mountSeat()
     h.open()
     // Narrowed below the automatic fullscreen width, the command closes the panel.
-    h.view.update({ width: 420, viewportWidth: 700, canShow: false })
+    h.view.update({ width: 420, viewportWidth: 600, canShow: false })
     fireEvent.click(element(h.view.container, '[data-sidebar-right-mode]'))
     expect(h.layout().expanded).toBe(false)
     expect(h.layout().mode).toBe('push')
@@ -773,7 +865,7 @@ describe('RightbarSeat fullscreen entry', () => {
   })
 
   it('reports when reduced motion cancels the entering transition', async () => {
-    const h = await mountSeat(767, false)
+    const h = await mountSeat(639, false)
     const slide = transition()
     vi.spyOn(element(h.view.container, '[data-sidebar-right-panel]'), 'getAnimations').mockReturnValue([slide.animation])
     h.open()
@@ -783,7 +875,7 @@ describe('RightbarSeat fullscreen entry', () => {
   })
 
   it('waits for a replacement transform after cancellation', async () => {
-    const h = await mountSeat(767, false)
+    const h = await mountSeat(639, false)
     const first = transition()
     const replacement = transition()
     const animations = vi.spyOn(element(h.view.container, '[data-sidebar-right-panel]'), 'getAnimations')

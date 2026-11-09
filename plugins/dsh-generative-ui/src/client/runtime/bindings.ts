@@ -240,7 +240,7 @@ async function searchRequest(cwd: string, query: string, options?: { maxResults?
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ query, ...(options?.maxResults === undefined ? {} : { maxResults: options.maxResults }) }),
-    signal: options?.signal,
+    signal: options?.signal ?? null,
   });
   const body = (await response.json().catch(() => ({}))) as Ui4aSearchResult & { error?: string };
   if (!response.ok) throw new Error(`[dsh-generative-ui] $dsh/web: ${body.error ?? response.statusText}`);
@@ -270,7 +270,7 @@ async function execRequest(cwd: string, sessionId: string, command: string, sign
   const query = `cwd=${encodeURIComponent(cwd)}&session=${encodeURIComponent(sessionId)}`;
   // Aborting really kills the command: the route watches premature response-socket closure,
   // so dropping the request is what a polling card needs to not stack runs on a slow one.
-  const response = await fetch(`${EXEC_PATH}?${query}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ command }), signal });
+  const response = await fetch(`${EXEC_PATH}?${query}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ command }), signal: signal ?? null });
   const body = (await response.json().catch(() => ({}))) as Ui4aExecResult & { error?: string };
   if (!response.ok) throw new Error(`[dsh-generative-ui] $dsh/exec: ${body.error ?? response.statusText}`);
   return body;
@@ -299,7 +299,7 @@ async function* streamFrom(cwd: string, sessionId: string | undefined, request: 
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(request),
-    signal,
+    signal: signal ?? null,
   });
   if (!response.ok) throw new Error(`[dsh-generative-ui] $dsh/ai: ${response.status} ${response.statusText}`);
   if (response.body === null) throw new Error("[dsh-generative-ui] $dsh/ai: no response body");
@@ -372,13 +372,12 @@ export function bindingImports(sessionId?: string, surfaceId?: string): Record<s
   // is selected. The source is assembled with `+` for the same reason: a swapped-in `join` or
   // `map` is code injection into another surface's module.
   const groups = entries(bound);
-  for (let g = 0; g < groups.length; g += 1) {
-    const group = groups[g][0];
-    const names = keys(groups[g][1]);
+  for (const [group, members] of groups) {
+    const names = keys(members);
     // One `export const` per name: ESM export names must be statically visible. The capability is
     // the shim's own URL, read in the shim itself — no secret is written into the body.
     let body = 'import { bindOwner } from "' + source + '";\nconst g = bindOwner(import.meta.url).' + group + ";\n";
-    for (let n = 0; n < names.length; n += 1) body += "export const " + names[n] + " = g." + names[n] + ";\n";
+    for (const name of names) body += "export const " + name + " = g." + name + ";\n";
     body += "export default g;";
     const url = objectURL(new blob([body], { type: "text/javascript" }));
     ownersByUrl[url] = sessionId;
@@ -390,17 +389,13 @@ export function bindingImports(sessionId?: string, surfaceId?: string): Record<s
 }
 
 export function releaseBindings(): void {
-  const owners = values(cached);
-  for (let i = 0; i < owners.length; i += 1) {
-    const urls = values(owners[i]);
-    for (let j = 0; j < urls.length; j += 1) URL.revokeObjectURL(urls[j]);
+  for (const urls of values(cached)) {
+    for (const url of values(urls)) URL.revokeObjectURL(url);
   }
-  const cachedKeys = keys(cached);
-  for (let i = 0; i < cachedKeys.length; i += 1) delete cached[cachedKeys[i]];
-  const ownedUrls = keys(ownersByUrl);
-  for (let i = 0; i < ownedUrls.length; i += 1) {
-    delete ownersByUrl[ownedUrls[i]];
-    delete surfacesByUrl[ownedUrls[i]];
+  for (const key of keys(cached)) delete cached[key];
+  for (const url of keys(ownersByUrl)) {
+    delete ownersByUrl[url];
+    delete surfacesByUrl[url];
   }
   if (internal !== null) {
     URL.revokeObjectURL(internal);

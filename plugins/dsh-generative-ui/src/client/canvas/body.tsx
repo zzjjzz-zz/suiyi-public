@@ -12,7 +12,7 @@ import type { PropsRuntime, TranslateNS } from "@deepseek-ai/dsh-client-ui-slots
 import { GenUISurface } from "../runtime/GenUISurface.tsx";
 import { canvasIdOfAddress } from "./definition.ts";
 import { readCanvasFile } from "./read.ts";
-import { useSubPages } from "./subpages.ts";
+import { dataModuleUrl, useSubPages } from "./subpages.ts";
 import { CanvasReadStatus } from "./read-status.tsx";
 
 /**
@@ -99,7 +99,7 @@ export function CanvasBody({ useTabInfo, cwdOf, previewOf, onCardError, onCardRe
   // A growing tool-call body is a preview; a completed write is read from disk.
   // Never call a preview saved, and never treat a preview's source as authoritative.
   const code = live?.code ?? diskCode;
-  const resolved = useSubPages(cwd, code === null || id === null ? undefined : { id, code, streaming: live !== undefined }, sessionId);
+  const resolved = useSubPages(cwd, code === null || id === null ? undefined : { id, code, streaming: live !== undefined }, sessionId, dataModuleUrl);
 
   // Explicit retries preserve the last successfully rendered file. An error stays
   // visible through the retry affordance without destroying interactive state.
@@ -111,7 +111,7 @@ export function CanvasBody({ useTabInfo, cwdOf, previewOf, onCardError, onCardRe
 
   if (id === null) return null;
   if (error !== null && code === null) return <CanvasReadStatus t={t} error={error} retry={retryRead} />;
-  if (code === null) return <CanvasReadStatus t={t} retry={loading ? undefined : retryRead} />;
+  if (code === null) return <CanvasReadStatus t={t} {...(loading ? {} : { retry: retryRead })} />;
   // A canvas is inset; an inline card is not. The card is told to fill whatever holds it, so
   // the two surfaces have to differ HERE rather than in every generated component — inline sits
   // in the transcript and must share the prose's left edge, while a canvas in a panel with its
@@ -138,7 +138,7 @@ export function CanvasBody({ useTabInfo, cwdOf, previewOf, onCardError, onCardRe
           </button>
         </div>
       )}
-      <GenUISurface key={ownerKey} sessionId={sessionId} surfaceId={`canvas:${id}`} code={resolved} streaming={live !== undefined} onError={(error, phase) => onCardError(error.message, phase)} onRendered={onCardRendered} />
+      <GenUISurface key={ownerKey} {...(sessionId === undefined ? {} : { sessionId })} surfaceId={`canvas:${id}`} code={resolved} streaming={live !== undefined} onError={(error, phase) => onCardError(error.message, phase)} onRendered={onCardRendered} />
     </div>
   );
 }

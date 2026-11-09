@@ -28,6 +28,8 @@ export type MarkdownBodyProps = DocumentPreviewProps & PropsLocale<'documentMark
  * Render one accumulated document; EOF completes the primitive's full parse.
  * A leading YAML frontmatter block renders as a field list instead of Markdown; its
  * verbatim source stands in while the field-list chunk loads or when it fails.
+ * The body sits on the workbench's 12px-radius document card with a 16px
+ * inset and 11px prose; narrow panes reduce only the card's edge space.
  * @param props - owner-loaded contents and localized primitive labels.
  * @returns Markdown content, or nothing for a non-text delivery.
  */

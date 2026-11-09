@@ -132,6 +132,7 @@ Var dshRecoveryStopped
 !macroend
 
 Function .onGUIEnd
+  Call InstallerUnloadFonts
   Call dshCleanupDirectories
 FunctionEnd
 

@@ -1,4 +1,9 @@
-/* Montserrat; SIL Open Font License in Montserrat-OFL.txt. */
+/* Montserrat; SIL Open Font License in Montserrat-OFL.txt.
+ * Noto Sans SC arrives through its own local-subset stylesheet: the suiyi brand
+ * layer selects the family by name, and other builds never request a subset
+ * because no rule references it. */
+@import url('./noto-sans-sc.css');
+
 @font-face {
   font-family: 'Montserrat';
   font-style: normal;

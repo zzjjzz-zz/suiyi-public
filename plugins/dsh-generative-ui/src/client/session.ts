@@ -23,7 +23,7 @@ type SessionId = Parameters<ISessions["binding"]>[0];
 export function selectedSessionId(ctx: ClientContext): SessionId | undefined {
   // `uiSession` is not statically injected: older hosts may not provide it.
   const uiSession = ctx.get("uiSession") as { adapter?: { current: { getSnapshot(): { key?: string } } } } | undefined;
-  const key = uiSession === undefined ? (ctx.sessions as unknown as { list: { getSnapshot(): { current?: string } } }).list.getSnapshot().current : uiSession.adapter?.current.getSnapshot().key;
+  const key = uiSession === undefined ? (ctx.get("sessions") as { list: { getSnapshot(): { current?: string } } }).list.getSnapshot().current : uiSession.adapter?.current.getSnapshot().key;
   return key as SessionId | undefined;
 }
 
@@ -34,11 +34,11 @@ type UiConversationLike = { binding(source: unknown): { target(name: "chat"): { 
 export function chatNodes(ctx: ClientContext): readonly ChatNodeView[] {
   const sessionId = selectedSessionId(ctx);
   if (sessionId === undefined) return [];
-  const binding = (ctx.sessions as unknown as ISessions).binding(sessionId);
+  const binding = (ctx.get("sessions") as ISessions).binding(sessionId);
   if (binding === undefined) return [];
   // A static inject would disable older hosts, so feature-detect the 0.1.2 service per sweep.
   const uiConversation = ctx.get("uiConversation") as UiConversationLike | undefined;
-  const chat = uiConversation === undefined ? (binding.session.getSnapshot() as unknown as { readonly chat?: ChatSnapshotLike } | undefined)?.chat : uiConversation.binding(binding).target("chat").getSnapshot();
+  const chat = uiConversation === undefined ? (binding.session.getSnapshot() as { readonly chat?: ChatSnapshotLike } | undefined)?.chat : uiConversation.binding(binding).target("chat").getSnapshot();
   if (chat === undefined) return [];
   return [...chat.nodes.values()] as readonly ChatNodeView[];
 }

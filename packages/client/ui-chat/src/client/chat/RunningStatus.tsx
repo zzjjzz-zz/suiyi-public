@@ -1,5 +1,5 @@
-/** Running Turn clock isolated from the transcript's render cycle. */
-import { memo, useEffect, useState } from 'react'
+/** Running indicator, optional process disclosure, and isolated elapsed clock. */
+import { memo, useEffect, useState, type ReactNode } from 'react'
 import { TextShimmer } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ChatViewSlotProps } from '../contract/slots.ts'
 import { formatRunDuration, LIVE_RUN_CLOCK_INTERVAL_MS } from './message-chrome.ts'
@@ -13,6 +13,10 @@ interface RunningStatusProps {
   readonly paused: boolean
   /** Keep the slot without showing or announcing the status: the Session stopped before its Turn closed. */
   readonly holding?: boolean
+  /** Branded waiting indicator, replaced by the reply's own mark when text arrives. */
+  readonly thinkingMark?: ReactNode
+  /** Open the existing process group from its branded waiting label. */
+  readonly disclosure?: { readonly open: boolean; readonly bodyId: string; readonly toggle: () => void }
   readonly t: ChatViewSlotProps['t']
 }
 
@@ -22,14 +26,32 @@ interface RunningStatusProps {
  * @returns the blue running indicator; mount while the Session is running, or holding its slot hidden until the
  * Turn's actions row replaces it.
  */
-export const RunningStatus = memo(function RunningStatus({ startTime, paused, holding = false, t }: RunningStatusProps) {
+export const RunningStatus = memo(function RunningStatus({
+  startTime, paused, holding = false, thinkingMark, disclosure, t,
+}: RunningStatusProps) {
+  const thinking = thinkingMark !== undefined
   const [now, setNow] = useState(Date.now)
   useEffect(() => {
-    if (startTime === undefined || paused || holding) return
+    if (startTime === undefined || paused || holding || thinking) return
     setNow(Date.now())
     const timer = setInterval(() => { setNow(Date.now()) }, LIVE_RUN_CLOCK_INTERVAL_MS)
     return () => { clearInterval(timer) }
-  }, [startTime, paused, holding])
+  }, [startTime, paused, holding, thinking])
+  if (thinking) return <div className={css.thinking} data-chat-running data-chat-thinking
+    data-paused={paused || holding ? '' : undefined} data-holding={holding ? '' : undefined}
+    aria-hidden={holding || undefined}>
+    <span className={css.thinkingMark} aria-hidden="true">{thinkingMark}</span>
+    <div className={css.thinkingBody}>
+      {disclosure === undefined
+        ? <div className={css.thinkingLabel} role={holding ? undefined : 'status'}>{t('chat.thinking')}</div>
+        : <button type="button" className={`${css.thinkingLabel} ${css.thinkingToggle}`}
+          aria-label={t('chat.thinking')} aria-expanded={disclosure.open}
+          aria-controls={disclosure.bodyId} onClick={disclosure.toggle}>
+          <span role="status">{t('chat.thinking')}</span>
+        </button>}
+      <div className={css.thinkingProgress} role="progressbar" aria-label={t('chat.thinking')}><i /></div>
+    </div>
+  </div>
   const label = startTime === undefined ? t('chat.deepDiving') : t('chat.deepDivingFor', {
     duration: formatRunDuration(Math.max(1000, now - startTime), t).map(part => part.text).join(''),
   })

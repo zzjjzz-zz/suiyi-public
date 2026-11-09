@@ -48,6 +48,13 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
     /** Rows of the panel list's More menu; the sidebar shows More only while this list has registrations. */
     'sidebar.panellist.actions': { kind: 'list'; scope: 'root'; owner: SidebarPanelActionsOwnerProps }
     /**
+     * Full-width search trigger above the navigation rows. Declared by this
+     * package's 'sidebar' entry; ui-workspace registers the trigger that opens
+     * the workspace browser's search. The collapsed rail keeps its own search
+     * control, so the shell renders this seat only while expanded.
+     */
+    'sidebar.search': { kind: 'single'; scope: 'root'; owner: Record<never, never> }
+    /**
      * The workspace/session browsing region: section header, search, the
      * grouped/flat session list, and every workspace dialog. Declared by this
      * package's 'sidebar' entry (declaring is claiming); ui-workspace
@@ -203,7 +210,7 @@ export type SidebarRootInjected = {
   /** Toggle the sidebar column through the layout service. */
   toggleSidebar: () => void
   /** Select the global panel addressed by a sidebar row. */
-  selectPanel: (id: MainPanelId) => void
+  selectPanel: (id: MainPanelId | null) => void
   /**
    * Show or unpin one panel launcher; Plugins is ignored.
    * @param id - Panel id.
@@ -220,6 +227,8 @@ export type SidebarRootInjected = {
     entryPins: ObservableSnapshot<readonly string[]>
     /** Whether `sidebar.panellist.actions` has registrations. */
     entryActions: ObservableSnapshot<boolean>
+    /** Whether `sidebar.search` has a registrant; an empty seat renders nothing. */
+    searchEntries: ObservableSnapshot<boolean>
   }
 }
 
@@ -235,6 +244,7 @@ export type SidebarRootComponentProps =
     | 'sidebar.brand.name'
     | 'sidebar.toggle.badge'
     | 'sidebar.panellist.actions'
+    | 'sidebar.search'
     | 'sidebar.workspaces'
     | 'sidebar.settings'
     | 'sidebar.footer.action'

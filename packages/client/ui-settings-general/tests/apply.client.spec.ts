@@ -5,7 +5,7 @@
  * loopback-only document action over the real settings mirror, and recovery
  * across Loader rebuilds of the declaring chain.
  */
-import { describe, expect, onTestFinished, vi } from 'vitest'
+import { afterEach, describe, expect, onTestFinished, vi } from 'vitest'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import { ok, type RemoteMock } from '@deepseek-ai/dsh-remote-mock'
 import type { SettingsNamespaceView } from '@deepseek-ai/dsh-settings/types'
@@ -21,11 +21,16 @@ import type { DesktopChannelRowInjected, DesktopChannelToastInjected } from '../
 import type { DesktopChannelBridge } from '../src/types.ts'
 import { GeneralSection } from '../src/client/GeneralSection.tsx'
 import { SettingsDocumentAction } from '../src/client/SettingsDocumentAction.tsx'
+import { SettingsPage } from '../src/client/SettingsPage.tsx'
+import { SettingsRoot } from '../src/client/SettingsRoot.tsx'
 import type { SettingsDocumentActionInjected } from '../src/client/SettingsDocumentAction.tsx'
+import { reduceMotionRowFace, visualOutputRowFace } from './inject-face.client.ts'
 
 const SELF = '@deepseek-ai/dsh-client-ui-settings-general'
 const SIDEBAR = '@deepseek-ai/dsh-client-ui-sidebar'
 const it = createClientTest({ roster: webApp })
+
+afterEach(() => { vi.unstubAllEnvs() })
 /** The whole roster's first boot pays the cold module transform of every plugin package. */
 const COLD_BOOT_TIMEOUT_MS = 60_000
 /** Dictionary namespace this plugin owns; every seat it fills declares it. */
@@ -53,7 +58,8 @@ function localeView(preference: string, revision = 0): SettingsNamespaceView {
   }
 }
 
-async function client(mock: RemoteMock, start: () => Promise<TestClient>, hasDocument = false) {
+async function client(mock: RemoteMock, start: () => Promise<TestClient>, hasDocument = false, profile: 'local' | 'suiyi' = 'local') {
+  vi.stubEnv('DSH_CLIENT_BUILD_PROFILE', profile)
   const settings = mock.remote.settings
   settings.describe.mockResolvedValue(ok({ writable: true, hasDocument, namespaces: [localeView('zh')] }))
   const c = await start()
@@ -98,7 +104,7 @@ function setPageUrl(url: string): void {
 
 describe('ui-settings-general apply', () => {
   it('declares the services it uses', () => {
-    expect(inject).toEqual(['slots', 'locale', 'connection', 'remote', 'remote.settings', 'configForms', 'shortcuts', 'modules', 'remoteAccess'])
+    expect(inject).toEqual(['slots', 'locale', 'connection', 'remote', 'remote.settings', 'configForms', 'shortcuts', 'modules', 'remoteAccess', 'layout'])
   })
 
   it('fills the five seats of the shell it declares, with the locale-following General label', async ({ mock, start }) => {
@@ -108,10 +114,10 @@ describe('ui-settings-general apply', () => {
     const entry = generalEntry(c)
     expect(entry.options).toMatchObject({ id: 'general', order: 0 })
     // The nav label is a locale-following thunk; owners resolve at read time.
-    expect(generalLabel(c)).toBe('通用设置')
+    expect(generalLabel(c)).toBe('外观与通用')
     expect(c.ctx.slots.spec('settings.general.item')).toEqual({ kind: 'list', scope: 'root' })
     // The shared developer-tool control belongs to General; onboarding remains feature-owned.
-    expect(c.ctx.slots.entries('settings.general.item').filter(row => row.locale === NS).map(row => row.options.id)).toEqual(['developer-tools', 'current-version'])
+    expect(c.ctx.slots.entriesOfSlot('settings.general.item').filter(row => row.locale === NS).map(row => row.options.id)).toEqual(['visual-output', 'reduced-motion', 'developer-tools', 'current-version'])
     expect(c.ctx.slots.entries('settings.onboarding').filter(row => row.locale === NS)).toEqual([])
     const developer = developerToolsRowOf(c)
     expect(developer.hooks.developerTools).toBe(c.ctx.configForms.developerTools.enabled)
@@ -119,6 +125,22 @@ describe('ui-settings-general apply', () => {
     const setEnabled = vi.spyOn(c.ctx.configForms.developerTools, 'setEnabled').mockResolvedValue(undefined)
     await developer.setEnabled(true)
     expect(setEnabled).toHaveBeenCalledExactlyOnceWith(true)
+    // Generated output has no provider in this roster: the row reports that
+    // accurately and cannot write anything.
+    const rows = c.ctx.slots.entries('settings.general.item')
+    const visual = visualOutputRowFace(rows.find(row => row.options.id === 'visual-output' && row.options.priority === 10)!)
+    expect(visual.hooks.readiness.getSnapshot()).toEqual({ ready: false, reason: 'not-installed' })
+    expect(visual.hooks.visualOutput.getSnapshot()).toBe(false)
+    expect(await visual.setEnabled(true)).toBe(false)
+    // The reduced-motion row owns a Host-backed preference on the same namespace
+    // as the onboarding acknowledgement.
+    const motion = reduceMotionRowFace(rows.find(row => row.options.id === 'reduced-motion')!)
+    expect(motion.hooks.reducedMotion.getSnapshot()).toBe(false)
+    const writeMotion = vi.spyOn(c.ctx.configForms.get<{ reduceMotion: boolean }>('ui-settings-general'), 'set')
+      .mockResolvedValue(true)
+    onTestFinished(() => { writeMotion.mockRestore() })
+    await motion.setReduceMotion(true)
+    expect(writeMotion).toHaveBeenCalledExactlyOnceWith('reduceMotion', true)
     const { controller, hooks } = actionInjectedOf(c)
     expect(controller.store.getSnapshot().status).toBe('idle')
     expect(hooks.snapshot).toBe(controller.store)
@@ -126,6 +148,39 @@ describe('ui-settings-general apply', () => {
     for (const [name, component] of SEATS) {
       expect(c.ctx.slots.entries(name).find(row => row.component === component)!.locale).toBe(NS)
     }
+  }, COLD_BOOT_TIMEOUT_MS)
+
+  it('keeps one winning visual-output row from the real built-in provider', async ({ mock, start }) => {
+    const { c } = await client(mock, start)
+    const rows = () => c.ctx.slots.entries('settings.general.item').filter(row => row.options.id === 'visual-output')
+    // The real provider is already mounted; the fallback remains as the
+    // shadowed contribution and only one cell wins.
+    expect(rows()).toHaveLength(2)
+    const provider = rows().find(row => (row.options.priority ?? 0) === 0)!
+    const fallback = rows().find(row => (row.options.priority ?? 0) === 10)!
+    expect(provider).toBeDefined()
+    expect(fallback).toBeDefined()
+    expect(c.ctx.slots.entriesOfSlot('settings.general.item').filter(row => row.options.id === 'visual-output')).toHaveLength(1)
+    const face = visualOutputRowFace(provider)
+    expect(face.hooks.readiness.getSnapshot()).toHaveProperty('ready')
+    expect(typeof face.hooks.visualOutput.getSnapshot()).toBe('boolean')
+    const fallbackFace = visualOutputRowFace(fallback)
+    expect(fallbackFace.hooks.readiness.getSnapshot()).toEqual({ ready: false, reason: 'not-installed' })
+  }, COLD_BOOT_TIMEOUT_MS)
+
+  it('registers a real main-panel page instead of the modal in the Suiyi build', async ({ mock, start }) => {
+    const { c } = await client(mock, start, false, 'suiyi')
+    const sidebar = c.ctx.slots.entries('sidebar.settings').find(row => row.component === SettingsRoot)!
+    expect(Object.keys(sidebar.children ?? {}).sort()).toEqual([
+      'settings.launcher', 'settings.onboarding', 'settings.trigger',
+    ])
+    const page = c.ctx.slots.entries('main').find(row => row.options.key === 'settings')!
+    expect(page.component).toBe(SettingsPage)
+    expect(Object.keys(page.children ?? {}).sort()).toEqual([
+      'settings.action', 'settings.close', 'settings.header', 'settings.section', 'settings.section.icon',
+    ])
+    expect(c.ctx.slots.entries('settings.general.item').some(row => row.options.id === 'developer-tools')).toBe(false)
+    expect(c.ctx.slots.entries('settings.action')).toHaveLength(0)
   }, COLD_BOOT_TIMEOUT_MS)
 
   it('reports a Coding Tools toggle only when a known value changes to the requested one', async ({ mock, start }) => {
@@ -189,7 +244,7 @@ describe('ui-settings-general apply', () => {
     const english = localeView('en', 1)
     settings.mutate.mockResolvedValueOnce(ok(english))
     const t = c.ctx.locale.bind(NS)
-    expect(t('title')).toBe('设置')
+    expect(t('title')).toBe('设置与偏好')
     expect(t('connection.error')).toBe('连接异常，刷新重试')
     expect(t('connection.connecting')).toBe('重新连接中')
     expect(t('connection.connected')).toBe('连接成功')
@@ -255,12 +310,12 @@ describe('ui-settings-general apply', () => {
       expect(c.ctx.slots.getVersion(name)).toBe(zhVersions[i]!)
       expect(ownEntries(c, name)).toHaveLength(1)
     })
-    expect(generalLabel(c)).toBe('General')
+    expect(generalLabel(c)).toBe('Appearance and general')
     await vi.waitFor(() => {
       expect(c.ctx.configForms.describe().getSnapshot().view?.namespaces).toEqual([english])
     })
     c.ctx.locale.setLocale('zh')
-    expect(generalLabel(c)).toBe('通用设置')
+    expect(generalLabel(c)).toBe('外观与通用')
     await vi.waitFor(() => {
       expect(settings.mutate.mock.calls).toEqual([
         [LOCALE_SETTINGS_NAMESPACE, [{ op: 'set', path: ['preference'], value: 'en' }], 0],
@@ -323,7 +378,7 @@ describe('ui-settings-general apply', () => {
     })
     await vi.waitFor(() => {
       expect(c.ctx.locale.getSnapshot().active).toBe('en')
-      expect(generalLabel(c)).toBe('General')
+      expect(generalLabel(c)).toBe('Appearance and general')
     })
     settings.describe.mockResolvedValue(ok({
       writable: true, hasDocument: false, namespaces: [localeView('zh', 2)],
@@ -332,7 +387,7 @@ describe('ui-settings-general apply', () => {
     await c.mock.streams.opened('$events', 2)
     await vi.waitFor(() => {
       expect(c.ctx.locale.getSnapshot().active).toBe('zh')
-      expect(generalLabel(c)).toBe('通用设置')
+      expect(generalLabel(c)).toBe('外观与通用')
     })
     expect(settings.mutate).not.toHaveBeenCalled()
   })
@@ -347,15 +402,15 @@ describe('ui-settings-general apply', () => {
       expect(ownEntries(c, name)[0]).not.toBe(before[index])
     })
     expect(c.ctx.slots.spec('settings.general.item')).toEqual({ kind: 'list', scope: 'root' })
-    expect(c.ctx.slots.entries('settings.general.item').filter(row => row.locale === NS).map(row => row.options.id)).toEqual(['developer-tools', 'current-version'])
+    expect(c.ctx.slots.entriesOfSlot('settings.general.item').filter(row => row.locale === NS).map(row => row.options.id)).toEqual(['visual-output', 'reduced-motion', 'developer-tools', 'current-version'])
     // The recovered registrations still ride the locale path.
     const english = localeView('en', 1)
     const chinese = localeView('zh', 2)
     settings.mutate.mockResolvedValueOnce(ok(english)).mockResolvedValueOnce(ok(chinese))
     c.ctx.locale.setLocale('en')
-    expect(generalLabel(c)).toBe('General')
+    expect(generalLabel(c)).toBe('Appearance and general')
     c.ctx.locale.setLocale('zh')
-    expect(generalLabel(c)).toBe('通用设置')
+    expect(generalLabel(c)).toBe('外观与通用')
     await vi.waitFor(() => {
       expect(settings.mutate.mock.calls).toEqual([
         [LOCALE_SETTINGS_NAMESPACE, [{ op: 'set', path: ['preference'], value: 'en' }], 0],

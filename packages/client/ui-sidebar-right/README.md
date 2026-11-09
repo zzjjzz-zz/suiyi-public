@@ -7,6 +7,8 @@ kind: "package-reference"
 
 English | [中文](README.zh.md)
 
+Workbench chrome uses a 63 px title row and a 36 px tab row (41 px below 641 px). Docked content uses the surface fill in both normal and fullscreen presentations; the outer panel owns the only leading separator.
+
 ## Summary
 
 The right Sidebar: where the docking kit meets this product. It holds one docking surface per session, draws it as one edge-anchored panel in the frame's right column in either of two presentations, puts the expand button in the conversation header, and owns the navigation controller (`ctx.sidebarRight`), the tab-type registry (`ctx.sidebarRightTabs`), and the Tab domain that tells each open tab how it was navigated to and how long it lives.
@@ -16,6 +18,7 @@ The right Sidebar: where the docking kit meets this product. It holds one dockin
 - [What lives here, and what does not](#what-lives-here-and-what-does-not)
 - [Presentations](#presentations)
 - [The expand button](#the-expand-button)
+- [The workbench bar](#the-workbench-bar)
 - [State](#state)
 - [Extension seats](#extension-seats)
 - [`ctx.sidebarRight`](#ctxsidebarright)
@@ -36,7 +39,7 @@ The layout itself — the split tree, its operations, the drag gestures, the flo
 <a id="presentations"></a>
 ## Presentations
 
-Normal and fullscreen presentations share the same content tree, so switching does not remount tabs. The normal panel anchors to the right column; fullscreen covers the viewport while retaining the wide-screen columns underneath. Opening below 768px uses fullscreen automatically; leaving fullscreen on a narrow viewport closes the panel, and widening does not reopen a closed panel. A fullscreen opening keeps the underlying columns unchanged until its slide finishes, then prepares the normal track without a column transition. Before a fullscreen panel retreats, closing prepares a full-width conversation and restoring prepares the normal right track; the background does not animate during the retreat.
+Normal and fullscreen presentations share the same content tree, so switching does not remount tabs. The normal panel opens at 360px, anchors to the right column, and draws one surface pane with a hairline separator while open; a collapsed panel keeps its box for the slide but paints no surface, so it never covers the conversation or the composer, and floating panels keep their own surfaces; fullscreen covers the viewport while retaining the wide-screen columns underneath. Opening below 640px uses fullscreen automatically; leaving fullscreen on a narrow viewport closes the panel, and widening does not reopen a closed panel. A fullscreen opening keeps the underlying columns unchanged until its slide finishes, then prepares the normal track without a column transition. Before a fullscreen panel retreats, closing prepares a full-width conversation and restoring prepares the normal right track; the background does not animate during the retreat.
 
 With a coarse pointer, a disabled split button is hidden, whether blocked by insufficient pane width or the two-pane limit, while retaining its space for stable width measurements. Fine-pointer layouts keep the disabled button visible.
 
@@ -49,18 +52,31 @@ In Windows Electron, `html[data-windows-titlebar]` keeps fullscreen panels below
 
 The seat reports presentation through `ctx.layout.openRightbar(track, fullscreen)` / `closeRightbar()`; the frame does not inject this package. Switching fullscreen on a wide viewport leaves the center width unchanged, and the width handle appears only in expanded normal mode. Independent floating panels and `float`/`dock` operations remain available.
 
-The panel has no header row. Its two controls — the presentation switch and the collapse button — ride the kit's chrome seat at the far end of the top-right pane's tab strip, so the strip is the panel's whole top edge. Each strip reads, left to right: the tab capsules with close controls where allowed, the add control (drawn only while that pane holds no guide tab; it opens the guide there through `ctx.sidebarRight.openTab`), the pane's split control, and in the top-right pane the two panel controls. Only the chips give way in a narrow pane; the controls after them never shrink or clip.
+The panel has no title header of its own. Its two controls — the presentation switch and the collapse button — ride the kit's chrome seat at the far end of the top-right pane's tab strip, so the strip is the panel's whole top edge. Each strip reads, left to right: the tab capsules with close controls where allowed, the add control (drawn only while that pane holds no guide tab; it opens the guide there through `ctx.sidebarRight.openTab`), the pane's split control, and in the top-right pane the two panel controls. Only the chips give way in a narrow pane; the controls after them never shrink or clip.
 
 <a id="the-expand-button"></a>
 ## The expand button
 
 The shortcut reference includes right-sidebar toggle, split and panel fullscreen commands. The same effective binding appears on the corresponding controls. Split and fullscreen require focus within a visible dock pane; conversation focus leaves them unavailable. Split remains visible when unavailable; its focusable tooltip shows the current binding and explains the pane limit or width requirement. Files, browser, and terminal providers contribute their own commands. Guide buttons display effective shortcuts as unboxed text inline without duplicate tooltips.
 
-While the panel is hidden, one button in the conversation header's corner seat (`conversation.session.header.corner`, past the utilities' right edge and level with the Session log control) is the way back in. Its glyph is the left sidebar's collapse icon mirrored. It uses the shared compact Button, matching the adjacent More action’s radius and hover fill. It shares the panel's store (the slot runtime allows one handle across two same-scope seats). On mobile devices recognized by the shared `isMobileDevice()` helper, the expanded panel leaves this button mounted, hidden, and disabled, retaining its header space so the title and utilities do not shift during the overlay slide. On desktop devices, the button renders nothing while the panel is shown and the corner seat collapses, regardless of window width or manual fullscreen mode. A collapsed Sidebar therefore costs the conversation nothing: no rail, no width, and the transcript's scrollbar stays at the column's edge. Without a session there is no button and no panel.
+A labelled **Workbench** pill in the conversation header's corner seat (`conversation.session.header.corner`, past the utilities' right edge) is the control for both states. It shows the panel glyph, the visible Workbench label, `aria-pressed`, and the effective binding, and it toggles the panel through the shared per-Session store — the same path as the panel's own chrome and the `sidebar.right.toggle` command. Below 640px the label drops and the control keeps its 31px-wide icon footprint. It shares the panel's store, so no second handle or state is introduced. Without a session there is no pill and no panel.
 
-The panel takes the conversation's ground colour and content font sizes rather than a raised layer of its own: it is a column of the page, not a card over it.
+The open panel paints the surface layer with one hairline separator in either presentation; while collapsed it keeps its box for the slide but paints nothing, so it never covers the conversation or the composer. Floating panels keep their own surfaces.
 
 The root-scoped `rightbar` entry renders the selected Session and background Sessions with initialized `keepMounted` bodies through separate `rightbar.session` subtrees. Each View owns its Session reference. Only the foreground subtree reports a frame track; other subtrees stay hidden without deleting tab state.
+
+<a id="the-workbench-bar"></a>
+## The workbench bar
+
+Below the dock strip, the panel draws one persistent workbench bar: the **Workbench** title and five domain doors — **Artifacts**, **Files**, **Terminal**, **Browser**, and **Changes** (`WorkbenchBar`). The bar sits above the docked content, so switching tabs, splitting a pane, floating a tab, and docking it back never unmounts or duplicates it. Each door navigates through the existing typed registry; it is not a second tab engine.
+
+- **Files** focuses an open `files` tab or opens one in the active pane. A document preview (`text`) also marks Files as the active door.
+- **Terminal** focuses an existing terminal tab or opens a new one; the process starts only on that explicit click.
+- **Browser** focuses an existing Browser tab or opens one. A profile that did not enable `ui-sidebar-browser` states that the Browser is unavailable instead of fabricating a page.
+- **Artifacts** focuses an open Artifacts tab or opens the real page from `ui-deliverables`, which reads the existing `deliverables` Turn projection from the current Session's Chat timeline and lists the latest declaration of each delivered file.
+- **Changes** focuses an already open `changes-review` tab; otherwise it opens the real Changes resolver page. That page reads the latest recorded `workspace/changes` sequence and turn from the same projection and opens the actual review. Without a recorded change it shows the real empty state; it never guesses a turn address.
+
+When `ui-deliverables` is composed out, the Artifacts and Changes doors state that their provider is unavailable and never invent session artifacts, diffs, or a turn address. Any missing provider leaves the door visibly quieter and shows one compact notice under the bar; it does not disable the rest of the workbench. The bar keeps the title and all five labels at 390px, reducing only edge padding and gaps. New panes seed the real `files` page when that provider is registered; without it, the sole guide entry or the guide remains the fallback. The guide keeps its chain, entry, and More seats, but draws compact tool rows rather than the centred start page.
 
 <a id="state"></a>
 ## State

@@ -26,6 +26,7 @@ import type { WorkspaceId } from '@deepseek-ai/dsh-api-workspace-controller/clie
 import type { WorkspaceBrowserProps } from '../contract/slots.ts'
 import type { GroupNode, SearchResultNode, SessionNode } from '../tree.ts'
 import css from './Rows.module.css'
+import { SessionGlyph } from './SessionGlyph.tsx'
 
 /** Sidebar-owned layout values needed by row copies mounted outside the sidebar. */
 const DRAG_PREVIEW_PROPERTIES = [
@@ -655,6 +656,7 @@ export function SessionNodeItem({
       data-row-key={`session:${node.id}`}
       className={clsx(
         css.sessionRow, selected && css.selected, menuOpen && css.menuOpen,
+        process.env.DSH_CLIENT_BUILD_PROFILE === 'suiyi' && css.suiyiRecent,
         row.archived && css.archived,
         drag?.marker === 'before' && css.dropBefore, drag?.marker === 'after' && css.dropAfter,
       )}
@@ -703,10 +705,15 @@ export function SessionNodeItem({
           and is cleared by opening the session. Archived rows keep the slot
           blank — the grayed row carries the archived look — and their live
           status stays on the hover card only. */}
-      <span className={css.slot}>
+      <span className={clsx(css.slot, !row.archived && !row.blank && !showStatus && css.markerSlot)}>
         {!row.archived && !row.blank && (showStatus
           ? <SessionStatusDots statuses={statuses} />
-          : renderSlot('sidebar.session.row.leading', { sessionId: node.id }))}
+          : (
+            <>
+              <SessionGlyph size={14} className={css.sessionGlyph} />
+              {renderSlot('sidebar.session.row.leading', { sessionId: node.id })}
+            </>
+          ))}
       </span>
       <span
         ref={titleRef}
@@ -734,6 +741,7 @@ export function SessionNodeItem({
         <span className={css.rowResting}>
           <span
             className={clsx(css.time, primaryStatus.trailingLabel === undefined && css.timestamp)}
+            hidden={process.env.DSH_CLIENT_BUILD_PROFILE === 'suiyi' && primaryStatus.trailingLabel === undefined}
             aria-hidden={primaryStatus.trailingLabel === undefined ? undefined : true}
           >
             {primaryStatus.trailingLabel ?? timeLabel(row.updatedAt, now, t)}

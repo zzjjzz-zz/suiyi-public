@@ -3,4 +3,4 @@
 # client-modules node half scans dsh.client packages and serves lib/client.js).
 - insert:
     - id: dsh-generative-ui
-      name: dsh-generative-ui
+      name: '@deepseek-ai/dsh-generative-ui'

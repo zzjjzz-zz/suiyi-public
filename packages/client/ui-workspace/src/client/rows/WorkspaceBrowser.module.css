@@ -90,6 +90,11 @@
   padding-right: 1px;
 }
 
+.root:not(.rail) .sectionHeader:not(:has(.searchExpanded)) .sectionLabel {
+  left: 0;
+  margin-right: auto;
+}
+
 .sectionLabel {
   position: relative;
   left: -1px;
@@ -98,6 +103,8 @@
   min-width: 0;
   overflow: hidden;
   white-space: nowrap;
+  font-size: 10px;
+  letter-spacing: 0.06em;
   line-height: 20px;
   opacity: 1;
   visibility: visible;
@@ -389,11 +396,16 @@
   flex: 1;
   min-height: 0;
   overflow: visible;
+  /* Matches the prototype's first recent row below the 32px section label. */
+  padding-top: 4px;
   /* Clears the shell's bottom fade at the end of the list. */
   padding-bottom: 16px;
 }
 
-.flatList > * + *,
+.flatList > * + * {
+  margin-top: 0;
+}
+
 .searchTree > [role='treeitem'] + [role='treeitem'],
 .groupSection > * + * {
   margin-top: 2px;

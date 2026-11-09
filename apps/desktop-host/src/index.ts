@@ -18,10 +18,12 @@ import { installDesktopQuitInspection } from './quit-inspection.ts'
 import { installPlatformSessionPublisher } from './platform-session.ts'
 import { installOfficeEngineResolution } from './office-engine.ts'
 import { installOperationDiagnostics } from './operation-diagnostics.ts'
+import { SuiyiAccess, SuiyiAccessInbox } from './suiyi-access.ts'
 
 async function main(): Promise<void> {
   const runId = randomUUID() as PluginOperationRunId
   if (process.connected) process.send?.({ type: 'starting', runId }, (error) => { if (error !== null) console.error(error) })
+  const accessInbox = new SuiyiAccessInbox()
   const runtimeDir = process.argv[2] as string
   const projectDir = process.argv[3] as string
   installOfficeEngineResolution(runtimeDir)
@@ -50,6 +52,7 @@ async function main(): Promise<void> {
   const dragReads = new Map<number, AbortController>()
   const dragTasks = new Set<Promise<void>>()
   const control: {
+    accessService?: SuiyiAccess
     updateTasks?: ReturnType<typeof installDesktopUpdateTaskControl>
     quitInspection?: ReturnType<typeof installDesktopQuitInspection>
   } = {}
@@ -58,6 +61,8 @@ async function main(): Promise<void> {
     process.send(message, (error) => { if (error === null) resolve(); else reject(error) })
   })
   const stop = (): Promise<void> => stopping ??= (async () => {
+    accessInbox.detach()
+    control.accessService?.clear()
     for (const abort of dragReads.values()) abort.abort()
     await Promise.allSettled(dragTasks)
     // Startup failure is reported by main; shutdown only owns a tree that booted.
@@ -71,6 +76,10 @@ async function main(): Promise<void> {
   })()
   process.on('message', (message: unknown) => {
     if (typeof message !== 'object' || message === null || !('type' in message)) return
+    if (message.type === 'suiyi-access-token') {
+      if (stopping === undefined) accessInbox.accept(message)
+      return
+    }
     if (message.type === 'shutdown') { void stop(); return }
     if (message.type === 'file-drag-cancel') {
       if ('requestId' in message && typeof message.requestId === 'number') dragReads.get(message.requestId)?.abort()
@@ -128,6 +137,11 @@ async function main(): Promise<void> {
   })
   process.once('disconnect', () => { void stop() })
   const { ctx } = await application
+  await ctx.plugin(SuiyiAccess, accessInbox.takePending())
+  const mountedAccess = ctx.get('suiyiAccess') as SuiyiAccess | undefined
+  if (mountedAccess === undefined) throw new Error('desktop host: Suiyi access service did not mount')
+  control.accessService = mountedAccess
+  accessInbox.attach(mountedAccess)
   installOperationDiagnostics(ctx, record => send({ type: 'plugin-operation', record }), 32, runId)
   control.updateTasks = installDesktopUpdateTaskControl(ctx)
   control.quitInspection = installDesktopQuitInspection(ctx)

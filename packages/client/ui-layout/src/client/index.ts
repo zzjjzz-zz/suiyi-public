@@ -95,6 +95,14 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      */
     'shell.bottom': { kind: 'single'; scope: 'root' }
     /**
+     * The global top bar above every main panel, spanning the center column and
+     * the collapsed or open right workbench. It sits outside the main panel's
+     * scroll container, so switching between the Conversation, a plugin page,
+     * settings, Workspaces, or Agents never unmounts it; the Conversation owns
+     * the actual bar and registers it here.
+     */
+    'shell.header': { kind: 'single'; scope: 'root'; owner: ShellHeaderOwnerProps }
+    /**
      * Frame-wide floating layer, above every column and outside their scroll
      * containers. Deliberately generic and unowned by any feature: a badge, a
      * toast stack or a status pill all belong here, and entries order among
@@ -120,6 +128,12 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      */
     'shell.leading': { kind: 'single'; scope: 'root' }
   }
+}
+
+/** Owner share of the global top bar seat: the registrant owns the bar and its content. */
+export interface ShellHeaderOwnerProps {
+  /** Marker field: the occupant owns its own markup. */
+  children?: never
 }
 
 // OwnerShare contracts — the render-side share the slot owner supplies at
@@ -197,6 +211,7 @@ export function apply(ctx: ClientContext): void {
         'main': { kind: 'keyed', scope: 'root' },
         'rightbar': { kind: 'single', scope: 'root' },
         'shell.bottom': { kind: 'single', scope: 'root' },
+        'shell.header': { kind: 'single', scope: 'root' },
         'shell.overlay': { kind: 'list', scope: 'root' },
         'shell.leading': { kind: 'single', scope: 'root' },
       },

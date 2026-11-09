@@ -1,63 +1,43 @@
 /* The guide body's own sheet: its domain owns these rules, so the shell's
    stylesheet does not carry them. Tokens only. */
 
-/* The capsules form one centred column at the column's own 14px gap, lifted
-   above the body's middle by the spacer below. The minimum height centres a
-   short guide while allowing a tall guide to grow into the pane's scroller. */
+/* The workbench's add-tool page: compact rows under the persistent domain bar,
+   not a centred start page. The guide remains the chain seam and the place a
+   type's custom entry renders. */
 .guide {
-  --dsl-guide-entry-radius: var(--dsw-radius-xl);
+  --dsl-guide-entry-radius: 7px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  align-items: center;
-  justify-content: center;
+  gap: 2px;
+  align-items: stretch;
+  justify-content: flex-start;
   box-sizing: border-box;
   min-height: 100%;
-  padding: 0 24px;
+  padding: 8px;
 }
 
-/* The lift, as a share of the pane's height (a column flex basis resolves
-   against it): the centred column rises 5% of the pane, and a short pane
-   gives it up before the capsules clip. */
-.guide::after {
-  content: '';
-  flex: 0 1 10%;
-}
-
-/* The guide tab's own compass above the capsules, at 56px on watermark ink —
-   not a control. The ink is pinned to the pure-gray static ramp per theme
-   because the label aliases all ride the bluish ramp, whose cast shows at
-   this size. Its margin over the column's gap holds the first capsule 30px
-   below it; the capsules keep the bare gap between them. */
+/* The compass belonged to the centred start page; the workbench title lives in
+   the persistent bar above this body. */
 .hero {
-  display: flex;
-  margin-bottom: 16px;
-  color: var(--dsw-static-neutral-200);
+  display: none;
 }
 
-:global(body[data-ds-dark-theme]) .hero {
-  color: var(--dsw-static-neutral-700);
-}
-
-/* A filled pill, 380px wide by default, its icon and text anchored at the
-   left inset; `max-width: 100%` shrinks it inside the column's own 24px
-   insets, so a narrow pane still keeps that gutter. The 56px minimum is the
-   title-only height; a capsule with a description grows on its vertical
-   padding. Long text ellipsizes inside rather than widening it. */
+/* A compact 36px tool row: 13px glyph, 11px title, no secondary description. */
 .entry {
   display: flex;
-  gap: 14px;
+  gap: 9px;
   align-items: center;
   box-sizing: border-box;
-  width: 380px;
+  width: 100%;
   max-width: 100%;
-  min-height: 56px;
-  padding: 14px 20px;
-  color: var(--dsw-alias-label-primary);
+  min-height: 36px;
+  padding: 0 8px;
+  color: var(--dsw-alias-label-secondary);
   font: inherit;
+  font-size: 11px;
   text-align: left;
-  background: var(--dsw-alias-bg-layer-1);
-  border: 0.5px solid var(--dsw-alias-border-l3);
+  background: transparent;
+  border: 0;
   border-radius: var(--dsl-guide-entry-radius);
   cursor: pointer;
 }
@@ -68,16 +48,14 @@
   }
 }
 
-/* A fixed 26px box — the described glyph's size — so an entry's glyph sits
-   centred and every capsule's words start at the same left edge while glyph
-   sizes differ. */
+/* A fixed 16px glyph box so every row's words start at the same edge. */
 .entryIcon {
   display: flex;
   flex: none;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: 16px;
+  height: 16px;
   color: var(--dsw-alias-label-secondary);
 }
 
@@ -99,20 +77,16 @@
 
 .entryTitle {
   overflow: hidden;
-  font-size: 14px;
-  line-height: 1.4;
+  font-size: 11px;
+  line-height: 1.5;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
-/* One line under the title on the quieter ink; it ellipsizes like the title. */
+/* The workbench rows stay title-only; descriptions return only if a later
+   product decision gives the add-tool page more room. */
 .entryDescription {
-  overflow: hidden;
-  color: var(--dsw-alias-label-tertiary);
-  font-size: 11px;
-  line-height: 1.4;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  display: none;
 }
 
 /* The chip title's compass, beside the label the strip lays out; the glyph
@@ -122,10 +96,10 @@
   color: var(--dsw-alias-label-tertiary);
 }
 
-.entryCell { width: 380px; max-width: 100%; }
+.entryCell { width: 100%; max-width: 100%; }
 
-/* The More card keeps the capsule width inside the menu's anchor wrapper. */
-.moreAnchor { display: flex; width: 380px; max-width: 100%; }
+/* The More row keeps the full row width inside the menu's anchor wrapper. */
+.moreAnchor { display: flex; width: 100%; max-width: 100%; }
 
 .moreAnchor .entry[aria-expanded='true'] { background: var(--dsw-alias-interactive-bg-hover); }
 

@@ -65,7 +65,7 @@ export function createBrowserTsxCompiler(): TsxCompiler {
       const importMap = options.importMap;
       const build = (source: string): CompileResult => {
         const resolved = importMap?.imports ? rewriteImportMetaResolveSpecifiers(source, importMap.imports) : source;
-        const result = transformTsx({ filename: options.filename ?? "_.tsx", code: resolved, target: "es2022", importMap, jsxImportSource: "react" });
+        const result = transformTsx({ filename: options.filename ?? "_.tsx", code: resolved, target: "es2022", ...(importMap === undefined ? {} : { importMap }), jsxImportSource: "react" });
         const compiled = new TextDecoder().decode(result.code);
         return { code: compiled, source, changed: compiled !== options.previousCode };
       };

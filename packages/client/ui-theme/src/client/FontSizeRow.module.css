@@ -57,6 +57,18 @@
   gap: 8px;
 }
 
+.selector {
+  width: 64px;
+  min-height: 34px;
+  padding: 7px 10px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-2);
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 11px;
+}
+
 .stepper {
   position: relative; /* the arrow column anchors to the pill's right edge */
   display: inline-flex;

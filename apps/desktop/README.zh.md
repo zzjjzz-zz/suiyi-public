@@ -250,13 +250,13 @@ Desktop 在 Host 启动后、打开工作区前检查模型 API Key 引用是否
 
 ## Windows 安装界面
 
-Windows 安装程序使用原生 NSIS 页面，提供亮暗配色、系统阴影、可编辑的安装目录，以及默认勾选立即启动的完成页。安装仅面向当前用户。点击安装或按 Enter 均校验当前路径；路径规范化后仍拒绝磁盘根目录，包括带重复末尾分隔符的写法。新安装位置必须为空，非空位置必须是已登记的安装目录。受影响安装路径中的程序运行时显示系统提示，并保持应用运行；其他目录中的同名应用不阻止安装。静默更新最多等待受影响应用退出十秒，若仍在运行则以退出码 2 结束。
+Windows 安装程序使用 600×844 逻辑客户区；遇到 DPI 或屏幕高度不足时按可用 Windows 工作区等比缩放；采用遂意原型在窄屏下的堆叠安装流程：页标题、四步进度条和卡片。第一步识别 Windows 与当前用户安装范围，不提供虚假的跨平台选择；第二步是包含可编辑安装目录的设置页。原生 NSIS 控件保留目录输入框、“选择”、启动复选框、“安装／取消”和“完成”操作；卡片、步骤方块、图标和带焦点状态的按钮由绘制层提供。亮暗配色、圆角和字体来自 `installer/theme.nsh`。遂意 flavor 的进度页使用原型蓝青飘带 mark（由 `mark.svg`/`mark-dark.svg` 转换为 `installer/assets/suiyi/mark*.png`，并以真实 alpha PNG 传入进度页；官方品牌仍使用 BMP），以 94×94 居中绘制，不再把横向品牌字标压缩到 120×39；官方 flavor 保留原有横向品牌。安装程序嵌入 `installer/fonts` 下的三个 Noto Sans SC 静态字重，使用 `AddFontResourceExW` 仅在本进程私有加载，不安装系统字体；`installer/fonts/native-fonts.json` 记录精确 family 名与 SHA-256，SIL Open Font License 文本位于同目录。完成页的“立即启动”复选框默认勾选。安装仅面向当前用户。点击安装或按 Enter 均校验当前路径；路径规范化后仍拒绝磁盘根目录，包括带重复末尾分隔符的写法。新安装位置必须为空，非空位置必须是已登记的安装目录。受影响安装路径中的程序运行时显示系统提示，并保持应用运行；其他目录中的同名应用不阻止安装。静默更新最多等待受影响应用退出十秒，若仍在运行则以退出码 2 结束。
 
-主题在启动时跟随 Windows；可用 `/THEME=light`、`/THEME=dark` 和 `/THEME=auto` 显式选择配色。窗口在品牌控件准备完成后显示。欢迎页首次出现时，安装窗口会一次性移到普通窗口前方；若焦点在其他窗口，任务栏按钮会闪烁提示，但安装窗口不会始终置顶。进度读取锁定版本的 7-Zip 解压器百分比；目录替换、注册和清理仍使用有界估算。加权百分比不代表剩余时间。NSIS 报告成功后，进度条用 600 毫秒补满并短暂显示 100%，再显示完成页；切换目标时长为 750 毫秒。完成页保留窗口位置。点击完成后，安装程序先隐藏窗口，再启动已安装的可执行文件；启动失败会恢复页面以供重试。目录替换和失败恢复遵循[安装检查](packaging/README.zh.md#runtime-file-selection)。首次启动的配置档案准备仍属于独立的 Desktop 操作。
+主题在启动时跟随 Windows；可用 `/THEME=light`、`/THEME=dark` 和 `/THEME=auto` 显式选择配色。窗口在品牌控件准备完成后显示。欢迎页首次出现时，安装窗口会一次性移到普通窗口前方；若焦点在其他窗口，任务栏按钮会闪烁提示，但安装窗口不会始终置顶。进度读取锁定版本的 7-Zip 解压器百分比；目录替换、注册和清理仍使用有界估算。加权百分比不代表剩余时间。NSIS 报告成功后，若 Windows 未禁用动画，进度条用 600 毫秒补满并短暂显示 100%，再显示完成页；切换目标时长为 750 毫秒。禁用动画时立即绘制 100% 画面。完成页保留窗口位置。点击完成后，安装程序先隐藏窗口，再启动已安装的可执行文件；启动失败会恢复页面以供重试。安装失败时先绘制失败状态，再显示模态报告；NSIS 无法重新进入安装区段，因此重试需要重新运行安装程序。目录替换和失败恢复遵循[安装检查](packaging/README.zh.md#runtime-file-selection)。首次启动的配置档案准备仍属于独立的 Desktop 操作。
 
-Windows 打包使用 Visual C++ Build Tools 和 Windows SDK 编译 x86 Win32/GDI+ 辅助库；签名构建通过已配置的 Windows 签名器对该库签名。进度页在其生命周期内保留一个不透明像素缓冲，只绘制一次静态图像，并通过 GDI 复制重绘的像素。准备钩子在所有平台上均由 electron-builder 继续负责收集生产依赖。
+Windows 打包使用 Visual C++ Build Tools 和 Windows SDK 编译 x86 Win32/GDI+ 辅助库；签名构建通过已配置的 Windows 签名器对该库签名。进度页在其生命周期内保留一个不透明像素缓冲，并绘制一次静态背景；安装进入失败状态时会再绘制一次；欢迎页和完成页从同一配色获得匹配的背景位图。准备钩子在所有平台上均由 electron-builder 继续负责收集生产依赖。
 
-在有交互式桌面的 Windows x64 上，从仓库根目录运行 `pnpm --dir apps/desktop run test:installer`，可将小型原生测试载荷接入正式安装配置并执行验证。每次运行使用独立产品身份，依次验证仅英文和仅中文的安装器变体，并根据实际显示的欢迎页按钮选择测试文案。两个变体均安装到私有目录并在测试后卸载；截图和结果保留在 `.desktop-build/installer-tests/` 下。检查包含末尾带分隔符的已登记路径升级，以及磁盘根目录拒绝。绘制器接收 NSIS 主题传入的标题栏颜色；像素检查绘制到离屏位图，并在隐藏进度子窗口时验证。原生绘制检查覆盖 100% 和 200% 缩放下的浅色/深色配色、绘制到 100% 的完成状态、标题栏按钮的悬停／按下颜色和松开触发与取消、最小化恢复后的窗口位置和尺寸，以及 GDI 资源释放；`render-results.log` 中的重绘耗时仅供诊断，不作为 CI 性能阈值。运行生成的 `ui/render-test.exe <brand.bmp> <dpi> <light|dark> <hover-argb> <pressed-argb> [interactive-title]` 并指定标题，可在不安装载荷的情况下查看真实进度页。可选的 `--signed` 标志使用[Windows EV 配置](windows-signing/README.zh.md#signing-configuration)，在嵌入前对测试程序和辅助库签名；它不会启用更新源。
+在有交互式桌面的 Windows x64 上，从仓库根目录运行 `pnpm --dir apps/desktop run test:installer`，可将小型原生测试载荷接入正式安装配置并执行验证。每次运行使用独立产品身份，依次验证仅英文和仅中文的安装器变体，并根据实际显示的平台页按钮选择测试文案，再进入设置页。两个变体均安装到私有目录并在测试后卸载；截图和结果保留在 `.desktop-build/installer-tests/` 下。检查包含末尾带分隔符的已登记路径升级，以及磁盘根目录拒绝。绘制器接收 NSIS 主题传入的标题栏颜色；像素检查绘制到离屏位图，并在隐藏进度子窗口时验证。原生绘制检查覆盖 100% 和 200% 缩放下的浅色/深色配色、页面／卡片／当前步骤的表面像素、欢迎页和完成页背景构建、绘制到 100% 的完成状态、标题栏按钮的悬停／按下颜色和松开触发与取消、最小化恢复后的窗口位置和尺寸，以及 GDI 资源释放；`render-results.log` 中的重绘耗时仅供诊断，不作为 CI 性能阈值。运行生成的 `ui/render-test.exe <mark-or-brand.bmp> <dpi> <light|dark> <hover-argb> <pressed-argb> <page-argb> <card-argb> <accent-argb> <light-font> <regular-font> <medium-font> [interactive-title]` 并指定标题，可在不安装载荷的情况下查看真实进度页。`node apps/desktop/scripts/installer-theme-check.mjs` 无需 Windows 即可校验配色 token、对比度、几何布局、`window-frame.cpp` 镜像和内置字体的 family/SHA 记录；请与其他 Desktop 检查一起运行。可选的 `--signed` 标志使用[Windows EV 配置](windows-signing/README.zh.md#signing-configuration)，在嵌入前对测试程序和辅助库签名；它不会启用更新源。
 
 Windows 卸载程序会随应用一起删除 Electron 用户数据目录（`%APPDATA%` 下按包作用域嵌套的浏览器存储与缓存）、`%APPDATA%` 下的产品目录，以及 `%LOCALAPPDATA%` 下的更新下载缓存，随后移除 `%APPDATA%` 之下普通且已空的作用域目录。Harness 主目录（`~/.dsh` 或 `DSH_HOME`：会话、设置、凭据、插件）不会被触碰；以 Windows 环境变量发布的 `DSH_HOME` 还会保护所有与其重叠的目标。静默卸载删除相同的数据；以 `--updated` 或 `/KEEP_APP_DATA` 启动的卸载程序保留数据，electron-builder 在原地更新和从其他目录替换旧安装时正是这样启动它。删除通过原生辅助程序执行：它拒绝受保护的 Windows 目录以及与安装目录或主目录重叠的路径，要求固定的本地驱动器，链接的根目录或祖先目录原样保留，遇到重解析点只解除链接而不进入目标，清除只读属性，并在遇到被占用文件后继续删除其余兄弟项；残余不会中止卸载，也不会提示。安装时在 Windows 卸载注册项上记录 `InstallLocation` 作为标准的清单元数据；在 Windows 11 上，开始菜单右键菜单中的“卸载”对所有 Win32 应用都会打开已安装应用列表，只有 MSIX 包能从那里直接卸载。卸载程序声明 DPI 感知，中文使用微软雅黑 UI。此行为仅适用于 Windows。
 
@@ -404,8 +404,20 @@ node apps/desktop/node_modules/pnpm/bin/pnpm.mjs --dir apps/desktop run test:upd
 
 ## Suiyi 身份登录
 
-构建时选择的 `suiyi` flavor 要求在启动任何 Host 或工作区之前，通过系统浏览器完成 Keycloak 登录。默认 issuer 为 `https://login.example.invalid/realms/identity`，公共客户端为 `suiyi-desktop`，使用授权码流程、PKCE S256 和 `127.0.0.1` 随机端口上的 `/suiyi-desktop/callback` 回调。运维人员须注册客户端及其回环重定向策略；应用不携带客户端密钥。可选的 `suiyi-oidc-issuer.json` 文件位于登录前共享的 Electron userData 目录，内容为 `{"issuer":"https://your-host/realms/identity"}`。配置无效或无法读取时停止登录。
+构建时选择的 `suiyi` flavor 要求在启动任何 Host 或工作区之前，通过系统浏览器完成 Keycloak 登录。默认 issuer 为 `https://sso.zzjjzz.top/realms/identity`，公共客户端为 `suiyi-desktop`，使用授权码流程、PKCE S256 和 `127.0.0.1` 随机端口上的 `/suiyi-desktop/callback` 回调。运维人员须注册客户端及其回环重定向策略；应用不携带客户端密钥。可选的 `suiyi-oidc-issuer.json` 文件位于登录前共享的 Electron userData 目录，内容为 `{"issuer":"https://your-host/realms/identity"}`。配置无效或无法读取时停止登录。
 
-验证后的 issuer 和 subject 决定 `%APPDATA%/Suiyi/users/<sha256>/` 下独立的 Host、智能体和应用数据目录。内嵌 Platform 偏好所用分区同时包含该 Suiyi 用户哈希、Platform origin 和用户 ID；official Platform 分区保持不变。Chromium 在就绪前确定的 Suiyi sessionData 根目录内使用持久化用户哈希分区；Electron 就绪后不再更改 sessionData 路径。既有共享 Suiyi 数据和上游主目录保留，不作迁移。过滤继承的 Harness 配置和环境凭据后，Host 仅接收个人主目录路径；Keycloak 令牌不会传入 Host 或渲染进程。模型、API 密钥和 base URL 仍由用户在现有 Models 界面配置。只有 Suiyi 跳过 DeepSeek 账户引导；official flavor 保留原有账户流程。
+登录窗口以首选 1180×860 的内容尺寸打开，并受当前显示器可用工作区限制；窗口保持可缩放、可最大化、可全屏，最小内容尺寸为 360×480，因此可在真实窗口中检查 390 CSS px 布局。原生标题栏保留平台原生行为，现有 sandbox、上下文隔离、认证与取消行为不变。
+
+登录前窗口通过共用的欢迎渲染层呈现该登录：就绪页、可在浏览器中手动完成的授权与可复制的登录链接、带重试的分类失败，以及进入工作区前的交接状态。渲染层契约见 `src/welcome-api.ts` 的 `WelcomeApi.suiyi`；只有遂意登录窗口提供它，缺少它时仍走 official 的账户与 API Key 欢迎流程。该页面不提供体验身份和 API Key 入口，跟随系统深浅外观，在 900 CSS px 以下改为单列并可在窗口内滚动。原型提取的尺寸、颜色与交互由 `renderer/welcome.css` 维护，状态机由 `src/client/WelcomePage.tsx` 维护。
+
+登录窗口是唯一的认证界面：首次登录、失败重试和访问令牌过期后的重新登录都加载同一页面。原生提示只说明会话已过期；确认后打开真实页面，关闭或取消则保持锁定。渲染层自带 `renderer/assets/noto-sans-sc/` 下的 Noto Sans SC 子集；复制到窗口目录的 brand font 表映射到这份共享资源，不再交付第二份字体负载，页面不发起网络字体请求。遂意不会进入 official 的模型账户欢迎流程：身份来自 Keycloak，DeepSeek 账户视图保持未登录。
+
+遂意 preload 只在遂意构建中暴露 `dshDesktop.suiyiIdentity`：安全的 `{state, displayName?}` 视图、从锁定态打开真实登录页的登录操作，以及清空令牌、停止 Host 并按既有锁定生命周期回到登录页的退出操作。它绝不调用 DeepSeek 账户退出，也不暴露令牌、issuer 或 subject。消费方在 bridge 缺失时（Web 或 official 构建）应显示身份中心不可用，而不是展示替代账号。
+
+已验证的访问令牌只保存在 Electron 主进程内存，并通过子进程私有 IPC 通道交给 Host，绝不经过渲染层、环境变量、argv、文件或日志。[令牌传输约定](SUIYI-TOKEN-TRANSPORT.md)规定了两端的消息、刷新与撤销义务。Host 的 `suiyiAccess` 服务持有当前令牌，plugin-hub 在每次目录读取、MCP 连接与调用时读取；平台按用户过滤，仅凭 issuer/subject 哈希绝不构成授权。
+
+验证后的 issuer 和 subject 决定 `%APPDATA%/Suiyi/users/<sha256>/` 下独立的 Host、智能体和应用数据目录。内嵌 Platform 偏好所用分区同时包含该 Suiyi 用户哈希、Platform origin 和用户 ID；official Platform 分区保持不变。Chromium 在就绪前确定的 Suiyi sessionData 根目录内使用持久化用户哈希分区；Electron 就绪后不再更改 sessionData 路径。既有共享 Suiyi 数据和上游主目录保留，不作迁移。过滤继承的 Harness 配置和环境凭据后，Host 仅接收个人主目录路径。已验证的访问令牌只进入 Host 的私有 IPC 通道内存，绝不进入渲染层、环境变量、argv、文件或日志；刷新令牌不保留。模型、API 密钥和 base URL 仍由用户在现有 Models 界面配置。只有 Suiyi 跳过 DeepSeek 账户引导；official flavor 保留原有账户流程。
 
 Host 启动前清除默认及已认证用户的 Electron 会话存储和缓存；清理失败则停止启动。访问令牌到期时（最长 24 小时），受保护窗口关闭，IPC 和 Host 访问被拒绝，Host 停止立即启动，不等待 UI 或 Platform 存储清理。全部清理成功后，相同身份才能重新登录恢复；清理挂起或失败时持续锁定。取消重新登录后应用保持锁定，允许稍后登录；Host 停止失败时无法解锁。以不同身份认证需要完全重启应用，不支持热切换。共享操作系统登录的账户不提供强隔离，也无法抵御并发文件系统修改。交付仍须验证 Windows 安装、连续用户 A/B 的 Cookie 和凭据隔离及真实 Keycloak 登录。
+
+设置可通过 `suiyiIdentity.openWelcome` 重新打开已认证的遂意欢迎页。隔离渲染层只提供返回工作空间，不提供登录、凭据或切换账号操作。主进程在打开前及加载后检查当前身份，合并并发打开请求，并在身份访问结束时关闭窗口。关闭或返回保留当前会话及模型配置。

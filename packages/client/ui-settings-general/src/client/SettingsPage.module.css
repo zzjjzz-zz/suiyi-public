@@ -1,0 +1,191 @@
+/* Suiyi full-page settings: the prototype's main-area page. The page owns its
+ * scroller inside the layout main panel, so the section column keeps the
+ * window chrome clearance without covering the heading. */
+
+.page {
+  box-sizing: border-box;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: calc(39px + var(--dsh-frame-top-clearance, 0px)) 36px 45px;
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-primary);
+}
+
+.page > * {
+  width: 100%;
+  max-width: 1240px;
+  margin-inline: auto;
+}
+
+.heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 31px;
+}
+
+.headingCopy {
+  min-width: 0;
+}
+
+.title {
+  margin: 0;
+  font-size: 27px;
+  line-height: 36px;
+  letter-spacing: -0.035em;
+  font-weight: 500;
+}
+
+.subtitle {
+  margin: 8px 0 0;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.headingActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.layout {
+  display: flex;
+  align-items: flex-start;
+  gap: 28px;
+}
+
+.nav {
+  flex: none;
+  width: 155px;
+}
+
+.navList {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.navCell {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 11px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 11px;
+  line-height: 16px;
+  text-align: left;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .navCell:hover {
+    background: var(--dsw-alias-interactive-bg-hover);
+  }
+}
+
+.navCell.active {
+  background: var(--dsw-brand-accent-soft, var(--dsw-alias-state-business-tertiary));
+  color: var(--dsw-brand-accent-ink, var(--dsw-alias-state-business-primary));
+}
+
+.navIcon {
+  display: flex;
+  flex: none;
+}
+
+.navLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.main {
+  flex: 1;
+  min-width: 0;
+}
+
+.empty {
+  margin: 0;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+@media (max-width: 1023px) {
+  .page {
+    padding: calc(24px + var(--dsh-frame-top-clearance, 0px)) 24px 32px;
+  }
+
+  .nav {
+    width: 128px;
+  }
+
+  .navCell {
+    padding: 9px 7px;
+    font-size: 10px;
+    line-height: 15px;
+  }
+}
+
+/* Phone: navigation becomes the prototype's horizontal strip above the
+ * content; the page fills the main panel with its own scroller. */
+@media (max-width: 767px) {
+  .page {
+    padding: 24px 19px 24px;
+  }
+
+  .heading {
+    gap: 10px;
+    margin-bottom: 25px;
+  }
+
+  .title {
+    font-size: 26px;
+    line-height: 37px;
+    font-weight: 550;
+  }
+
+  .layout {
+    display: block;
+  }
+
+  .nav {
+    width: auto;
+    margin-bottom: 19px;
+    overflow-x: auto;
+    border-bottom: 0.5px solid var(--dsw-alias-border-l2);
+  }
+
+  .navList {
+    flex-direction: row;
+    gap: 4px;
+    padding-bottom: 10px;
+  }
+
+  .navCell {
+    width: auto;
+    white-space: nowrap;
+    padding: 8px 10px;
+    margin-bottom: 3px;
+  }
+
+  .navIcon {
+    display: none;
+  }
+}

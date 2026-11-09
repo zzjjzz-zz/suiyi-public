@@ -50,14 +50,14 @@ export const importsSibling = (code: string) => SPECIFIER.test(code);
  * card, so a sub-page may be TSX and may itself import a sibling.
  * @param urls collects every blob created, so the caller can revoke them with the surface.
  */
-export async function inlineSubPages(code: string, entry: string, read: (specifier: string, from: string) => Promise<{ source: string; filename: string } | null>, compile: (filename: string, source: string) => Promise<string>, urls: string[]): Promise<string> {
+export async function inlineSubPages(code: string, entry: string, read: (specifier: string, from: string) => Promise<{ source: string; filename: string } | null>, compile: (filename: string, source: string) => Promise<string>, urls: string[], makeUrl: (compiled: string) => string = (compiled) => URL.createObjectURL(new Blob([compiled], { type: "text/javascript" }))): Promise<string> {
   // Keyed by the RESOLVED filename, never by the specifier: `./types` written in two different
   // child files is two different targets, and a specifier-keyed map silently serves the first
   // one to both. Measured on a real split — the model gives every child a sibling import.
   const sources = new Map<string, { source: string; filename: string; specifiers: Map<string, string> }>();
   const missing = new Set<string>();
 
-  const specifiersIn = (source: string) => new Set([...source.matchAll(SPECIFIER_ALL)].map((match) => match[2]));
+  const specifiersIn = (source: string): Set<string> => new Set([...source.matchAll(SPECIFIER_ALL)].map((match) => match[2]).filter((specifier): specifier is string => specifier !== undefined));
 
   // Collected breadth-first, then compiled in one pass. Resolving a child's own imports
   // *during* its fetch deadlocks on a cycle — a imports b imports a, and each awaits the
@@ -104,7 +104,7 @@ export async function inlineSubPages(code: string, entry: string, read: (specifi
     const ready = [...sources].filter(([filename, found]) => urlFor.get(filename) === "" && [...found.specifiers.values()].every((dep) => urlFor.get(dep) !== ""));
     const built = await Promise.all(ready.map(async ([filename, found]) => [filename, await compile(filename, rewrite(found.source, found.specifiers))] as const));
     for (const [filename, compiled] of built) {
-      const url = URL.createObjectURL(new Blob([compiled], { type: "text/javascript" }));
+      const url = makeUrl(compiled);
       urlFor.set(filename, url);
       urls.push(url);
       progress = true;
@@ -135,8 +135,25 @@ export const needsResolve = (code: string, streaming: boolean | undefined): bool
  * as it goes makes the pair idempotent regardless of which runs first or what arrived between.
  */
 export const revokeAll = (urls: string[]): void => {
-  while (urls.length > 0) URL.revokeObjectURL(urls.pop()!);
+  while (urls.length > 0) {
+    const url = urls.pop()!;
+    // Data URLs are not revocable; blob URLs are. Both land in this list.
+    if (url.startsWith("blob:")) URL.revokeObjectURL(url);
+  }
 };
+
+/**
+ * A module URL an opaque-origin frame can import. `blob:` from the host document is
+ * origin-bound and cannot cross into the sandbox, while `data:` is not.
+ * @param compiled - compiled child module source.
+ * @returns a data URL naming that source.
+ */
+export function dataModuleUrl(compiled: string): string {
+  const bytes = new TextEncoder().encode(compiled);
+  let binary = "";
+  for (let index = 0; index < bytes.length; index += 1) binary += String.fromCharCode(bytes[index]!);
+  return `data:text/javascript;base64,${btoa(binary)}`;
+}
 
 /**
  * Rewrites a canvas's relative sub-page imports into blob URLs before it is compiled.
@@ -154,7 +171,7 @@ type ResolvedSubPages = { cwd: string; id: string; source: string; code: string 
  */
 export const resolvedSubPageCode = (resolved: ResolvedSubPages | null, cwd: string | undefined, id: string, source: string) => (resolved !== null && resolved.cwd === cwd && resolved.id === id && resolved.source === source ? resolved.code : source);
 
-export function useSubPages(cwd: string | undefined, canvas: Canvas | undefined, sessionId?: string) {
+export function useSubPages(cwd: string | undefined, canvas: Canvas | undefined, sessionId?: string, makeUrl?: (compiled: string) => string) {
   const [resolved, setResolved] = useState<ResolvedSubPages | null>(null);
   // Destructured so the effect depends on scalars: the caller rebuilds `canvas` on every
   // sweep, and depending on the object would re-run the whole resolve for an unchanged canvas.
@@ -169,7 +186,7 @@ export function useSubPages(cwd: string | undefined, canvas: Canvas | undefined,
     // Children compile against the owning session's import map, so they reach the same `$dsh/*`
     // shims the card itself does.
     const compile = async (filename: string, source: string) => (await compiler().compile(source, { filename, importMap: { imports: localImports(sessionId, `canvas:${id}`) } })).code;
-    void inlineSubPages(code, canvasPath(id), (specifier, from) => readCanvasChild(cwd, id, specifier, from, sessionId), compile, urls)
+    void inlineSubPages(code, canvasPath(id), (specifier, from) => readCanvasChild(cwd, id, specifier, from, sessionId), compile, urls, makeUrl)
       .then((next) => {
         // Resolved after teardown: nobody will ever render these, so revoke them here — the
         // disposer already ran and cannot see urls the pass appended after it.
@@ -190,7 +207,7 @@ export function useSubPages(cwd: string | undefined, canvas: Canvas | undefined,
       // which case the older rewrite still matches by source while its blobs are already gone.
       setResolved(null);
     };
-  }, [cwd, id, code, streaming, sessionId]);
+  }, [cwd, id, code, streaming, sessionId, makeUrl]);
 
   if (id === undefined || code === undefined) return "";
   return resolvedSubPageCode(resolved, cwd, id, code);

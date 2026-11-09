@@ -20,7 +20,7 @@
   align-items: center;
   gap: var(--dsh-sidebar-label-gap);
   width: auto;
-  height: 42px;
+  height: 41px;
   margin: 0;
   padding: 0 calc(var(--dsh-sidebar-row-padding) - var(--dsh-sidebar-paint-inset));
   box-sizing: border-box;
@@ -340,3 +340,65 @@
    ui-web base.css's `body > :not(#root)` subtraction covers it wherever it
    overlaps a chrome row's drag — including above every column, which an in-root
    overlay could not promise once a chrome row declares drag itself. */
+
+/* Suiyi footer: the account entry and the Settings entry are two real rows,
+ * not one launcher with a fallback. */
+.pageFoot {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  margin: 0;
+}
+
+.footRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+.settingsEntry {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 41px;
+  margin: 0;
+  padding: 11px calc(var(--dsh-sidebar-row-padding) - var(--dsh-sidebar-paint-inset));
+  box-sizing: border-box;
+  border: none;
+  border-radius: var(--dsw-radius-md);
+  background: transparent;
+  border-inline: var(--dsh-sidebar-paint-inset) solid transparent;
+  background-clip: padding-box;
+  cursor: pointer;
+  overflow: hidden;
+  color: var(--dsw-alias-label-secondary);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.645;
+}
+
+@media (hover: hover) {
+  .settingsEntry:hover {
+    background-color: var(--dsw-alias-interactive-bg-hover);
+  }
+}
+
+.accountUnavailable {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  height: 42px;
+  padding: 0 12px;
+  overflow: hidden;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 14px;
+  line-height: 22px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

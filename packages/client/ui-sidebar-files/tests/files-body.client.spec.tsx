@@ -41,6 +41,28 @@ describe('FilesBody', () => {
     expect(script.list).not.toHaveBeenCalled()
   })
 
+  it('never shows the previous workspace rows after the session workspace changes', async () => {
+    const { view, script, placement, rerender } = mountBody(ROOT)
+    await act(() => script.watches.ready(ROOT))
+    await act(() => script.settle({ ok: true, value: ROOT_LEVEL }))
+    expect(names(view.container)).toContain(`${ROOT}/README.md`)
+    // Leave a read of the old root in flight across the switch.
+    act(() => { fireEvent.click(view.getByRole('button', { name: zh.reload })) })
+    placement.cwd = '/work/other'
+    rerender()
+    // The old root's rows belong to another workspace and are not drawn while
+    // the new one is still unlisted.
+    expect(names(view.container)).toEqual([])
+    expect(view.container.querySelector('[data-files-row="loading"]')).not.toBeNull()
+    await act(() => script.watches.ready('/work/other'))
+    // A late answer for the abandoned root must not paint its rows into the new tree.
+    await act(() => script.settle({ ok: true, value: { entries: [{ name: 'old-only.txt', type: 'file' }], truncated: false } }))
+    expect(names(view.container)).toEqual([])
+    await act(() => script.settle({ ok: true, value: { entries: [{ name: 'next.md', type: 'file' }], truncated: false } }))
+    expect(names(view.container)).toEqual(['/work/other/next.md'])
+    expect(names(view.container)).not.toContain('/work/other/old-only.txt')
+  })
+
   it('heads the page with the root and reload, and fills the rest with a headerless tree that stays shown', async () => {
     const viewport = { matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }
     vi.stubGlobal('matchMedia', () => viewport)

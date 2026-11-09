@@ -21,7 +21,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import clsx from 'clsx'
 import {
-  FishLogo, IconAppsAddOutlineRegular, IconNewChatOutlineMedium, IconNewChatOutlineRegular,
+  FishLogo, IconCloseFillRegular, IconNewChatOutlineRegular,
   IconPanelLeftOutlineRegular, IconPinFillRegular, focusWithoutRing, isBehindModal, isDarwinDesktop, Menu, ShortcutKeys, Toast,
   Tooltip, useModalLayer, writeClipboard,
 } from '@deepseek-ai/dsh-client-ui-primitives'
@@ -32,6 +32,7 @@ import type {
 } from './contract/slots.ts'
 import { FIXED_PANEL_ID } from './panel-pins.ts'
 import { createScrollHandoff } from './scroll-handoff.ts'
+import { ChatBubbleGlyph, GridGlyph } from './NavigationGlyphs.tsx'
 import css from './SidebarRoot.module.css'
 
 /** Wide-content unmount delay; matches the 150ms wide-content fade-out. */
@@ -118,10 +119,10 @@ type PanelMoreMenuProps =
   & Omit<SidebarPanelActionsOwnerProps, 'onDismiss'>
   & PropsRenderSlots<'sidebar.panellist.actions'>
   & Pick<InjectFace<SidebarRootInjected>, 'trackEntryClick'>
-  & { readonly label: string }
+  & { readonly label: string; readonly active: boolean }
 
 /** The panel list's More launcher: a panel-row button whose menu rows come from `sidebar.panellist.actions`. */
-function PanelMoreMenu({ wide, label, entries, onOpen, onPinnedChange, trackEntryClick, renderSlot }: PanelMoreMenuProps) {
+function PanelMoreMenu({ wide, label, entries, onOpen, onPinnedChange, trackEntryClick, renderSlot, active }: PanelMoreMenuProps) {
   const [open, setOpen] = useState(false)
   const onDismiss = (): void => { setOpen(false) }
   return (
@@ -129,11 +130,12 @@ function PanelMoreMenu({ wide, label, entries, onOpen, onPinnedChange, trackEntr
       anchor={(
         <Tooltip label={label} delayMs={500} disabled={wide}>
           <button type="button" className={css.panelRow} aria-label={label} aria-haspopup="menu" aria-expanded={open}
+            data-active={active || undefined}
             onClick={() => {
               trackEntryClick({ menu_name: 'more', position: 'sidebar' })
               setOpen(value => !value)
             }}>
-            <span className={css.panelGlyph} aria-hidden="true"><IconAppsAddOutlineRegular size={wide ? 16 : 18} /></span>
+            <span className={css.panelGlyph} aria-hidden="true"><GridGlyph size={wide ? 16 : 18} /></span>
             {wide && <span className={clsx(css.panelTitle, css.wide)}>{label}</span>}
           </button>
         </Tooltip>
@@ -161,6 +163,7 @@ export function SidebarRoot({
   usePanels,
   useEntryPins,
   useEntryActions,
+  useSearchEntries,
   useShortcuts,
   usePanelInfo,
   t,
@@ -171,6 +174,11 @@ export function SidebarRoot({
   const unpinned = useEntryPins(ids => ids)
   const activePanelId = usePanelInfo(info => info.activePanelId)
   const hasEntryActions = useEntryActions(registered => registered)
+  const hasSearch = useSearchEntries(occupied => occupied)
+  // The More row owns every panel that has no visible primary row: settings
+  // pages, hidden Automation tasks, and other main panels outside the list.
+  const visiblePanels = panels.filter(({ id }) => id === FIXED_PANEL_ID || !hasEntryActions || !unpinned.includes(id))
+  const moreActive = activePanelId !== null && !visiblePanels.some(({ id }) => id === activePanelId)
   const shortcut = useShortcuts(rows => rows.find(row => row.id === 'sidebar.left.toggle'))
   const newShortcut = useShortcuts(rows => rows.find(row => row.id === 'session.new'))
   // A page whose access snapshot excludes starting a Session offers no New Session affordance.
@@ -298,7 +306,9 @@ export function SidebarRoot({
           </span>
         )}
         {/* Rail icons render at 18 (figma rail spec); expanded keeps the glyph-native sizes. */}
-        <IconPanelLeftOutlineRegular className={css.panelIcon} size={wide || windowsTitlebar ? 16 : 18} />
+        {drawer && !collapsed
+          ? <IconCloseFillRegular className={css.panelIcon} size={16} />
+          : <IconPanelLeftOutlineRegular className={css.panelIcon} size={wide || windowsTitlebar ? 16 : 18} />}
         {!wide && renderSlot('sidebar.toggle.badge', {})}
       </button>
     </Tooltip>
@@ -390,13 +400,44 @@ export function SidebarRoot({
           >
             <span className={css.newSessionLabelMask}><span className={css.newSessionContent}>
               {wide
-                ? <IconNewChatOutlineMedium size={14} />
+                ? <span className={css.newSessionPlus} aria-hidden="true">＋</span>
                 : <IconNewChatOutlineRegular size={windowsTitlebar ? 16 : 18} />}
               {wide && <span className={clsx(css.newSessionLabel, css.wide)}>{t('session.new')}</span>}
             </span></span>
             {wide && newShortcut !== undefined && newShortcut.keys.length > 0 && <span className={css.newSessionShortcut} aria-hidden="true">
               <ShortcutKeys keys={newShortcut.keys} />
             </span>}
+          </button>
+        </Tooltip>
+      )}
+
+      {wide && hasSearch && renderSlot('sidebar.search', {})}
+
+      {wide && (
+        <Tooltip label={t('conversation.label')} delayMs={500} side={captionTooltipSide}>
+          <button
+            type="button"
+            className={css.conversationRow}
+            aria-label={t('conversation.label')}
+            aria-current={activePanelId === null ? 'page' : undefined}
+            onClick={() => { selectPanel(null) }}
+          >
+            <span className={css.conversationGlyph} aria-hidden="true"><ChatBubbleGlyph size={18} /></span>
+            <span className={css.panelTitle}>{t('conversation.label')}</span>
+          </button>
+        </Tooltip>
+      )}
+
+      {!wide && (
+        <Tooltip label={t('conversation.label')} delayMs={500} side={captionTooltipSide}>
+          <button
+            type="button"
+            className={css.conversationRail}
+            aria-label={t('conversation.label')}
+            aria-current={activePanelId === null ? 'page' : undefined}
+            onClick={() => { selectPanel(null) }}
+          >
+            <ChatBubbleGlyph size={18} />
           </button>
         </Tooltip>
       )}
@@ -409,7 +450,7 @@ export function SidebarRoot({
         >
           {panels.length > 0 && (
             <nav className={css.panelList} aria-label={t('panels.label')}>
-              {panels.filter(({ id }) => id === FIXED_PANEL_ID || !hasEntryActions || !unpinned.includes(id)).map(({ id, label }) => (
+              {visiblePanels.map(({ id, label }) => (
                 <PanelRow
                   key={id}
                   id={id}
@@ -428,6 +469,7 @@ export function SidebarRoot({
               {hasEntryActions && (
                 <PanelMoreMenu
                   wide={wide}
+                  active={moreActive}
                   label={t('panels.more')}
                   entries={panels.filter(({ id }) => id !== FIXED_PANEL_ID)
                     .map(({ id, label }) => ({ id, label, pinned: !unpinned.includes(id), active: id === activePanelId }))}

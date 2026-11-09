@@ -4,12 +4,12 @@
  * Renders nothing until a provider reports both pressure and a route
  * capacity. */
 
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import type { UseProjection } from '@deepseek-ai/dsh-api-session-controller/client'
 // Type-only: the `contextPressure` / `contextBreakdown` projection key merges.
 import type {} from '@deepseek-ai/dsh-token-meter/client'
-import { Tooltip, useDismissOnOutsidePointer } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Tooltip } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ComposerBarProps } from '../contract/slots.ts'
 import { contextOccupancy } from '../context-occupancy.ts'
 import css from './ContextMeter.module.css'
@@ -51,76 +51,101 @@ export interface ContextMeterProps {
   useProjection: UseProjection
   /** The owning bar's locale seat, passed down as a plain prop. */
   t: ComposerBarProps['t']
+  /** Existing detail rows, such as session usage, rendered below the breakdown. */
+  children?: ReactNode
 }
 
-export function ContextMeter({ useProjection, t }: ContextMeterProps) {
+export function ContextMeter({ useProjection, t, children }: ContextMeterProps) {
   const pressure = useProjection('contextPressure')
   const breakdown = useProjection('contextBreakdown')
+  const usage = useProjection('tokenUsage')
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLSpanElement | null>(null)
   const panelRef = useRef<HTMLDivElement | null>(null)
   const context = contextOccupancy(pressure)
   const available = context !== null
+  const hasUsage = usage !== undefined
+    && usage.uncachedInputTokens + usage.cacheReadTokens + usage.cacheWriteTokens + usage.outputTokens > 0
+  const canOpen = available || hasUsage
   const anchorName = `--dsh-context-${useId().replaceAll(':', '')}`
-  useDismissOnOutsidePointer(rootRef, open && available, setOpen, panelRef)
+
+  useEffect(() => {
+    if (!open || !canOpen) return
+    const closeOutside = (event: PointerEvent): void => {
+      const target = event.target
+      if (!(target instanceof Node)) return
+      if (rootRef.current?.contains(target) === true || panelRef.current?.contains(target) === true) return
+      // A detail dialog opened from this panel (session usage) owns its own
+      // dismissal; clicking it must not unmount its trigger.
+      if (target instanceof Element && target.closest('[data-stat-dialog]') !== null) return
+      setOpen(false)
+    }
+    document.addEventListener('pointerdown', closeOutside)
+    return () => { document.removeEventListener('pointerdown', closeOutside) }
+  }, [open, canOpen])
 
   // A model switch can temporarily remove capacity while this component stays
   // mounted. Close the now-unavailable panel instead of preserving stale UI.
   useEffect(() => {
-    if (!available && open) setOpen(false)
-  }, [available, open])
+    if (!canOpen && open) setOpen(false)
+  }, [canOpen, open])
 
   useEffect(() => {
-    if (!open || !available) return
+    if (!open || !canOpen) return
     const onKeyDown = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') setOpen(false)
     }
     document.addEventListener('keydown', onKeyDown)
     return () => { document.removeEventListener('keydown', onKeyDown) }
-  }, [available, open])
+  }, [canOpen, open])
 
-  if (context === null) return null
-  const percent = context.percent
-  const reading = `${percent}%`
-  const [headBefore = '', headAfter = ''] = t('context.aria', { percent: READING_SLOT })
-    .split(READING_SLOT)
-    .map(part => part.trim())
+  if (!canOpen) return null
+  const reading = context === null ? null : `${context.percent}%`
+  const [headBefore = '', headAfter = ''] = context === null
+    ? []
+    : t('context.aria', { percent: READING_SLOT })
+      .split(READING_SLOT)
+      .map(part => part.trim())
 
   // The bar's overall length stays the provider-exact percent; the heuristic
   // breakdown only proportions its colored parts. A zero-width part is dropped
   // instead of rendered: `.segment`'s min-width keeps a hairline part visible,
   // which at 0% occupancy would draw a filled bar over an empty context.
-  const breakdownTotal = breakdown === undefined
+  const breakdownTotal = context === null || breakdown === undefined
     ? 0
     : breakdown.systemTokens + breakdown.toolsTokens + breakdown.messageTokens
-  const parts = breakdown === undefined || breakdownTotal === 0
-    ? [{ key: 'total', color: undefined, width: percent }]
-    : ROWS.map(row => ({ key: row.key, color: row.color, width: percent * breakdown[row.key] / breakdownTotal }))
+  const parts = context === null
+    ? []
+    : breakdown === undefined || breakdownTotal === 0
+      ? [{ key: 'total', color: undefined, width: context.percent }]
+      : ROWS.map(row => ({ key: row.key, color: row.color, width: context.percent * breakdown[row.key] / breakdownTotal }))
   const segments = parts.filter(part => part.width > 0)
+  const triggerLabel = context === null ? t('context.details') : t('context.aria', { percent: reading ?? '0%' })
+  const panelLabel = context === null ? t('context.details') : t('context.used')
 
   return (
-    <span ref={rootRef} style={{ anchorName }} className={css.root}>
-      <Tooltip label={t('context.aria', { percent: reading })} side="top" delayMs={200} disabled={open} portal>
+    <span ref={rootRef} style={{ anchorName }} className={css.root} data-context-meter="">
+      <Tooltip label={triggerLabel} side="top" delayMs={200} disabled={open} portal>
         <button
           type="button"
-          className={css.trigger}
-          aria-label={t('context.aria', { percent: reading })}
+          className={context === null ? css.detailsTrigger : css.trigger}
+          aria-label={triggerLabel}
           aria-haspopup="dialog"
           aria-expanded={open}
           onClick={() => { setOpen(!open) }}
         >
-          <svg viewBox="0 0 14 14" width="14" height="14" aria-hidden>
-            <circle className={css.track} cx="7" cy="7" r={RADIUS} />
-            <circle
-              className={css.fill}
-              cx="7"
-              cy="7"
-              r={RADIUS}
-              strokeDasharray={`${CIRCUMFERENCE * percent / 100} ${CIRCUMFERENCE}`}
-              transform="rotate(-90 7 7)"
-            />
-          </svg>
-          <span>{reading}</span>
+          {context !== null && (
+            <svg viewBox="0 0 14 14" width="14" height="14" aria-hidden>
+              <circle className={css.track} cx="7" cy="7" r={RADIUS} />
+              <circle
+                className={css.fill}
+                cx="7" cy="7" r={RADIUS}
+                strokeDasharray={`${CIRCUMFERENCE * context.percent / 100} ${CIRCUMFERENCE}`}
+                transform="rotate(-90 7 7)"
+              />
+            </svg>
+          )}
+          <span>{context === null ? t('context.details') : reading}</span>
         </button>
       </Tooltip>
       {open && createPortal(
@@ -129,41 +154,50 @@ export function ContextMeter({ useProjection, t }: ContextMeterProps) {
           className={css.panel}
           style={{ positionAnchor: anchorName }}
           role="dialog"
-          aria-label={t('context.used')}
+          aria-label={panelLabel}
         >
-          <div className={css.header}>
-            {/* Empty sides collapse through `.headline:empty` so the locale that
-                needs no leading (or trailing) text spends no header gap. */}
-            <span className={css.headline}>{headBefore}</span>
-            <span className={css.percent}>{reading}</span>
-            <span className={css.headline}>{headAfter}</span>
-            {/* `~`: usedTokens prefers projectedTokens, whose surface delta is
-                heuristically repriced on top of the provider-anchored sample. */}
-            <span className={css.figures}>
-              {`~${formatTokens(context.usedTokens, t)} / ${formatTokens(context.contextWindow, t)}`}
-            </span>
-          </div>
-          <div className={css.bar}>
-            {segments.map(segment => (
-              <div
-                key={segment.key}
-                className={segment.color === undefined ? css.segment : `${css.segment} ${segment.color}`}
-                style={{ width: `${segment.width}%` }}
-              />
-            ))}
-          </div>
-          {breakdown !== undefined && (
-            <dl className={css.rows}>
-              {ROWS.map(row => (
-                <div key={row.key} className={css.row}>
-                  <dt>
-                    <span className={`${css.swatch} ${row.color}`} aria-hidden />
-                    {t(row.label)}
-                  </dt>
-                  <dd>{`~${formatTokens(breakdown[row.key], t)}`}</dd>
-                </div>
-              ))}
-            </dl>
+          {context === null ? (
+            <div className={css.detailsHeading}>{t('context.details')}</div>
+          ) : (
+            <>
+              <div className={css.header}>
+                {/* Empty sides collapse through `.headline:empty` so the locale that
+                    needs no leading (or trailing) text spends no header gap. */}
+                <span className={css.headline}>{headBefore}</span>
+                <span className={css.percent}>{reading}</span>
+                <span className={css.headline}>{headAfter}</span>
+                {/* `~`: usedTokens prefers projectedTokens, whose surface delta is
+                    heuristically repriced on top of the provider-anchored sample. */}
+                <span className={css.figures}>
+                  {`~${formatTokens(context.usedTokens, t)} / ${formatTokens(context.contextWindow, t)}`}
+                </span>
+              </div>
+              <div className={css.bar}>
+                {segments.map(segment => (
+                  <div
+                    key={segment.key}
+                    className={segment.color === undefined ? css.segment : `${css.segment} ${segment.color}`}
+                    style={{ width: `${segment.width}%` }}
+                  />
+                ))}
+              </div>
+              {breakdown !== undefined && (
+                <dl className={css.rows}>
+                  {ROWS.map(row => (
+                    <div key={row.key} className={css.row}>
+                      <dt>
+                        <span className={`${css.swatch} ${row.color}`} aria-hidden />
+                        {t(row.label)}
+                      </dt>
+                      <dd>{`~${formatTokens(breakdown[row.key], t)}`}</dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
+            </>
+          )}
+          {children !== undefined && children !== null && (
+            <div className={css.detailsActions}>{children}</div>
           )}
         </div>,
         document.body,

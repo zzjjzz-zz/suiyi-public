@@ -28,6 +28,7 @@ export type LanguageRowComponentProps =
  * @returns the row element tree.
  */
 export function LanguageRow({ t, setLocale, useStore }: LanguageRowComponentProps) {
+  const suiyi = process.env.DSH_CLIENT_BUILD_PROFILE === 'suiyi'
   const active = useStore(s => s.active)
   const options = useStore(s => s.options)
   const [open, setOpen] = useState(false)
@@ -36,7 +37,8 @@ export function LanguageRow({ t, setLocale, useStore }: LanguageRowComponentProp
   return (
     <div className={css.row}>
       <div className={css.rowText}>
-        <div className={css.title}>{t('language.title')}</div>
+        <div className={css.title}>{t(suiyi ? 'language.interface' : 'language.title')}</div>
+        {suiyi && <div className={css.description}>{t('language.description')}</div>}
       </div>
       <Menu
         open={open}

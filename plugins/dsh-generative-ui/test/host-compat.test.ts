@@ -66,12 +66,12 @@ async function host(settings: object, config: Parameters<typeof apply>[1]) {
     while (routes.has(EXEC_PATH) !== enabled && Date.now() < until) await new Promise((resolve) => setTimeout(resolve, 5));
     check(enabled);
   };
-  return { ctx, routes, messages, update, check, settled };
+  return { ctx, routes, prompts, skills, messages, update, check, settled };
 }
 
 test("profile references rebuild capability and documentation together without installSection", async () => {
   let enabled = true;
-  const h = await host({}, { allowExec: { get: () => enabled } });
+  const h = await host({}, { allowExec: { get: () => enabled }, visualOutput: true });
   try {
     h.check(true);
     const route = h.routes.get(EXEC_PATH);
@@ -106,25 +106,32 @@ test("profile references rebuild capability and documentation together without i
   expect(h.routes.size).toBe(0);
 });
 
-test("legacy installSection keeps live disable and re-enable", async () => {
-  let current = { allowExec: true };
-  let changed!: () => void;
-  const h = await host(
-    {
-      installSection(_owner: unknown, _name: string, _schema: unknown, _defaults: unknown, options: any) {
-        options.setSource(() => current);
-        changed = options.onChange;
-      },
-    },
-    current,
-  );
+// The current host contract has no settings.installSection; the profile Config
+// reference and loader/volatile-update are the only live-settings path.
+
+test("visualOutput toggles the prompt/skill scope without unmounting routes", async () => {
+  let visible = false;
+  let enabled = true;
+  const h = await host({}, {
+    allowExec: { get: () => enabled },
+    allowData: false,
+    visualOutput: { get: () => visible },
+  });
   try {
-    h.check(true);
-    for (const value of [false, true]) {
-      current = { allowExec: value };
-      changed();
-      await h.settled(value);
-    }
+    expect(h.prompts.size).toBe(0);
+    expect(h.skills.size).toBe(0);
+    expect(h.routes.has(EXEC_PATH)).toBe(true);
+    visible = true;
+    h.update();
+    for (let i = 0; i < 100 && h.skills.size === 0; i += 1) await new Promise((resolve) => setTimeout(resolve, 5));
+    expect(h.prompts.size).toBe(1);
+    expect(h.skills.size).toBe(1);
+    visible = false;
+    h.update();
+    for (let i = 0; i < 100 && h.skills.size !== 0; i += 1) await new Promise((resolve) => setTimeout(resolve, 5));
+    expect(h.prompts.size).toBe(0);
+    expect(h.skills.size).toBe(0);
+    expect(h.routes.has(EXEC_PATH)).toBe(true);
   } finally {
     await h.ctx.fiber.dispose();
   }

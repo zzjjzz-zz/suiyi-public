@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { DEFAULT_CAPABILITIES, inlinePrompt, type Capabilities } from "../src/prompt.ts";
 
-const ALL: Capabilities = { fs: true, ai: true, exec: true, web: true };
+const ALL: Capabilities = { fs: true, ai: true, exec: true, web: true, chat: true };
 const NO_EXEC: Capabilities = { ...ALL, exec: false };
 import { skillBody } from "../src/skill.ts";
 import { Config, serveExec } from "../src/index.ts";
@@ -28,6 +28,12 @@ test("the product default — a host that configures nothing — is OFF on this 
   expect(typeof value === "boolean" ? value : (value as { get(): boolean }).get()).toBe(false);
 });
 
+test("the visual output preference is a Host volatile value, off by default", () => {
+  const value = Config({}).visualOutput;
+  expect(typeof value === "boolean" ? value : (value as { get(): boolean | undefined }).get()).toBe(false);
+  expect(Config.dict!.visualOutput!.meta).toHaveProperty("volatile", true);
+});
+
 test("an explicit off is still honoured", () => {
   const value: unknown = Config({ allowExec: false }).allowExec;
   expect(typeof value === "boolean" ? value : (value as { get(): boolean }).get()).toBe(false);
@@ -38,12 +44,13 @@ test("an omitted argument documents the SMALLER set, which is the safe direction
   expect(skillBody(undefined, undefined)).not.toContain("$dsh/exec");
   // The safe direction generalises: an omitted argument describes NO host-backed capability, so
   // there is nothing for the model to reach for that a host may not have mounted.
-  for (const backed of ["$dsh/fs", "$dsh/ai", "$dsh/exec", "$dsh/web"]) {
+  for (const backed of ["$dsh/fs", "$dsh/ai", "$dsh/exec", "$dsh/web", "$dsh/chat"]) {
     expect(inlinePrompt()).not.toContain(backed);
     expect(skillBody(undefined, undefined)).not.toContain(backed);
   }
-  // `$dsh/chat` and `$dsh/state` need no service and stay.
-  expect(inlinePrompt()).toContain("$dsh/chat");
+  // The host bridge is denied by default; `$dsh/state` is local and stays.
+  expect(inlinePrompt()).not.toContain("$dsh/chat");
+  expect(inlinePrompt()).toContain("$dsh/state");
   expect(inlinePrompt(DEFAULT_CAPABILITIES)).toBe(inlinePrompt());
 });
 
@@ -182,7 +189,7 @@ test("the same host with allowExec: true registers the exec route", () => {
     agents: { get: () => undefined },
   };
   const { apply, EXEC_PATH } = require("../src/index.ts") as { apply: (c: unknown, config: unknown) => void; EXEC_PATH: string };
-  apply(stub, { allowExec: true });
+  apply(stub, { allowExec: true, visualOutput: true });
   expect(registered.some((route) => route.path === EXEC_PATH)).toBe(true);
 });
 
@@ -212,6 +219,27 @@ test("the handler carries no switch of its own — the route is the switch", () 
 // inside `ctx.inject(["settings"])`, so a host without that service never fires `onChange` — and
 // `dsh --profile headless` is such a host. Everything is therefore mounted from an explicit call
 // as well, guarded so a host that DOES have settings mounts once, not twice.
+test("visual output off registers no generative prompt or skill", () => {
+  const sections: unknown[] = [];
+  const skills: unknown[] = [];
+  const stub = {
+    inject: (names: string[], run: (c: unknown) => void) => {
+      if (names.every((name) => name in stub)) run(stub);
+    },
+    effect: (run: () => unknown) => void run(),
+    plugin: (spec: { apply: (c: unknown) => void }) => {
+      spec.apply(stub);
+      return { dispose: async () => {} };
+    },
+    systemPrompt: { section: (s: unknown) => void sections.push(s), context: () => {} },
+    skills: { register: (s: unknown) => void skills.push(s) },
+  };
+  const { apply } = require("../src/index.ts") as { apply: (c: unknown, config: unknown) => void };
+  apply(stub, { allowExec: false, allowData: false, visualOutput: false });
+  expect(sections).toHaveLength(0);
+  expect(skills).toHaveLength(0);
+});
+
 test("a host with no settings service still mounts the prompt and the skill", () => {
   const sections: unknown[] = [];
   const contexts: unknown[] = [];
@@ -232,7 +260,7 @@ test("a host with no settings service still mounts the prompt and the skill", ()
     skills: { register: (s: unknown) => void skills.push(s) },
   };
   const { apply } = require("../src/index.ts") as { apply: (c: unknown, config: unknown) => void };
-  apply(stub, { allowExec: false });
+  apply(stub, { allowExec: false, visualOutput: true });
   expect(sections.length).toBe(1);
   expect(skills.length).toBe(1);
 });
@@ -268,15 +296,15 @@ for (const [label, missing, bullet, reference] of [
 }
 
 test("the capability count agrees with the list for every subset", () => {
-  const WORDS: Record<string, number> = { two: 2, three: 3, four: 4, five: 5, six: 6 };
+  const WORDS: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6 };
   for (const fs of [false, true])
     for (const ai of [false, true])
       for (const exec of [false, true])
         for (const web of [false, true]) {
-          const sentence = /These (\w+) are the whole set — ([^—]+) —/.exec(inlinePrompt({ fs, ai, exec, web }));
+          const sentence = /(?:These|This) (\w+) (?:are|is) the whole set — ([^—]+) —/.exec(inlinePrompt({ fs, ai, exec, web, chat: false }));
           expect(sentence).not.toBeNull();
           const listed = [...sentence![2].matchAll(/`(\w+)`/g)].map((m) => m[1]);
           expect(listed.length).toBe(WORDS[sentence![1]]);
-          expect(new Set(listed)).toEqual(new Set(["fs", "ai", "exec", "web", "chat", "state"].filter((n) => n === "chat" || n === "state" || { fs, ai, exec, web }[n as "fs"])));
+          expect(new Set(listed)).toEqual(new Set(["fs", "ai", "exec", "web", "state"].filter((n) => n === "state" || { fs, ai, exec, web }[n as "fs"])));
         }
 });

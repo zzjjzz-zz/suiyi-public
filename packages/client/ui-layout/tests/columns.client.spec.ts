@@ -1,11 +1,26 @@
 import { describe, expect, it } from 'vitest'
-import { clampWidth, computeColumns } from '../src/client/columns.ts'
+import {
+  clampWidth, computeColumns, RIGHTBAR_DEFAULT_WIDTH, SIDEBAR_DEFAULT, SIDEBAR_MAX, SIDEBAR_MIN,
+} from '../src/client/columns.ts'
 
 describe('clampWidth', () => {
   it('clamps into the range and rounds', () => {
     expect(clampWidth(250.4, 240, 420)).toBe(250)
     expect(clampWidth(100, 240, 420)).toBe(240)
     expect(clampWidth(9999, 240, 420)).toBe(420)
+  })
+})
+
+describe('prototype frame defaults', () => {
+  it('opens the navigation column at 242px and the right workbench at 360px', () => {
+    expect(SIDEBAR_DEFAULT).toBe(242)
+    expect(SIDEBAR_MIN).toBe(208)
+    expect(SIDEBAR_MAX).toBe(420)
+    expect(RIGHTBAR_DEFAULT_WIDTH).toBe(360)
+    for (const viewport of [1440, 1280]) {
+      expect(computeColumns(viewport, SIDEBAR_DEFAULT, RIGHTBAR_DEFAULT_WIDTH))
+        .toEqual({ sidebar: 242, center: viewport - 242 - 360, rightbar: 360 })
+    }
   })
 })
 
@@ -25,7 +40,7 @@ describe('computeColumns', () => {
 
   it('clamps sidebar preferences and limits the right panel to 70% of the frame', () => {
     expect(computeColumns(3000, 9999, 9999)).toEqual({ sidebar: 420, center: 480, rightbar: 2100 })
-    expect(computeColumns(1920, 1, 1)).toEqual({ sidebar: 264, center: 1356, rightbar: 300 })
+    expect(computeColumns(1920, 1, 1)).toEqual({ sidebar: 208, center: 1412, rightbar: 300 })
   })
 
   it.each([

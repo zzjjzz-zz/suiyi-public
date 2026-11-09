@@ -9,6 +9,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, 
 import { tmpdir } from 'node:os'
 import type { MenuItemConstructorOptions, MessageBoxOptions } from 'electron'
 import { DESKTOP_IPC, type DesktopUpdateState } from '../src/ipc.ts'
+import { WELCOME_IPC } from '../src/welcome-api.ts'
 import { MANDATORY_IPC } from '../src/mandatory-update-ipc.ts'
 import { DesktopHostFatalError, DesktopHostUncleanExitError } from '../src/host-process.ts'
 import { en, zh } from '../src/locale.ts'
@@ -130,6 +131,9 @@ const harness = await vi.hoisted(async () => {
       this.webContents.mainFrame.url = url
       if (url === 'dsh-app://app/') navigated.resolve()
     }
+    async loadFile(path: string) {
+      this.urls.push(`file://${path}`)
+    }
     static getAllWindows() { return windows.filter(window => !window.destroyed) }
     setMenu() {}
     getContentBounds() { return { x: 0, y: 0, width: 900, height: 650 } }
@@ -175,6 +179,7 @@ const harness = await vi.hoisted(async () => {
       readonly packageManager?: { pnpm: string; nodeBin: string },
       readonly onPlatformSession?: ConstructorParameters<typeof DesktopHostProcess>[8],
       readonly onPluginOperation?: ConstructorParameters<typeof DesktopHostProcess>[9],
+      readonly suiyiAccess?: ConstructorParameters<typeof DesktopHostProcess>[10],
     ) { hosts.push(this) }
   }
   // The packaged flavor check reads <appPath>/package.json synchronously from
@@ -229,7 +234,10 @@ const harness = await vi.hoisted(async () => {
   const clearBrowserStorage = vi.fn(async () => {})
   const clearBrowserCache = vi.fn(async () => {})
   // Suiyi login transport: the Keycloak client is replaced so no network runs.
-  type SuiyiLoginResult = { ok: true; identity: { issuer: string; sub: string; expiresAt: number } } | { ok: false; failure: string }
+  type SuiyiLoginResult = {
+    ok: true
+    identity: { issuer: string; sub: string; expiresAt: number; accessToken: string; name?: string }
+  } | { ok: false; failure: string }
   const suiyiLoginResult = vi.fn<() => Promise<SuiyiLoginResult>>()
   let suiyiExpiryCallback: (() => void) | undefined
   const suiyiSessionTimer = {
@@ -345,6 +353,7 @@ vi.mock('electron', () => ({
   dialog: harness.dialog,
   shell: { openExternal: harness.openExternal, showItemInFolder: harness.showItemInFolder },
   nativeTheme: harness.nativeTheme,
+  clipboard: { writeText: vi.fn(async () => {}) },
   ipcMain: {
     on: harness.ipcOn,
     handle: (channel: string, handler: InvokeHandler) => {
@@ -403,7 +412,7 @@ vi.mock('../src/runtime-tree.ts', () => ({ readDesktopRuntime: () => ({ release:
 // The issuer-file behavior is tested independently. Keep startup tests focused
 // on the verified-login gate, not filesystem imports under fake timers.
 vi.mock('../src/keycloak/oidc-config.ts', () => ({
-  resolveSuiyiOidcIssuer: vi.fn(async () => ({ ok: true, issuer: 'https://login.example.invalid/realms/identity' })),
+  resolveSuiyiOidcIssuer: vi.fn(async () => ({ ok: true, issuer: 'https://sso.zzjjzz.top/realms/identity' })),
 }))
 // The Suiyi gate runs before any Electron window; its Keycloak transport is
 // replaced so startup tests drive real gate state without network or browser.
@@ -3086,9 +3095,28 @@ describe('Suiyi main lifecycle', () => {
     vi.stubEnv('DSH_HOME', undefined)
     vi.stubEnv('DSH_AGENTS_HOME', undefined)
   }
-  const login = (sub = 'alice') => ({ ok: true as const, identity: { issuer, sub, expiresAt: Date.now() + 300_000 } })
+  const login = (sub = 'alice', displayName?: string) => ({
+    ok: true as const,
+    identity: {
+      issuer, sub, expiresAt: Date.now() + 300_000, accessToken: `access-token-${sub}`,
+      ...(displayName === undefined ? {} : { name: displayName }),
+    },
+  })
+  /** Drive the real Suiyi login window once; the mocked attempt settles from `suiyiLoginResult`. */
+  const startedLoginWindows = new WeakSet<object>()
+  async function completeLoginWindow(): Promise<void> {
+    const pending = (): typeof harness.windows[number] | undefined =>
+      harness.windows.find(window => !window.destroyed && !startedLoginWindows.has(window))
+    await vi.waitFor(() => { expect(pending()).toBeDefined() })
+    const window = pending()!
+    startedLoginWindows.add(window)
+    await harness.handlers.get(WELCOME_IPC.suiyiStart)!({
+      sender: window.webContents, senderFrame: window.webContents.mainFrame,
+    })
+    await vi.waitFor(() => { expect(window.destroyed).toBe(true) })
+  }
 
-  it('creates neither windows nor Host before the identity center accepts login', async () => {
+  it('shows the login window and creates no Host before the identity center accepts login', async () => {
     selectSuiyi()
     let accept!: (value: ReturnType<typeof login>) => void
     let entered!: () => void
@@ -3098,24 +3126,137 @@ describe('Suiyi main lifecycle', () => {
       return new Promise((resolve) => { accept = resolve })
     })
     await import('../src/main.ts')
+    await vi.waitFor(() => { expect(harness.windows).toHaveLength(1) })
+    const loginWindow = harness.windows[0]!
+    const event = { sender: loginWindow.webContents, senderFrame: loginWindow.webContents.mainFrame }
+    expect(loginWindow.urls[0]).toContain(join('renderer', 'welcome.html'))
+    expect(loginWindow.options).toMatchObject({
+      webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true },
+    })
+    expect(harness.hosts).toHaveLength(0)
+    const starting = harness.handlers.get(WELCOME_IPC.suiyiStart)!(event)
     await entering
-    expect(harness.windows).toHaveLength(0)
+    expect(loginWindow.webContents.send).toHaveBeenCalledWith(WELCOME_IPC.suiyiState, { phase: 'working' })
     expect(harness.hosts).toHaveLength(0)
     accept(login())
+    await starting
+    harness.prepared.resolve()
+    await vi.waitFor(() => { expect(harness.hosts).toHaveLength(1) })
+    await harness.hostStarted.promise
+    expect(loginWindow.destroyed).toBe(true)
+    const workspace = harness.windows.find(window => !window.destroyed)!
+    expect(workspace.options).toMatchObject({ webPreferences: { partition: expect.stringMatching(/^persist:suiyi-/) as string } })
+    const host = harness.hosts[0]!
+    host.ready.resolve()
+    await harness.navigated.promise
+    expect(host.environment?.DSH_HOME).toContain(join('Suiyi', 'users'))
+    // The plugin hub scopes decisions by the verified identity, while the bearer token
+    // travels only through the private channel rather than the child environment.
+    expect(host.environment?.DSH_SUIYI_IDENTITY_ISSUER).toBe(issuer)
+    expect(host.environment?.DSH_SUIYI_IDENTITY_SUBJECT).toBe('alice')
+    expect(host.environment?.DSH_SUIYI_ACCESS_TOKEN).toBeUndefined()
+    expect(host.suiyiAccess?.()).toMatchObject({ accessToken: 'access-token-alice' })
+  })
+
+  it('exposes a safe identity view and signs out through the real login page', async () => {
+    selectSuiyi()
+    harness.suiyiLoginResult.mockResolvedValueOnce(login('alice', 'Alice'))
+    await import('../src/main.ts')
+    await completeLoginWindow()
+    harness.prepared.resolve()
+    await vi.waitFor(() => { expect(harness.hosts).toHaveLength(1) })
+    await harness.hostStarted.promise
+    const firstHost = harness.hosts[0]!
+    firstHost.ready.resolve()
+    await harness.navigated.promise
+
+    const workspace = harness.windows.find(window => !window.destroyed)!
+    const event = { sender: workspace.webContents, senderFrame: workspace.webContents.mainFrame }
+    expect(harness.handlers.get(DESKTOP_IPC.suiyiIdentityView)!(event)).toEqual({
+      state: 'signed-in', displayName: 'Alice',
+    })
+
+    // Sign-out uses the same lock lifecycle and opens the real Suiyi page; the
+    // DeepSeek account sign-out is never involved.
+    const restarted = harness.nextHostStart()
+    harness.suiyiLoginResult.mockResolvedValueOnce(login('alice', 'Alice'))
+    harness.handlers.get(DESKTOP_IPC.suiyiIdentitySignOut)!(event)
+    await vi.waitFor(() => { expect(firstHost.stop).toHaveBeenCalledOnce() })
+    await vi.waitFor(() => { expect(workspace.destroyed).toBe(true) })
+    firstHost.exited.resolve()
+    await completeLoginWindow()
+    await restarted
+    await vi.waitFor(() => { expect(harness.hosts).toHaveLength(2) })
+    harness.hosts[1]!.ready.resolve()
+    await vi.waitFor(() => { expect(harness.windows.some(window => !window.destroyed)).toBe(true) })
+    const resumed = harness.windows.find(window => !window.destroyed)!
+    const resumedEvent = { sender: resumed.webContents, senderFrame: resumed.webContents.mainFrame }
+    expect(harness.handlers.get(DESKTOP_IPC.suiyiIdentityView)!(resumedEvent)).toEqual({
+      state: 'signed-in', displayName: 'Alice',
+    })
+  }, 30_000)
+
+  it('does not leak sign-out cleanup errors and quits without a window', async () => {
+    selectSuiyi()
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      harness.suiyiLoginResult.mockResolvedValueOnce(login('alice'))
+      await import('../src/main.ts')
+      await completeLoginWindow()
+      harness.prepared.resolve()
+      await vi.waitFor(() => { expect(harness.hosts).toHaveLength(1) })
+      await harness.hostStarted.promise
+      const host = harness.hosts[0]!
+      host.ready.resolve()
+      await harness.navigated.promise
+      const workspace = harness.windows.find(window => !window.destroyed)!
+      harness.handlers.get(DESKTOP_IPC.suiyiIdentitySignOut)!({
+        sender: workspace.webContents, senderFrame: workspace.webContents.mainFrame,
+      })
+      await vi.waitFor(() => { expect(host.stop).toHaveBeenCalledOnce() })
+      host.exited.reject(new Error('CANARY-SECRET-CLEANUP'))
+      await vi.waitFor(() => { expect(harness.app.quit).toHaveBeenCalled() })
+      expect(errors.mock.calls.map(call => call.map(value => String(value)).join(' ')).join('\n'))
+        .not.toContain('CANARY-SECRET-CLEANUP')
+    } finally {
+      errors.mockRestore()
+    }
+  }, 30_000)
+
+  it('quits instead of staying windowless when the sign-out login page is cancelled', async () => {
+    selectSuiyi()
+    harness.suiyiLoginResult.mockResolvedValueOnce(login('alice'))
+    await import('../src/main.ts')
+    await completeLoginWindow()
     harness.prepared.resolve()
     await vi.waitFor(() => { expect(harness.hosts).toHaveLength(1) })
     await harness.hostStarted.promise
     const host = harness.hosts[0]!
     host.ready.resolve()
     await harness.navigated.promise
-    expect(host.environment?.DSH_HOME).toContain(join('Suiyi', 'users'))
-    expect(harness.windows[0]!.options).toMatchObject({ webPreferences: { partition: expect.stringMatching(/^persist:suiyi-/) as string } })
-  })
+    const workspace = harness.windows.find(window => !window.destroyed)!
+    harness.handlers.get(DESKTOP_IPC.suiyiIdentitySignOut)!({
+      sender: workspace.webContents, senderFrame: workspace.webContents.mainFrame,
+    })
+    await vi.waitFor(() => { expect(host.stop).toHaveBeenCalledOnce() })
+    host.exited.resolve()
+    await vi.waitFor(() => {
+      expect(harness.windows.some(window => !window.destroyed && window.urls.some(url => url.includes('welcome.html')))).toBe(true)
+    })
+    const loginWindow = harness.windows.find(window => !window.destroyed && window.urls.some(url => url.includes('welcome.html')))!
+    loginWindow.destroy()
+    await vi.waitFor(() => { expect(harness.app.quit).toHaveBeenCalled() })
+  }, 30_000)
 
   it('stops Host despite pending Platform cleanup, stays locked after cancel and foreign login, then resumes Alice', async () => {
     selectSuiyi()
     harness.suiyiLoginResult.mockResolvedValueOnce(login())
     await import('../src/main.ts')
+    await vi.waitFor(() => { expect(harness.windows).toHaveLength(1) })
+    const loginWindow = harness.windows[0]!
+    await harness.handlers.get(WELCOME_IPC.suiyiStart)!({
+      sender: loginWindow.webContents, senderFrame: loginWindow.webContents.mainFrame,
+    })
     harness.prepared.resolve()
     await vi.waitFor(() => { expect(harness.hosts).toHaveLength(1) })
     await harness.hostStarted.promise
@@ -3139,13 +3280,17 @@ describe('Suiyi main lifecycle', () => {
     harness.dialog.showMessageBox.mockResolvedValueOnce({ response: 0 }).mockResolvedValue({ response: 1 })
     harness.suiyiLoginResult.mockResolvedValueOnce(login('bob'))
     harness.app.emit('activate')
+    await completeLoginWindow()
     await vi.waitFor(() => { expect(harness.dialog.showMessageBox).toHaveBeenCalledTimes(3) })
     expect(harness.hosts).toHaveLength(1)
     expect(harness.windows.every(window => window.destroyed)).toBe(true)
+    // Let the watcher finish its prompt turn before the next activation asks again.
+    await new Promise(resolve => setTimeout(resolve, 10))
     harness.dialog.showMessageBox.mockResolvedValueOnce({ response: 0 }).mockResolvedValue({ response: 1 })
     harness.suiyiLoginResult.mockResolvedValueOnce(login())
     const resumed = harness.nextHostStart()
     harness.app.emit('activate')
+    await completeLoginWindow()
     await resumed
     harness.hosts[1]!.ready.resolve()
     await vi.waitFor(() => { expect(harness.windows.some(window => !window.destroyed)).toBe(true) })

@@ -20,10 +20,19 @@ export interface SidebarRightSeed {
 
 /**
  * Resolve the default page from the registered entry count.
+ *
+ * The workbench opens on the real Artifacts page when that provider is mounted,
+ * otherwise the real Files page, so a new pane starts on session content rather
+ * than the empty guide. Without either, a sole guide entry still seeds that
+ * type, and anything else falls back to the guide.
  * @param tabs - current tab registry.
- * @returns the sole entry, or the guide when there are zero or multiple entries.
+ * @returns the default page kind and its captured title.
  */
 export function defaultSeed(tabs: SidebarRightTabRegistry): SidebarRightSeed {
+  for (const kind of ['artifacts', 'files'] as const) {
+    const definition = tabs.get(kind)
+    if (definition !== undefined) return { kind, title: definition.title(pageAddress(kind)) }
+  }
   const [only, ...others] = tabs.guide()
   const single = only !== undefined && others.length === 0
   const kind = single ? only.kind : GUIDE_KIND

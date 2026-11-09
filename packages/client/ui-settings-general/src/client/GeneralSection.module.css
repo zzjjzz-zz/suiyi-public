@@ -1,12 +1,126 @@
-/* Feature-contributed rows own their chrome and separators; the section
- * strips the trailing separator wherever the column ends. */
+/* General settings cards: the prototype's Output, Appearance, and General
+ * groups over the shared independent-card material. Rows own their separators;
+ * the last row in each card drops it. */
 
 .section {
   display: flex;
   flex-direction: column;
+  gap: 20px;
   width: 100%;
 }
 
-.section > :global([data-slot='settings.general.item']) > :last-child {
+.group {
+  overflow: hidden;
+  border: 0.5px solid var(--dsw-alias-border-l2);
+  border-radius: var(--dsw-radius-lg);
+  background: var(--dsw-alias-bg-layer-1);
+}
+
+.groupTitle {
+  margin: 0;
+  padding: 14px 18px;
+  background: var(--dsw-alias-bg-layer-2);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 500;
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+
+.rowSlot {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  min-width: 0;
+  min-height: 77px;
+  box-sizing: border-box;
+  padding: 0 18px;
+  border-top: 1px solid var(--dsw-alias-border-l2);
+}
+
+.rowSlot > :global([data-slot='settings.general.item']) {
+  width: 100%;
+}
+
+/* Prototype row copy: 12/500 label and 10/17 description. Feature rows keep
+ * their own controls; only the text containers are normalized here. */
+.rowSlot :global([class*='title']),
+.rowSlot :global(strong) {
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 500;
+}
+
+.rowSlot :global([class*='desc']),
+.rowSlot :global(p) {
+  font-size: 10px;
+  line-height: 17px;
+}
+
+/* Prototype control surface: surface3/module fill, hairline border, 8px
+ * radius, 11px type. The controls keep their real behavior and size. */
+.rowSlot :global([class*='selector']),
+.rowSlot :global([class*='stepper']) {
+  background: var(--dsw-alias-bg-layer-2);
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  font-size: 11px;
+  line-height: 17px;
+}
+
+.rowSlot :global([class*='value']),
+.rowSlot :global([class*='unit']) {
+  font-size: 11px;
+  line-height: 17px;
+}
+
+.rowSlot :global(button[role='switch']) {
+  border: 1px solid var(--dsw-alias-border-l2);
+}
+
+.rowSlot :global(button[role='switch'][aria-checked='false']) {
+  background: var(--dsw-alias-bg-module-platform);
+}
+
+.rowSlot[data-general-row='appearance'] {
+  min-height: 0;
+  border-top: none;
+}
+
+/* The card owns the full-width divider; the row component keeps its content
+ * padding but drops its own inset border. */
+.rowSlot > :global([data-slot='settings.general.item']) > :last-child {
   border-bottom: none;
+}
+
+.rows > .rowSlot:last-child {
+  border-bottom: none;
+}
+
+/* The Appearance row's own title duplicates the card heading; the preview is
+ * its content, and the heading above the card names it. */
+.rowSlot[data-general-row='appearance'] > :global([data-slot='settings.general.item']) > div > div:first-child {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .groupTitle {
+    padding: 14px 18px;
+  }
+
+  .rowSlot {
+    min-height: 73px;
+    padding: 0 15px;
+  }
+}
+
+@media (max-width: 640px) {
+  .rowSlot[data-general-row='appearance'] {
+    padding-inline: 14px;
+  }
 }

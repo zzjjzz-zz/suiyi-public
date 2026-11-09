@@ -59,53 +59,58 @@ function mountButton(shortcuts: readonly ShortcutCatalogEntry[] = [], mobile = f
 }
 
 describe('ExpandButton', () => {
-  it('advertises the configured expand binding', async () => {
+  it('advertises the configured binding and the expanded state', async () => {
     const { instance, control, view } = mountButton([{ id: 'sidebar.right.toggle' as never, label: 'Toggle', aliases: [],
       binding: null, keys: ['Ctrl', 'B'], aria: 'Control+B', modified: true, conflicts: [], issue: null }], true)
     expect(control()?.getAttribute('aria-keyshortcuts')).toBe('Control+B')
+    expect(control()?.getAttribute('aria-pressed')).toBe('false')
     fireEvent.pointerEnter(control()!)
     const tooltip = await view.findByRole('tooltip')
     expect(tooltip.textContent).toContain('chrome.expand')
     expect(Array.from(tooltip.querySelectorAll('kbd'), key => key.textContent)).toEqual(['Ctrl', 'B'])
     act(() => { instance.actions.setExpanded(SESSION, true) })
-    expect(view.queryByRole('tooltip')).toBeNull()
+    expect(control()?.getAttribute('aria-pressed')).toBe('true')
+    expect(control()?.getAttribute('aria-label')).toBe('chrome.collapseAria')
   })
-  it('offers the way in while the session has no surface yet, and asks the panel to expand', () => {
+
+  it('opens and closes the real workbench surface from the same control', () => {
     const { instance, control } = mountButton()
     const button = control()
-    if (button === null) throw new Error('expected the expand control')
+    if (button === null) throw new Error('expected the workbench control')
     expect(button.getAttribute('aria-label')).toBe('chrome.expandAria')
     fireEvent.click(button)
     expect(instance.getSnapshot().bySession[SESSION]?.layout.expanded).toBe(true)
-    expect(control()).toBeNull()
-    act(() => { instance.actions.setExpanded(SESSION, false) })
-    expect(control()?.disabled).toBe(false)
-  })
-
-  it.each(['push', 'fullscreen'] as const)('retains the disabled control through mobile %s panel opening and closing', (mode) => {
-    const { instance, control } = mountButton([], true)
-    const button = control()
-    if (button === null) throw new Error('expected the expand control')
-    act(() => {
-      instance.actions.setMode(SESSION, mode)
-      instance.actions.setExpanded(SESSION, true)
-    })
     expect(control()).toBe(button)
-    expect(button.disabled).toBe(true)
-    act(() => { instance.actions.setExpanded(SESSION, false) })
-    expect(control()).toBe(button)
+    expect(button.getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(button)
+    expect(instance.getSnapshot().bySession[SESSION]?.layout.expanded).toBe(false)
     expect(button.disabled).toBe(false)
   })
 
-  it('releases header space for a manually fullscreen panel on desktop', () => {
+  it.each(['push', 'fullscreen'] as const)('toggles a mobile %s panel from the retained control', (mode) => {
+    const { instance, control } = mountButton([], true)
+    const button = control()
+    if (button === null) throw new Error('expected the workbench control')
+    act(() => { instance.actions.setMode(SESSION, mode) })
+    fireEvent.click(button)
+    expect(instance.getSnapshot().bySession[SESSION]?.layout.expanded).toBe(true)
+    expect(control()).toBe(button)
+    expect(button.getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(button)
+    expect(instance.getSnapshot().bySession[SESSION]?.layout.expanded).toBe(false)
+  })
+
+  it('closes a manually fullscreen panel on desktop', () => {
     const { instance, control } = mountButton()
+    const button = control()
+    if (button === null) throw new Error('expected the workbench control')
     act(() => {
       instance.actions.setMode(SESSION, 'fullscreen')
       instance.actions.setExpanded(SESSION, true)
     })
     expect(instance.getSnapshot().bySession[SESSION]?.layout.mode).toBe('fullscreen')
-    expect(control()).toBeNull()
-    act(() => { instance.actions.setExpanded(SESSION, false) })
-    expect(control()?.disabled).toBe(false)
+    expect(control()).toBe(button)
+    fireEvent.click(button)
+    expect(instance.getSnapshot().bySession[SESSION]?.layout.expanded).toBe(false)
   })
 })

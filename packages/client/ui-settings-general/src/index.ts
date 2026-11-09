@@ -9,11 +9,17 @@ import z from '@deepseek-ai/schemastery'
 export interface Config {
   /** Last acknowledged welcome notice version. */
   welcomeNoticeVersion: Volatile<string | undefined>
+  /** Whether the reader asked for reduced motion beyond the system preference. */
+  reduceMotion: Volatile<boolean>
+  /** Whether a completed turn raises a system notification; default off. */
+  turnCompleteNotification: Volatile<boolean>
 }
 
-/** Live welcome preference. */
+/** Live welcome and motion preferences. */
 export const Config = z.object({
   welcomeNoticeVersion: z.string().volatile(),
+  reduceMotion: z.boolean().default(false).volatile(),
+  turnCompleteNotification: z.boolean().default(false).volatile(),
 })
 
 /** The browser consumes the configuration form projection.

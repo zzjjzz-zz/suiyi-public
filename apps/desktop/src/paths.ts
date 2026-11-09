@@ -124,7 +124,12 @@ export function suiyiUserHostEnvironment(
   // an API key inherited from the Windows login shell or another process.
   return { ...Object.fromEntries(Object.entries(environment).filter(([key]) =>
     !/^DSH_/iu.test(key) && !/(?:^|_)(?:API_KEY|TOKEN|AUTH_TOKEN|ACCESS_KEY_ID|SECRET_ACCESS_KEY|SECRET|PASSWORD)$/iu.test(key))),
-  DSH_HOME: paths.home, DSH_AGENTS_HOME: paths.agents }
+  DSH_HOME: paths.home,
+  DSH_AGENTS_HOME: paths.agents,
+  // Non-secret verified identity the plugin hub scopes decisions by. The access
+  // token never travels through the environment; it uses the private Host channel.
+  DSH_SUIYI_IDENTITY_ISSUER: verifiedIdentity.issuer,
+  DSH_SUIYI_IDENTITY_SUBJECT: verifiedIdentity.sub }
 }
 
 /**

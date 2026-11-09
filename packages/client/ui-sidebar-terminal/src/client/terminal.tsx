@@ -18,6 +18,9 @@ export type TerminalBodyProps = PropsRuntime<'sidebar.right.pane.tab'> & PropsLo
 
 /**
  * Render the retained terminal with the application theme.
+ * The workbench chrome is one bordered, 11px-radius card inset by 12px; its
+ * status, failure, and empty states use 11px copy, while the real emulator
+ * keeps the theme's terminal font and fits only a visible, writable screen.
  * @param props - sidebar occurrence, model lookup and translated copy.
  * @returns the terminal screen and any pending or exceptional state.
  */
@@ -63,7 +66,11 @@ export function TerminalBody({ useTabInfo, useTerminal, useTheme, view, t }: Ter
           : <Button variant="outline" size="sm" onClick={() => { model.connect() }}>{t('reconnect')}</Button>)}
         {ended && newTerminal}
       </div>}
-      {state.info !== undefined && <TerminalScreen state={state} model={model} visible={tab.visible} label={t('title')} theme={theme} />}
+      {state.info !== undefined && (
+        <div className={css.panel} data-sidebar-terminal-panel>
+          <TerminalScreen state={state} model={model} visible={tab.visible} label={t('title')} theme={theme} />
+        </div>
+      )}
       {error !== undefined && <p className={css.error} role="alert">{t('failed', { message: error })}</p>}
     </section>
   )

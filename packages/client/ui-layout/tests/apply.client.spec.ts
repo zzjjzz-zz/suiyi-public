@@ -90,6 +90,7 @@ describe('ui-layout client apply', () => {
     expect(slots.spec('main')).toEqual({ kind: 'keyed', scope: 'root' })
     expect(slots.spec('rightbar')).toEqual({ kind: 'single', scope: 'root' })
     expect(slots.spec('shell.bottom')).toEqual({ kind: 'single', scope: 'root' })
+    expect(slots.spec('shell.header')).toEqual({ kind: 'single', scope: 'root' })
     expect(slots.spec('shell.overlay')).toEqual({ kind: 'list', scope: 'root' })
     expect(slots.spec('shell.leading')).toEqual({ kind: 'single', scope: 'root' })
   })
@@ -110,11 +111,11 @@ describe('ui-layout client apply', () => {
       repeat: false, composing: false, defaultPrevented: false }
     const context = { region: 'editable' as const, target: null, modal: 'settings' }
     expect(registry.dispatch(gesture, context, vi.fn()).status).toBe('pass')
-    expect(width()).toBe(280)
+    expect(width()).toBe(242)
     expect(registry.dispatch(gesture, { ...context, modal: null }, vi.fn()).status).toBe('handled')
     expect(width()).toBe(0)
     expect(registry.dispatch(gesture, { ...context, modal: 'sidebar' }, vi.fn()).status).toBe('handled')
-    expect(width()).toBe(280)
+    expect(width()).toBe(242)
   })
 
   it('shares a pre-created instance between service actions, root rendering, and panelInfo', async () => {

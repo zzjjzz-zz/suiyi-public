@@ -2,7 +2,16 @@ import type { DesktopFileActions } from '@deepseek-ai/dsh-client-ui-file-actions
 /** Typed preload operations exposed only by the Electron shell. */
 
 export type { DesktopChannelState, DesktopChannelChangeResult } from '@deepseek-ai/dsh-client-ui-settings-general/types'
-import type { DesktopChannelBridge, DesktopChannelState } from '@deepseek-ai/dsh-client-ui-settings-general/types'
+import type {
+  DesktopChannelBridge, DesktopChannelState, DesktopSuiyiIdentityBridge,
+} from '@deepseek-ai/dsh-client-ui-settings-general/types'
+/** Suiyi identity contract is owned by the settings-general types; Desktop re-exports the same shape. */
+export type {
+  DesktopSuiyiIdentityBridge,
+  DesktopSuiyiIdentityState,
+  DesktopSuiyiIdentityView,
+  DesktopSuiyiSignInResult,
+} from '@deepseek-ai/dsh-client-ui-settings-general/types'
 import type { DesktopKeyboardApi, DesktopShortcutsApi } from '@deepseek-ai/dsh-client-shortcuts/protocol'
 import type { IpcMainInvokeEvent } from 'electron'
 import type { DesktopBrowserBridge } from '@deepseek-ai/dsh-client-ui-sidebar-browser/types'
@@ -44,6 +53,11 @@ export const DESKTOP_IPC = {
   windowFullscreen: 'dsh-desktop:window-fullscreen',
   windowsAppearance: 'dsh-desktop:windows-appearance',
   windowsMenu: 'dsh-desktop:windows-menu',
+  suiyiIdentityView: 'dsh-desktop:suiyi-identity-view',
+  suiyiIdentitySignIn: 'dsh-desktop:suiyi-identity-sign-in',
+  suiyiWelcome: 'dsh-desktop:suiyi-welcome',
+  suiyiIdentitySignOut: 'dsh-desktop:suiyi-identity-sign-out',
+  suiyiIdentityChanged: 'dsh-desktop:suiyi-identity-changed',
 } as const
 
 /** Desktop release update state rendered by desktop-owned UI. */
@@ -108,6 +122,8 @@ export interface DshDesktopProductApi {
     open(): Promise<void>
     subscribe(listener: (state: DesktopUpdatePresentation) => void): () => void
   }
+  /** Suiyi identity center operations; absent outside the Suiyi build. */
+  readonly suiyiIdentity?: DesktopSuiyiIdentityBridge
 }
 
 /** Scheme of Desktop-owned application documents. */

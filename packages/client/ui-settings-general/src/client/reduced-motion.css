@@ -1,0 +1,17 @@
+/* Explicit reduced-motion override.
+ *
+ * Component styles already answer the system media query; this rule adds the
+ * in-product choice for readers whose system setting cannot express it. Short
+ * durations rather than `animation: none` keep transitionend/animationend
+ * events firing, because several components settle transitions on that event
+ * and only have a timeout fallback. */
+html[data-dsh-reduce-motion='true'],
+html[data-dsh-reduce-motion='true'] *,
+html[data-dsh-reduce-motion='true'] *::before,
+html[data-dsh-reduce-motion='true'] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  transition-delay: 0ms !important;
+  scroll-behavior: auto !important;
+}

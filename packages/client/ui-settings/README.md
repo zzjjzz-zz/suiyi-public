@@ -35,6 +35,10 @@ Feature adapters use `ctx.configForms.get(entryId)` to obtain accepted values an
 
 A configuration form persists through the Host settings service for every authenticated browser; the [authenticated-browser Host preferences note](../../../.agents/notes/implemented/bug-fix/2026-09-15-authenticated-browser-host-preferences.md) owns that policy. `settings.describe.writable` is the authority on whether a write is accepted.
 
+### Generated-interface providers
+
+A provider that renders model-authored interfaces mounts `ctx.visualOutput` with the `VisualOutputCapability` type this package exports from its `/client` entry. `readiness` and `enabled` are observable sources, and the provider owns `setEnabled`; consumers follow the service through `ctx.inject`, so a provider that mounts late, is replaced, or withdraws updates the settings row without a reload. Readiness stays separate from the preference, and a provider keeps it false until generated-code isolation and account authorization both hold. The provider persists the accepted preference in its own Host settings namespace through a volatile Config field and `ctx.configForms`; browser storage is not durable because Desktop serves each launch from a new loopback port.
+
 ### Following served namespaces
 
 A page that edits a namespace another plugin owns registers through `ctx.configForms.whileServed(namespaces, register)`: `register` runs once any listed namespace is in the shared mirror, receives the set of namespaces the Host serves, and returns the registration's disposer, which runs when none of them is served any more or when the disposer `whileServed` returns runs. The caller owns that returned disposer and wraps it in `ctx.effect`; unlike `get`, the service registers nothing on the caller's context. A deployment that never composed the owner therefore shows no trace of the page, and a namespace the Host stops serving withdraws it. The four official pages on the Plugins page ride it, one companion package each.

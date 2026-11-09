@@ -27,6 +27,8 @@ export function readInstallerLocales(directory = defaultDirectory) {
       for (const [key, text] of Object.entries(value)) {
         if (typeof text !== 'string' || text.trim() === '') throw new Error(`${name}: ${key} must be nonempty text`)
         if (/[\u200b\ufeff]/u.test(text)) throw new Error(`${name}: ${key} contains an invisible locale character`)
+        // The progress overlay joins twelve strings with line breaks, so copy must stay single-line.
+        if (/[\u0000-\u0008\u000b\u000c\u000e-\u001f\r\n]/u.test(text)) throw new Error(`${name}: ${key} must be single-line text`)
         result[key] = text
       }
       return result

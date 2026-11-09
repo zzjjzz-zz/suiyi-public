@@ -1,5 +1,7 @@
 # Running the fixtures against another model
 
+English | [中文](README.zh.md)
+
 `scripts/eval.sh` honours `DSH_HOME`, so a second model needs an isolated dsh home rather than
 an edit to the user's own `~/.dsh/settings.yaml` — which is global and would change every
 session's default.

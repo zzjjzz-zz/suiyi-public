@@ -33,7 +33,9 @@ type Declared = {
 
 // Both directions: a declaration narrower than the implementation hides capability, and one
 // wider promises what the runtime will not do. Either way the model is told something untrue.
-const _implementationSatisfiesDeclaration: Declared = null as unknown as Bound;
-const _declarationCoversImplementation: Bound = null as unknown as Declared;
-void _implementationSatisfiesDeclaration;
-void _declarationCoversImplementation;
+// Conditional types prove assignability without asserting through `unknown`.
+type Assert<T extends true> = T;
+type Extends<Actual, Expected> = [Actual] extends [Expected] ? true : false;
+
+export type _ImplementationSatisfiesDeclaration = Assert<Extends<Bound, Declared>>;
+export type _DeclarationCoversImplementation = Assert<Extends<Declared, Bound>>;

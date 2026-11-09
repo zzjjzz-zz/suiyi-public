@@ -1,12 +1,12 @@
 /**
  * The `files` page: a file browser with no file chosen yet.
  *
- * Its header spans the page: the workspace root's path, the tree's reload and
- * the directory actions, in the order a preview's header ends with its own
- * reload and file actions. The pane's navigator fills the page below it and
- * stays shown, so the page draws no toggle; picking a file leaves this page as
- * it is and opens the file where the right Sidebar places it by default
- * (`FileNavigator`).
+ * Its 36px toolbar spans the page: the workspace root's 10px path, the tree's
+ * reload and the directory actions, in the order a preview's 36px toolbar ends
+ * with its own reload and file actions. The pane's navigator fills the page
+ * below it and stays shown, so the page draws no toggle; picking a file leaves
+ * this page as it is and opens the file where the right Sidebar places it by
+ * default (`FileNavigator`).
  */
 import { useCallback, useEffect } from 'react'
 import type { ReactNode } from 'react'

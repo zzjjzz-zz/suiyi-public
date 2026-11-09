@@ -25,6 +25,13 @@ import type { ConversationSnapshot } from './snapshot.ts'
 import type { ViewTab } from './views.ts'
 import type { UserTextDocumentInput, UserTextEvaluator, UserTextId, UserTextNode } from './user-text.ts'
 
+declare module '@deepseek-ai/dsh-api-session-controller/client' {
+  interface SessionReferenceSourceMap {
+    /** Header menu navigation retains its captured Session. */
+    conversationMenu: unknown
+  }
+}
+
 declare module '@deepseek-ai/dsh-client-ui-context-menu/client' {
   interface ContextMenuTargetMap {
     /** Session Header More menu, independent of Session-row and title context actions. */
@@ -244,6 +251,8 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
         hideChrome: boolean
       }
     }
+    /** View navigation bound to the captured header menu Session. */
+    'conversation.session.menu.views': { kind: 'single'; scope: 'session'; owner: { dismiss: () => void } }
     /** Optional replacement for one Session breadcrumb title; overlays must portal because the title area clips overflow. */
     'conversation.session.header.lineage': {
       kind: 'single'
@@ -313,6 +322,11 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      * because the docked composer contains them.
      */
     'conversation.composer.dock': { kind: 'list'; scope: 'session' }
+    /**
+     * Detail rows inside the composer context panel; fixed overlays must portal
+     * to the document body because the docked composer contains them.
+     */
+    'conversation.composer.context': { kind: 'list'; scope: 'session' }
     /**
      * Compact controls at the left of the composer tool row; fixed overlays must portal to the
      * document body because the docked composer contains them.
@@ -411,6 +425,44 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
   }
 }
 
+/** Resolved theme facts the shell chrome renders. */
+export interface ConversationThemeSnapshot {
+  /** Resolved palette in use; `system` has already been resolved by the theme owner. */
+  readonly active: { readonly colorScheme: 'light' | 'dark' }
+}
+
+/** Live sources and actions for the root shell topbar. */
+export interface ConversationShellChromeInjected {
+  hooks: {
+    /** Main-view Session identity, shared with every main panel. */
+    currentSessionId: ObservableSnapshot<SessionId | undefined>
+    /** Current resolved theme snapshot. */
+    theme: ObservableSnapshot<ConversationThemeSnapshot>
+  }
+  /** Flip the registered light and dark preferences. */
+  toggleTheme(): void
+  /** Select the registered plugin-center main panel when one exists. */
+  openPluginCenter(): void
+}
+
+/** Live navigation action for the conversation chat-top row. */
+export interface ConversationSessionBarInjected {
+  /** Select the registered Workspaces main panel when one exists. */
+  openWorkspaces(): void
+}
+
+/** Live sources and recovery action for the root shell footer. */
+export interface ConversationShellFooterInjected {
+  hooks: {
+    /** Main-view Session identity, shared with every main panel. */
+    currentSessionId: ObservableSnapshot<SessionId | undefined>
+    /** Client transport lifecycle, absent before the first connection attempt. */
+    connectionState: ObservableSnapshot<'connected' | 'disconnected' | 'connecting' | undefined>
+  }
+  /** Restart the transport attempt. */
+  reconnect(): void
+}
+
 /** Owner share of the Hero agent-preset control. */
 export interface HeroAgentPresetOwnerProps {
   /** Marker field: the occupant owns its roster and staged selection. */
@@ -470,6 +522,8 @@ export type ConvViewProps = PropsRuntime<'conversation.view'>
 export interface ConversationInjected {
   /** Connect and open a blank Session in the selected Workspace. */
   selectWorkspace: (workspaceId: WorkspaceId) => Promise<void>
+  /** Select the registered Workspaces main panel. */
+  openWorkspaces: () => void
   /** Session-addressed composer block source, or the stable absent source. */
   hooks: { composerBlock: ObservableSnapshot<ComposerBlock | undefined> }
 }
@@ -616,7 +670,7 @@ export type ComposerBarProps =
     | 'conversation.input.permission'
     | 'conversation.input.left' | 'conversation.input.plan'
     | 'conversation.input.right' | 'conversation.input.model' | 'conversation.input.activity'
-    | 'conversation.composer.dock'
+    | 'conversation.composer.dock' | 'conversation.composer.context'
   >
   & InjectFace<ComposerBarInjected>
   & PropsLocale<'conversation'>
@@ -690,6 +744,8 @@ export type ConversationSessionSlotProps =
 export type ConversationHeaderProps =
   PropsRuntime<'conversation.header'>
   & PropsRenderSlots<'conversation.header.leading' | 'conversation.session.header'>
+  & PropsLocale<'conversation'>
+  & InjectFace<ConversationSessionBarInjected>
 
 /** Full props of the strict Session header. */
 export type ConversationSessionHeaderSlotProps =

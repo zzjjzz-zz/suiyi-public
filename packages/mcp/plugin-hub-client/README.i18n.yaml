@@ -1,0 +1,52 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/mcp/plugin-hub-client/README.md
+/:
+  en: 37a974e5932c1a98
+  zh: 5b1c85f20c3e4f0e
+/deepseek-ai-dsh-plugin-hub-client:
+  en: 048c077f7b11f7ee
+  zh: 823e89367c408f54
+/deepseek-ai-dsh-plugin-hub-client/summary:
+  en: 6f14da2b31d96022
+  zh: d9e74fef319e5f8a
+/deepseek-ai-dsh-plugin-hub-client/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 1db86285abf6c499
+/deepseek-ai-dsh-plugin-hub-client/use-this-package:
+  en: a32c9ce13217a48b
+  zh: 911c06a5118eae4c
+/deepseek-ai-dsh-plugin-hub-client/use-this-package/remote-methods:
+  en: aa81792e81af222e
+  zh: e0a60a121825c875
+/deepseek-ai-dsh-plugin-hub-client/use-this-package/security:
+  en: 7a9190cef458462a
+  zh: 7b3a6b5c56cfa75c
+/deepseek-ai-dsh-plugin-hub-client/understand-the-implementation:
+  en: bbca523383b18e86
+  zh: f570978ed6e16fab
+/deepseek-ai-dsh-plugin-hub-client/further-exploration:
+  en: bccc586845d48b7a
+  zh: d2078d493895ee3d
+/deepseek-ai-dsh-plugin-hub-client/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-plugin-hub-client/model-experience/indirect-mcp-tool-contributions:
+  en: 0a957726c075b0a8
+  zh: 12e55e239f95c191
+/deepseek-ai-dsh-plugin-hub-client/model-experience/indirect-mcp-tool-contributions/what-the-model-sees:
+  en: 440ccc8740f418c7
+  zh: 303ab8b933696cde
+/deepseek-ai-dsh-plugin-hub-client/model-experience/indirect-mcp-tool-contributions/token-effect:
+  en: dc302410617ce2e7
+  zh: 1ded4e67fa5125eb
+/deepseek-ai-dsh-plugin-hub-client/model-experience/indirect-mcp-tool-contributions/kv-cache-effect:
+  en: 92b0cef527ff1fb8
+  zh: f7d3486d751f3f0c
+/deepseek-ai-dsh-plugin-hub-client/known-limitations-and-deferred-work:
+  en: 328961f2dc68411d
+  zh: caba096e07ae9ae6
+/deepseek-ai-dsh-plugin-hub-client/known-limitations-and-deferred-work/dev-note:
+  en: c09c7d69dbe86a58
+  zh: cf85c7d7fa0a4593

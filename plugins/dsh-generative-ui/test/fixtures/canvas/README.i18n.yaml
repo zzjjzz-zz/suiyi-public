@@ -1,0 +1,7 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write plugins/dsh-generative-ui/test/fixtures/canvas/README.md
+/a-real-multi-file-canvas:
+  en: ca709c3297cd1267
+  zh: 89e71c107e680ebb

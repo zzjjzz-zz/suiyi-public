@@ -1,14 +1,10 @@
 /**
- * Appearance preference row registered into the General section item slot
- * (figma 501:30012 'Frame 2117131228'): title + three preference cubes.
- * Registered by this package — the theme feature owns its own settings
- * surface. Selection follows the persisted preference, never the resolved
- * active theme.
+ * Appearance preference row registered into the General section item slot: the
+ * prototype's three theme cards, each a miniature window preview plus its label.
+ * Registered by this package — the theme feature owns its own settings surface.
+ * Selection follows the persisted preference, never the resolved active theme.
  */
 import clsx from 'clsx'
-import {
-  IconDarkOutlineMedium, IconFollowsystemOutlineMedium, IconLightOutlineMedium,
-} from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PropsLocale, PropsRuntime, PropsStore } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ThemePreference } from '../theme-settings.ts'
 import type { ThemeKey } from './locales.ts'
@@ -27,15 +23,15 @@ export type AppearanceRowComponentProps =
   PropsRuntime<'settings.general.item'> & PropsStore<ReturnType<typeof createAppearanceRowStore>>
   & PropsLocale<'settings.theme'> & AppearanceRowInjected
 
-/** Cube order and icons (figma 501:30015-30017: Light, Dark, System). */
-const CUBES: readonly { id: ThemePreference; labelKey: ThemeKey; Icon: typeof IconLightOutlineMedium }[] = [
-  { id: 'light', labelKey: 'appearance.light', Icon: IconLightOutlineMedium },
-  { id: 'dark', labelKey: 'appearance.dark', Icon: IconDarkOutlineMedium },
-  { id: 'system', labelKey: 'appearance.system', Icon: IconFollowsystemOutlineMedium },
+/** Card order and preview variants (prototype: light, dark, follow system). */
+const CARDS: readonly { id: ThemePreference; labelKey: ThemeKey }[] = [
+  { id: 'light', labelKey: 'appearance.light' },
+  { id: 'dark', labelKey: 'appearance.dark' },
+  { id: 'system', labelKey: 'appearance.system' },
 ]
 
 /**
- * Render the Appearance row.
+ * Render the Appearance row as three window-preview cards.
  * @param props - composed slot props.
  * @returns the row element tree.
  */
@@ -44,17 +40,17 @@ export function AppearanceRow({ t, setTheme, useStore }: AppearanceRowComponentP
   return (
     <div className={css.group}>
       <div className={css.title}>{t('appearance.title')}</div>
-      <div className={css.cubeRow}>
-        {CUBES.map(({ id, labelKey, Icon }) => (
+      <div className={css.cards}>
+        {CARDS.map(({ id, labelKey }) => (
           <button
             key={id}
             type="button"
-            className={clsx(css.themeCube, preference === id && css.selected)}
+            className={clsx(css.themeCard, preference === id && css.selected)}
             aria-pressed={preference === id}
             onClick={() => { setTheme(id) }}
           >
-            <Icon />
-            {t(labelKey)}
+            <span className={css.preview} data-preview={id} aria-hidden="true" />
+            <span className={css.label}>{t(labelKey)}</span>
           </button>
         ))}
       </div>

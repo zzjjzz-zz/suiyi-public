@@ -15,9 +15,11 @@ import { RemoteError, TestRemote } from '@deepseek-ai/dsh-client-test-runtime'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import { apply as settingsApply, inject as settingsInject } from '@deepseek-ai/dsh-client-ui-settings/client'
 import { apply, inject } from '@deepseek-ai/dsh-client-ui-agent-preset/client'
+import { apply as sourceApply, inject as sourceInject } from '../src/client/index.ts'
 import { AgentPresetLabel } from '../src/client/AgentPresetLabel.tsx'
 import type { AgentPresetLabelInjected } from '../src/client/AgentPresetLabel.tsx'
 import { AgentPresetSection } from '../src/client/AgentPresetSection.tsx'
+import type { AgentDefaultItemInjected } from '../src/client/AgentDefaultItem.tsx'
 import type { AgentPresetSectionInjected } from '../src/client/AgentPresetSection.tsx'
 import { AgentPresetSeat } from '../src/client/AgentPresetSeat.tsx'
 import type { AgentPresetSeatInjected } from '../src/client/AgentPresetSeat.tsx'
@@ -202,6 +204,8 @@ function declareRoot(slots: SlotRegistry): () => void {
     children: {
       'settings.general.item': { kind: 'list', scope: 'root' },
       'settings.section': { kind: 'list', scope: 'root' },
+      main: { kind: 'keyed', scope: 'root' },
+      'sidebar.panellist': { kind: 'list', scope: 'root' },
       conversation: { kind: 'single', scope: 'root' },
     },
   } as never, () => null)
@@ -304,6 +308,66 @@ async function settingsWithoutChip(initialPreset: string, settingsRosterGate?: P
   return { ...b, bindingOwner, feature, section, sessions }
 }
 
+/** Read the face owned by these specs from the type-erased slot ledger. */
+function defaultAgentFace(value: Record<string, unknown>): AgentDefaultItemInjected {
+  return {
+    hooks: value['hooks'] as AgentDefaultItemInjected['hooks'],
+    load: value['load'] as AgentDefaultItemInjected['load'],
+    makeDefault: value['makeDefault'] as AgentDefaultItemInjected['makeDefault'],
+  }
+}
+
+describe('Agent main page registration', () => {
+  it('registers the default-agent General item and writes the real selectedDefault', async () => {
+    const b = await bench()
+    b.ctx.provide('sessions', sessionsDouble(b.ctx, { byId: {} }) as never)
+    declareRoot(b.slots)
+    await b.ctx.plugin({ inject: [...sourceInject], apply: sourceApply }).await()
+    const entry = b.slots.entries('settings.general.item').find(candidate => candidate.options.id === 'default-agent')
+    expect(entry).toBeDefined()
+    const face = defaultAgentFace(entry!.inject!.call(undefined))
+    await face.load()
+    expect(face.hooks.agentPresetSection.getSnapshot().rows.find(row => row.isDefault)?.id).toBe('standard')
+    await face.makeDefault('minimal')
+    expect(b.calls).toContain('settings:{"selectedDefault":"minimal"}')
+    expect(face.hooks.agentPresetSection.getSnapshot().rows.find(row => row.isDefault)?.id).toBe('minimal')
+  })
+
+  it('keeps the previous default when the General item write fails', async () => {
+    const b = await bench({ failSettingsUpdate: true })
+    b.ctx.provide('sessions', sessionsDouble(b.ctx, { byId: {} }) as never)
+    declareRoot(b.slots)
+    await b.ctx.plugin({ inject: [...sourceInject], apply: sourceApply }).await()
+    const entry = b.slots.entries('settings.general.item').find(candidate => candidate.options.id === 'default-agent')
+    const face = defaultAgentFace(entry!.inject!.call(undefined))
+    await face.load()
+    await face.makeDefault('minimal')
+    expect(face.hooks.agentPresetSection.getSnapshot().error).toBe('settings write disconnected')
+    expect(face.hooks.agentPresetSection.getSnapshot().rows.find(row => row.isDefault)?.id).toBe('standard')
+  })
+
+  it('registers the Agents main panel and its sidebar entry outside official artifacts', async () => {
+    const b = await bench()
+    b.ctx.provide('sessions', sessionsDouble(b.ctx, { byId: {} }) as never)
+    declareRoot(b.slots)
+    await b.ctx.plugin({ inject: [...sourceInject], apply: sourceApply }).await()
+    await vi.waitFor(() => {
+      expect(b.slots.entries('main').map(entry => entry.options.key)).toContain('agents')
+      expect(b.slots.entries('sidebar.panellist').map(entry => entry.options.id)).toContain('agents')
+    })
+  })
+
+  it('withholds the Agents page from official builds', async () => {
+    vi.stubEnv('DSH_CLIENT_BUILD_PROFILE', 'official')
+    const b = await bench()
+    b.ctx.provide('sessions', sessionsDouble(b.ctx, { byId: {} }) as never)
+    declareRoot(b.slots)
+    await b.ctx.plugin({ inject: [...sourceInject], apply: sourceApply }).await()
+    expect(b.slots.entries('main').map(entry => entry.options.key)).not.toContain('agents')
+    expect(b.slots.entries('sidebar.panellist').map(entry => entry.options.id)).not.toContain('agents')
+  })
+})
+
 describe('ui-agent-preset apply', () => {
   const settingsActions = [
     { action: 'makeDefault', initial: 'standard', selected: 'minimal', run: (section: AgentPresetSectionInjected) => section.makeDefault('minimal') },
@@ -353,16 +417,16 @@ describe('ui-agent-preset apply', () => {
     ])
   })
 
-  it('registers the settings section and no General row', async () => {
+  it('registers the settings section and the default-agent General row', async () => {
     const { ctx, slots } = await bench()
     ctx.provide('sessions', sessionsDouble(ctx, { byId: {} }) as never)
     declareRoot(slots)
 
     await ctx.plugin({ inject: [...inject], apply }).await()
 
-    // The default preset is edited in the section, where the roster is
-    // visible; a General row would duplicate the same settings field.
-    expect(slots.entries('settings.general.item')).toHaveLength(0)
+    // The General row edits the same selectedDefault field from the section's
+    // roster store, so the two surfaces cannot diverge.
+    expect(slots.entries('settings.general.item').map(entry => entry.options.id)).toEqual(['default-agent'])
     const section = slots.entries('settings.section')[0]!
     expect(section.component).toBe(AgentPresetSection)
     expect(section.options).toMatchObject({ id: 'agent-presets', order: 20 })
@@ -895,7 +959,7 @@ describe('ui-agent-preset apply', () => {
         current: 's1', byId: { s1: { id: 's1', blank: true, projectionValues: { agentPreset: 'standard' } } },
       }) as never)
       b.ctx.provide('uiWorkspace', uiWorkspaceDouble() as never)
-      await b.ctx.plugin({ inject: [...inject], apply }).await()
+      await b.ctx.plugin({ inject: [...sourceInject], apply: sourceApply }).await()
       const chip = (b.slots.entries('conversation.hero.agentPreset')[0]!
         .inject as (sessionId: SessionId) => AgentPresetSeatInjected & Record<string, unknown>)(SessionId('s1'))
       await chip.load()
@@ -919,7 +983,7 @@ describe('ui-agent-preset apply', () => {
     const b = await bench({ describeGate: described.promise, presets: ROSTER_MOVED.value.presets })
     b.ctx.provide('sessions', sessionsDouble(b.ctx, { byId: {} }) as never)
     declareRoot(b.slots)
-    await b.ctx.plugin({ inject: [...inject], apply }).await()
+    await b.ctx.plugin({ inject: [...sourceInject], apply: sourceApply }).await()
     expect(b.ctx.configForms.developerTools.enabled.getSnapshot()).toBe(false)
     await Promise.resolve()
     expect(b.calls.filter(call => call.startsWith('settings:'))).toEqual([])
@@ -935,7 +999,7 @@ describe('ui-agent-preset apply', () => {
     ] })
     b.ctx.provide('sessions', sessionsDouble(b.ctx, { byId: {} }) as never)
     declareRoot(b.slots)
-    await b.ctx.plugin({ inject: [...inject], apply }).await()
+    await b.ctx.plugin({ inject: [...sourceInject], apply: sourceApply }).await()
     await vi.waitFor(() => { expect(b.calls.filter(call => call.startsWith('settings:'))).toEqual(['settings:{"selectedDefault":"standard"}']) })
     const section = (b.slots.entries('settings.section')[0]!.inject as () => AgentPresetSectionInjected & Record<string, unknown>)()
     await vi.waitFor(() => { expect(section.hooks.agentPresetSection.getSnapshot().rows.find(row => row.isDefault)?.id).toBe('standard') })
@@ -953,7 +1017,7 @@ describe('ui-agent-preset apply', () => {
       ] })
       b.ctx.provide('sessions', sessionsDouble(b.ctx, { byId: {} }) as never)
       declareRoot(b.slots)
-      await b.ctx.plugin({ inject: [...inject], apply }).await()
+      await b.ctx.plugin({ inject: [...sourceInject], apply: sourceApply }).await()
       const section = (b.slots.entries('settings.section')[0]!.inject as () => AgentPresetSectionInjected & Record<string, unknown>)()
       await section.load()
       await Promise.resolve()
@@ -967,7 +1031,7 @@ describe('ui-agent-preset apply', () => {
     const b = await bench({ presets: ROSTER_MOVED.value.presets })
     b.ctx.provide('sessions', sessionsDouble(b.ctx, { byId: {} }) as never)
     declareRoot(b.slots)
-    await b.ctx.plugin({ inject: [...inject], apply }).await()
+    await b.ctx.plugin({ inject: [...sourceInject], apply: sourceApply }).await()
     expect(b.calls.filter(call => call.startsWith('settings:'))).toEqual([])
     await b.setDeveloperTools(false)
     await vi.waitFor(() => { expect(b.calls.filter(call => call.startsWith('settings:'))).toEqual(['settings:{"selectedDefault":"standard"}']) })
@@ -996,7 +1060,7 @@ describe('ui-agent-preset apply', () => {
         return result
       })
     try {
-      await b.ctx.plugin({ inject: [...inject], apply }).await()
+      await b.ctx.plugin({ inject: [...sourceInject], apply: sourceApply }).await()
       await disabled.promise
       expect(b.calls.filter(call => call.startsWith('settings:'))).toEqual(['settings:{"selectedDefault":"standard"}'])
     } finally {
@@ -1019,7 +1083,7 @@ describe('ui-agent-preset apply', () => {
         current: 'blank', byId: { blank: { id: 'blank', blank, projectionValues: { agentPreset: preset } } },
       }) as never)
       b.ctx.provide('uiWorkspace', uiWorkspaceDouble() as never)
-      await b.ctx.plugin({ inject: [...inject], apply }).await()
+      await b.ctx.plugin({ inject: [...sourceInject], apply: sourceApply }).await()
       const chip = (b.slots.entries('conversation.hero.agentPreset')[0]!.inject as (id: SessionId) => AgentPresetSeatInjected & Record<string, unknown>)(SessionId('blank'))
       await chip.load()
       expect(chip.hooks.agentPresetSeat.getSnapshot().current).toBe(preset)
@@ -1057,7 +1121,7 @@ describe('ui-agent-preset apply', () => {
     const b = await bench({ failSettingsUpdate: true, presets: ROSTER_MOVED.value.presets })
     b.ctx.provide('sessions', sessionsDouble(b.ctx, { byId: {} }) as never)
     declareRoot(b.slots)
-    await b.ctx.plugin({ inject: [...inject], apply }).await()
+    await b.ctx.plugin({ inject: [...sourceInject], apply: sourceApply }).await()
     const section = (b.slots.entries('settings.section')[0]!.inject as () => AgentPresetSectionInjected & Record<string, unknown>)()
     await b.setDeveloperTools(false)
     await vi.waitFor(() => { expect(section.hooks.agentPresetSection.getSnapshot().error).toBe('settings write disconnected') })
@@ -1258,7 +1322,7 @@ async function analyticsBench(
   b.ctx.provide('uiWorkspace', uiWorkspaceDouble() as never)
   const track = vi.fn()
   b.ctx.provide('productAnalytics', { enabled: true, track } as never)
-  await b.ctx.plugin({ inject: [...inject], apply }).await()
+  await b.ctx.plugin({ inject: [...sourceInject], apply: sourceApply }).await()
   const seat = (b.slots.entries('conversation.hero.agentPreset')[0]!.inject as
     (sessionId?: SessionId) => AgentPresetSeatInjected & Record<string, unknown>)(
     bound === undefined ? undefined : SessionId('blank'))

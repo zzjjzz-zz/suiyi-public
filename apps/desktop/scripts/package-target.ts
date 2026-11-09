@@ -496,6 +496,12 @@ export async function packageTarget(
         : ['run', 'release:pack', '--family', 'dsh']),
       '--out', buildPaths.packedDsh, ...packArguments,
     ], buildEnv, REPOSITORY_ROOT)
+    // The public release family skips private members; the Desktop package set still needs
+    // the built-in capabilities those members carry.
+    await executePreparation([
+      'exec', 'tsx', 'apps/desktop/scripts/pack-internal-packages.ts',
+      '--out', buildPaths.packedDsh,
+    ], buildEnv, REPOSITORY_ROOT)
     await executePreparation([
       '--dir',
       'apps/desktop-host',

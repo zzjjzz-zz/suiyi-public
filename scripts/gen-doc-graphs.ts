@@ -179,6 +179,21 @@ const SERVICE_ROLES: ServiceRole[] = [
     note: 'Fetches and validates the index sources the user configures; installation goes through the plugin manager.',
   },
   {
+    key: 'pluginHub',
+    pkg: 'plugin-hub-client',
+    title: 'Account-scoped plugin hub catalog',
+    mode: 'service',
+    consumers: ['client-ui-plugin-hub'],
+    note: 'Reads and validates the platform V1 catalog with the verified account token, owns per-account added and active decisions, and mounts one authorized MCP instance per enabled release; the Web client sees only the Remote namespace.',
+  },
+  {
+    key: 'suiyiAccess',
+    pkg: 'plugin-hub-client',
+    title: 'Desktop-provided current access token',
+    mode: 'service',
+    note: 'The Suiyi desktop launcher installs the optional current token; plugin-hub reads it for every catalog and MCP operation, and the provider replaces or clears it on re-login, expiry, or stop.',
+  },
+  {
     key: 'profileContext',
     pkg: 'app-boot',
     title: 'Launcher-owned profile data',

@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 
+import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, fireEvent, render } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
 import { en as commonEn, zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/index.ts'
 import { ContextMeter, type ContextMeterProps } from '../src/client/skeleton/ContextMeter.tsx'
@@ -27,6 +29,22 @@ function meter(values: Record<string, unknown>, translate: ContextMeterProps['t'
   return render(<ContextMeter useProjection={projections(values)} t={translate} />)
 }
 
+/** A real child detail with its own portal dialog, standing in for UsagePill. */
+function ChildUsageProbe() {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <button type="button" onClick={() => { setOpen(true) }}>Open child usage</button>
+      {open && createPortal(
+        <div role="dialog" aria-label="Child usage" data-stat-dialog="">
+          <p>Child usage body</p>
+        </div>,
+        document.body,
+      )}
+    </>
+  )
+}
+
 describe('ContextMeter', () => {
   it('computes occupancy only when both a numerator and capacity are known', () => {
     expect(contextOccupancy({ pressureTokens: 32_000, projectedTokens: 6_000, contextWindow: 128_000 }))
@@ -37,6 +55,48 @@ describe('ContextMeter', () => {
     expect(contextOccupancy({ contextWindow: 128_000 })).toBeNull()
     expect(contextOccupancy(undefined)).toBeNull()
     expect(contextOccupancy({ pressureTokens: 300_000, contextWindow: 128_000 })?.percent).toBe(100)
+  })
+
+  it('renders child details and lets their dialog stay open with occupancy present', () => {
+    const view = render(
+      <ContextMeter
+        useProjection={projections({
+          contextPressure: { pressureTokens: 32_000, contextWindow: 128_000 },
+          contextBreakdown: BREAKDOWN,
+        })}
+        t={t}
+      >
+        <ChildUsageProbe />
+      </ContextMeter>,
+    )
+    fireEvent.click(view.getByRole('button', { name: '上下文已用 25%' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Open child usage' }))
+    expect(screen.getByRole('dialog', { name: 'Child usage' })).toBeTruthy()
+    fireEvent.pointerDown(screen.getByText('Child usage body'))
+    expect(view.getByRole('dialog', { name: '上下文已用' })).toBeTruthy()
+  })
+
+  it('keeps session usage details reachable without context pressure', () => {
+    const view = render(
+      <ContextMeter
+        useProjection={projections({
+          tokenUsage: { uncachedInputTokens: 1_200, cacheReadTokens: 8_000, cacheWriteTokens: 0, outputTokens: 900 },
+        })}
+        t={t}
+      >
+        <ChildUsageProbe />
+      </ContextMeter>,
+    )
+    const trigger = view.getByRole('button', { name: '会话详情' })
+    expect(trigger.textContent).toBe('会话详情')
+    fireEvent.click(trigger)
+    const panel = view.getByRole('dialog', { name: '会话详情' })
+    expect(panel.textContent).not.toContain('上下文已用')
+    expect(panel.getElementsByClassName(segmentClass)).toHaveLength(0)
+    fireEvent.click(screen.getByRole('button', { name: 'Open child usage' }))
+    expect(screen.getByRole('dialog', { name: 'Child usage' })).toBeTruthy()
+    fireEvent.pointerDown(screen.getByText('Child usage body'))
+    expect(view.getByRole('dialog', { name: '会话详情' })).toBeTruthy()
   })
 
   it('renders nothing until both pressure and capacity are known', () => {

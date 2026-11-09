@@ -1,0 +1,89 @@
+/* Suiyi footer identity row: icon + verified name/state + one real action. */
+
+.row {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 52px;
+  padding: 15px 10px 3px;
+  box-sizing: border-box;
+  border-radius: var(--dsw-radius-md);
+}
+
+@media (hover: hover) {
+  .row:hover {
+    background: var(--dsw-alias-interactive-bg-hover);
+  }
+}
+
+.icon {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  background: light-dark(#e8f1ff, #213c60);
+  color: light-dark(#185abc, #a7d0ff);
+}
+
+.copy {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.title,
+.detail {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.title {
+  font-weight: 700;
+  color: var(--dsw-alias-label-primary);
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.detail,
+.error {
+  color: var(--dsw-alias-label-secondary);
+  font-size: 10px;
+  line-height: 15px;
+}
+
+.error {
+  color: var(--dsw-alias-state-error-primary);
+}
+
+.action {
+  flex: none;
+  align-self: center;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: var(--dsw-radius-sm);
+  background: transparent;
+  color: var(--dsw-alias-brand-primary);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.action:disabled {
+  color: var(--dsw-alias-label-secondary);
+  cursor: default;
+}
+
+.chevron {
+  flex: none;
+  display: flex;
+  align-self: center;
+  color: var(--dsw-alias-label-secondary);
+}

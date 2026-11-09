@@ -1,9 +1,24 @@
-/* Align with the shared compact Button used by the adjacent More action. */
+/* The prototype's workbench pill: a small bordered control carrying the panel
+   glyph and the visible “Workbench” label. Narrow viewports keep the icon-only
+   footprint. */
 .button {
   flex: none;
-  width: 28px;
-  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 30px;
+  padding: 0 10px;
+  box-sizing: border-box;
+  border: 1px solid var(--dsw-alias-border-l3);
+  border-radius: var(--dsw-radius-sm);
+  background: transparent;
   color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 11px;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
 }
 
 .button svg {
@@ -11,11 +26,58 @@
   height: 15px;
 }
 
-.expanded {
-  visibility: hidden;
+@media (hover: hover) {
+  .button:hover {
+    background: var(--dsw-alias-interactive-bg-hover);
+    color: var(--dsw-alias-label-primary);
+  }
+}
+
+.button:focus-visible {
+  outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
+  outline-offset: 2px;
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.button.open {
+  color: var(--dsw-alias-state-business-primary);
+  border-color: color-mix(in srgb, var(--dsw-alias-state-business-primary) 40%, var(--dsw-alias-border-l3));
+  background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 10%, transparent);
+}
+
+.label {
+  display: inline;
+}
+
+@media (max-width: 640px) {
+  .button {
+    width: 31px;
+    height: auto;
+    line-height: normal;
+    padding: 7px;
+    gap: 0;
+    border-color: transparent;
+    background: transparent;
+  }
+
+  .label {
+    display: none;
+  }
 }
 
 /* The left sidebar's panel icon, mirrored: the divider moves to the right side. */
 .icon {
   transform: scaleX(-1);
+  display: inline-block;
+  vertical-align: middle;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button {
+    transition: none;
+  }
 }

@@ -102,7 +102,7 @@ describe("matchSegment", () => {
  */
 describe("hasPainted", () => {
   const el = (tagName: string, box: { width: number; height: number }) => ({ tagName, getBoundingClientRect: () => box });
-  const mount = (textContent: string, children: ReturnType<typeof el>[] = []) => ({ textContent, querySelectorAll: () => children }) as unknown as HTMLElement;
+  const mount = (textContent: string, children: ReturnType<typeof el>[] = []) => ({ textContent, querySelectorAll: () => children }) as HTMLElement;
   const box = { width: 300, height: 200 };
   const zero = { width: 0, height: 0 };
 

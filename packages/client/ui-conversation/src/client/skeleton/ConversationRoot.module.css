@@ -14,34 +14,51 @@
   isolation: isolate;
 }
 
-/* 76px with its rule: the height of the Sidebar's tab strip and header row
-   (ui-dockkit `.tabStrip` 38px + the pane header's 38px), so the two rules
-   meet at the column edge. The rows add up to it — 10px top inset, the 30px
-   title row, the tab strip's 10px margin, and a 25px view row. When the views
-   and the More launcher do not fit on one row, the row wraps and the header
-   grows past 76px. */
+/* Active and settling surfaces expose the app scene; only the transcript
+   column carries the content wash. */
+.root[data-phase='active'],
+.root[data-phase='settling'] {
+  background: transparent;
+}
+
+/* The conversation session bar below the global topbar: View tabs, session
+   actions, and the navigation-owned corner control. The global topbar owns
+   the title, workspace, theme, and plugin-center entries. */
 .header {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  display: flex;
+  align-items: center;
+  gap: 12px;
   flex: none;
   box-sizing: border-box;
-  min-height: 76px;
-  padding: 10px 28px 0 20px;
-  border-bottom: 0.5px solid var(--dsw-alias-border-l3);
+  height: 52px;
+  min-height: 52px;
+  padding: 0 24px;
 }
 
 .header:where(:not(:has(.tabs))) {
-  min-height: 0;
-  padding-bottom: 10px;
+  height: 52px;
+  min-height: 52px;
+  padding-bottom: 0;
 }
 
-/* Blank Sessions retain navigation controls without conversation title or tabs.
-   The same 40px row (10px inset + 30px title row) applies before a Session
-   exists, so the Hero centers below one header height in both states. */
 .headerBlank {
-  min-height: 0;
-  padding-bottom: 0;
-  border-bottom: none;
+  height: 52px;
+  min-height: 52px;
+  padding: 0 24px;
+}
+
+.headerMain {
+  display: flex;
+  flex: 1;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0;
+  min-width: 0;
+}
+
+.headerMain > .titleRow {
+  flex: 1;
 }
 
 .headerBlank .headerCorner {
@@ -63,12 +80,10 @@
 }
 
 .titleRow {
-  grid-column: 2;
   /* Anonymous inline-size container (CSS modules hash container-names per
      module, so occupants match the nearest container): header occupants such
      as the preset label and slot actions shed their text at row-width
-     breakpoints. The minmax(0, 1fr) column sizes the row, so inline-size
-     containment cannot collapse it. */
+     breakpoints. */
   container-type: inline-size;
   display: flex;
   align-items: center;
@@ -78,7 +93,7 @@
      controls, ui-layout AppFrame) when it is published; the header already
      pads 20px of it. Zero everywhere else (the fallback makes the max
      negative). */
-  padding-inline-start: max(0px, calc(var(--dsh-frame-leading-clearance, 0px) - 20px));
+  padding-inline-start: max(0px, calc(var(--dsh-frame-leading-clearance, 0px) - 24px));
 }
 
 /* Header actions do not shrink, so on a narrow row they overflow the cluster.
@@ -106,15 +121,14 @@
   --title-cluster-fade: 8px;
 }
 
-/* The auto grid column collapses with an empty or CSS-hidden occupant.
-   The occupant owns its trailing gap so hidden controls reserve no space. */
+/* The leading seat owns its trailing gap so hidden controls reserve no space. */
 .headerLeading {
-  grid-column: 1;
-  grid-row: 1;
   display: flex;
   flex: none;
   align-items: center;
   gap: 8px;
+  /* Prototype chat-top: workspace chip y82 under the 62px global header. */
+  padding-top: 20px;
 }
 
 .crumbs {
@@ -175,6 +189,13 @@
   gap: 10px;
 }
 
+/* The agent-preset name is passive chrome, not a control. The prototype
+   conversation top shows no preset label; the choice lives on the new-Session
+   screen, so this removes only the redundant readout. */
+.headerActions > span[title] {
+  display: none;
+}
+
 @container (max-width: 460px) {
   .headerActions {
     gap: 8px;
@@ -186,7 +207,13 @@
   flex: none;
   align-items: center;
   gap: 8px;
-  margin-left: 20px;
+  margin-left: 12px;
+}
+
+/* One More menu owns the folded Views. The generic session context-menu
+   shortcut is redundant here; its targets remain in the Session/sidebar menu. */
+.headerUtilities [data-context-menu-trigger] {
+  display: none;
 }
 
 .headerUtilities:empty {
@@ -214,27 +241,29 @@
   flex: none;
   align-items: center;
   margin-left: 8px;
-  margin-right: -16px;
+  margin-right: 0;
 }
 
 .headerCorner:empty {
   display: none;
 }
 
-/* The tab row sits above the header paint so the active bar covers its rule. */
+/* The compact tab strip shares the topbar's middle column below the title. */
 .tabs {
-  grid-column: 1 / -1;
   position: relative;
   z-index: 1;
-  display: flex;
-  gap: 16px 20px;
+  /* The View strip is represented by the single More menu in the title row.
+     Keeping the tablist in the tree preserves View registration and keyboard
+     ownership while the visible header stays one row. */
+  display: contents;
+  gap: 16px;
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
-  align-items: flex-start;
-  flex-wrap: wrap;
-  margin-top: 10px;
-  padding-left: 8px;
+  align-items: center;
+  flex-wrap: nowrap;
+  margin: 0;
+  padding: 0;
 }
 
 @media (max-width: 767px) {
@@ -244,11 +273,11 @@
 }
 
 .viewTabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 32px;
+  display: none;
+  flex-wrap: nowrap;
+  gap: 28px;
   min-width: 0;
-  min-height: 25px;
+  min-height: 20px;
 }
 
 /* The 16px text line retains 9px below it. The press target extends 10px
@@ -262,12 +291,12 @@
 
   position: relative;
   box-sizing: border-box;
-  min-height: 35px;
-  margin: -10px calc(-1 * var(--dsh-tab-hit-inline)) 0;
-  padding: 10px var(--dsh-tab-hit-inline) 9px;
+  min-height: 20px;
+  margin: 0;
+  padding: 0 0 2px;
   border: none;
   background: transparent;
-  font-size: 13px;
+  font-size: 11px;
   line-height: 16px;
   font-weight: 500;
   color: var(--dsw-alias-label-tertiary);
@@ -277,9 +306,9 @@
 .tab::after {
   content: '';
   position: absolute;
-  right: var(--dsh-tab-hit-inline);
-  bottom: -1px;
-  left: var(--dsh-tab-hit-inline);
+  right: 0;
+  bottom: 0;
+  left: 0;
   height: 2px;
   border-radius: 2px;
   background: transparent;
@@ -304,7 +333,7 @@
 .viewsMore {
   width: 22px;
   height: 22px;
-  margin-top: -3px;
+  margin-top: 0;
   padding: 0;
   color: var(--dsw-alias-label-secondary);
 }
@@ -320,6 +349,33 @@
 .viewsMoreMenu {
   width: 288px;
   max-width: calc(100vw - 24px);
+}
+
+/* Visible tabs are folded into the single More menu; these rows keep their
+   real View identities reachable after the tab strip collapses. */
+.viewsMoreItem {
+  display: flex;
+  width: 100%;
+  min-height: 32px;
+  align-items: center;
+  padding: 0 10px;
+  border: none;
+  border-radius: var(--dsw-radius-sm);
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.viewsMoreItem[data-active] {
+  color: var(--dsw-alias-state-business-primary);
+}
+
+@media (hover: hover) {
+  .viewsMoreItem:hover {
+    background: var(--dsw-alias-interactive-bg-hover);
+  }
 }
 
 .viewArea {
@@ -465,11 +521,16 @@
   /* Shared width axis for the transcript, dock cards, composer, and takeover
      cards. Main width controls publish the live body width and optional user
      preference; embedded occurrences override this adaptive axis below. */
-  --dsh-chat-content-width: var(
-    --dsh-chat-user-width,
-    clamp(680px, calc(var(--dsh-conversation-column-width, 0px) * 0.64), 920px)
+  /* The frozen prototype fixes the transcript at a 748px maximum and lets
+     it narrow with the viewport; a user width preference only shrinks it. */
+  --dsh-chat-content-width: min(
+    var(--dsh-chat-user-width, 748px),
+    748px,
+    100%
   );
-  --dsh-composer-card-max-width: calc(var(--dsh-chat-content-width) + 32px);
+  /* The frozen prototype fixes the composer at 720 on a 748 transcript,
+     independent of the adaptive chat axis. */
+  --dsh-composer-card-max-width: 720px;
   --dsh-composer-side-clearance: 16px;
   --dsh-composer-dock-inset: 8px;
 }
@@ -505,6 +566,33 @@
   margin: 2px;
 }
 
+@media (min-width: 641px) {
+  .root[data-phase='active'] .composerSeat {
+    --dsh-composer-side-clearance: 35px;
+    /* Restore the full column before applying the prototype's 35px clearance. */
+    width: calc(100% + var(--dsh-scrollbar-width) + 2px);
+  }
+}
+
+.root[data-phase='settling'] .composerSeat {
+  background: linear-gradient(
+    180deg,
+    transparent 0,
+    color-mix(in srgb, var(--dsw-brand-scene-base) 68%, transparent) 100%
+  );
+}
+
+.root[data-phase='active'] .scrollBody,
+.root[data-phase='settling'] .scrollBody {
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--dsw-brand-content-wash) 15%,
+    var(--dsw-brand-content-wash) 86%,
+    transparent 100%
+  );
+}
+
 .root[data-phase='active'] .viewArea,
 .embeddedBody[data-content-phase='active'] .viewArea {
   flex: 1 0 auto;
@@ -536,16 +624,12 @@
   will-change: transform;
   /* Scroll anchoring never selects composer content as its anchor. */
   overflow-anchor: none;
-  /* Input mask (figma 1205:27463): transcript fades out under a FIXED 36px
-     band at the seat's top (the figma 24% of the resting ~150px composer),
-     solid below — px stops, not %, so a growing draft only widens the solid
-     region and the fade band never stretches. The 0px stop is bg-base at
-     zero alpha (not white, which the figma export hardcodes) so both themes
-     fade from their own base. */
+  /* Prototype composer-wrap: transparent at the transcript edge, then the
+     brand scene base at 68% over the composer surface. */
   background: linear-gradient(
     180deg,
-    color-mix(in srgb, var(--dsw-alias-bg-base) 0%, transparent) 0px,
-    var(--dsw-alias-bg-base) 36px
+    transparent 0,
+    color-mix(in srgb, var(--dsw-brand-scene-base) 68%, transparent) 100%
   );
 }
 
@@ -588,55 +672,73 @@
   left: 0;
 }
 
-/* Hero phase: the composer stack (hero chrome + workspace row + card) is
-   flex-centered in the column; composer phase docks it at the bottom. Flex,
-   NOT absolute+transform: a transform would make this box the containing
-   block for position:fixed descendants (pickers/modals), shrinking them. */
+/* Hero phase: the frozen prototype's empty-state grid. The two fractional
+   rows sit above and below the home + composer pair exactly as the prototype
+   does, so the home and card share one axis at every height. The workspace
+   and preset controls move into the blank header band above this grid. */
 .composerHero {
   align-self: center;
-  /* figma 75:8208 drew 12 between all three rows; the workspace row now sits
-     8 above the card (its margin-top restores 12 under the hero chrome). */
-  gap: 8px;
-  /* Foot inside the centered box floats the stack a bit above true center. */
-  padding-bottom: 32px;
+  display: grid;
+  grid-template-rows:
+    minmax(20px, 0.72fr)
+    auto
+    auto
+    auto
+    minmax(36px, 1.28fr);
+  gap: 0;
+  padding-bottom: 0;
+  box-sizing: border-box;
   /* Card cap + both clearances: the hero input card lands at exactly the same
      width as the docked composer at every viewport. */
   width: min(calc(var(--dsh-composer-card-max-width) + 2 * var(--dsh-composer-side-clearance)), 100%);
   z-index: 1;
 }
 
-.heroWorkspaceRow {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  min-width: 0;
-  margin-top: 4px;
-  /* figma drew px 8; left nudged +12 so the chip's folder glyph lines up
-     closer to the card's inner controls below; right keeps the trailing
-     preset seat off the card edge. */
-  padding: 0 16px 0 20px;
+.composerHero > :first-child {
+  grid-row: 2;
 }
 
-/* Plugin options share the row, pushed to its right edge. */
-.heroOptions {
-  display: flex;
-  flex: none;
-  align-items: center;
-  gap: 2px;
-  min-width: 0;
-  margin-left: auto;
+.composerHero > :last-child {
+  grid-row: 4;
 }
 
-.heroOptions:empty {
-  display: none;
+.composerHero > :not(:first-child):not(:last-child) {
+  grid-row: 3;
 }
 
-/* Hero: the composer sits inside the session scroll body; center there so
-   the tree seat matches active (sticky footer) without a Root remount. */
+/* Slot anchors use display: contents, so their rendered child is the actual
+   grid item. Place the composer bar's rendered root on the card row. */
+.composerHero > :last-child > * {
+  grid-row: 4;
+}
+
+.composerHero > :not(:first-child):not(:last-child) > * {
+  grid-row: 3;
+}
+
+/* Hero: the composer seat fills the scroll body so its grid owns the vertical
+   rhythm; active keeps the sticky footer. */
 .root[data-phase='hero'] .scrollBody,
 .embeddedBody[data-content-phase='hero'] .scrollBody {
-  justify-content: center;
+  justify-content: flex-start;
+  margin-right: 0;
+  scrollbar-gutter: auto;
   overflow-y: auto;
+}
+
+.root[data-phase='hero'] .composerSeat,
+.embeddedBody[data-content-phase='hero'] .composerSeat {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.root[data-phase='hero'] .composerStack,
+.embeddedBody[data-content-phase='hero'] .composerStack {
+  display: grid;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 /* Settling (session replaying, hero/docked unknown): keep the composer seat
@@ -644,4 +746,535 @@
 .root[data-phase='settling'] .composerSeat,
 .embeddedBody[data-content-phase='settling'] .composerSeat {
   visibility: hidden;
+}
+
+
+/* Global shell topbar: spans the center and right columns, stays mounted on
+   every main panel, and carries the current title and workspace entry. */
+.shellTopbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  box-sizing: border-box;
+  height: 62px;
+  padding: 0 24px 0 70px;
+  border-bottom: 0.5px solid var(--dsw-alias-border-l3);
+  background: var(--dsw-brand-glass-chrome);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+  backdrop-filter: blur(20px) saturate(1.2);
+}
+
+.shellTopbarLeft {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.shellTitle {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--dsw-alias-label-primary);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 17px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shellWorkspace {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 7px;
+  max-width: min(320px, 42vw);
+  height: 32px;
+  margin-left: 11px;
+  padding: 6px 9px;
+  border: 0.5px solid var(--dsw-brand-glass-edge);
+  border-radius: var(--dsw-radius-sm);
+  background: var(--dsw-brand-glass-toolbar);
+  box-shadow:
+    inset 0 1px 0 0 light-dark(rgba(255, 255, 255, 0.9), rgba(207, 231, 255, 0.14)),
+    0 3px 12px var(--dsw-brand-glass-shadow);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 11px;
+  line-height: 17px;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .shellWorkspace:hover {
+    border-color: var(--dsw-brand-glass-edge);
+    background: var(--dsw-brand-glass-toolbar);
+    color: var(--dsw-alias-label-primary);
+  }
+}
+
+.shellWorkspace:focus-visible {
+  outline: 2px solid var(--dsw-alias-state-business-primary);
+  outline-offset: 2px;
+}
+
+.shellWorkspaceLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shellWorkspaceChevron {
+  flex: none;
+  color: var(--dsw-alias-label-caption);
+}
+
+/* Bottom statusbar: transport and task facts on the left, build metadata on
+   the right. The orbit mirrors the live connection state. */
+.statusbar {
+  box-sizing: border-box;
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: 30px;
+  padding: 0 22px;
+  border-top: 0.5px solid var(--dsw-alias-border-l1);
+  background: var(--dsw-brand-glass-chrome);
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.statusGroup {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.statusText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.statusDot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border: 1px solid var(--dsw-alias-state-success-primary);
+  border-radius: 50%;
+  corner-shape: round;
+  background: transparent;
+}
+
+.statusDot[data-state='connecting'] {
+  border-color: var(--dsw-alias-state-warn-primary);
+}
+
+.statusDot[data-state='disconnected'] {
+  border-color: var(--dsw-alias-state-error-primary);
+  background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 24%, transparent);
+}
+
+.statusRight {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 12px;
+  white-space: nowrap;
+}
+
+.statusAction {
+  border: none;
+  background: transparent;
+  color: var(--dsw-alias-state-business-primary);
+  font-size: inherit;
+  line-height: inherit;
+  cursor: pointer;
+}
+
+.statusVersion {
+  color: var(--dsw-alias-label-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Topbar right cluster: identity, install/update, plugin center, theme. */
+.shellTopbarRight {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+}
+
+/* Workbench owner's corner seat, portaled here from the Session header so the
+   single pill sits at the prototype topbar's far right. */
+.shellHeaderCorner {
+  display: flex;
+  flex: none;
+  align-items: center;
+}
+
+/* Real identity entry. Unavailable and locked states keep the same size so
+   the title never shifts when the async view resolves. */
+.accountAction,
+.installAction {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 9px;
+  border: none;
+  border-radius: var(--dsw-radius-sm);
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 11px;
+  line-height: 16px;
+  cursor: pointer;
+}
+
+.accountAction:disabled,
+.accountAction[aria-disabled='true'] {
+  opacity: 0.55;
+  cursor: default;
+}
+
+@media (hover: hover) {
+  .accountAction:hover:not(:disabled),
+  .installAction:hover:not(:disabled) {
+    background: var(--dsw-alias-interactive-bg-hover);
+    color: var(--dsw-alias-label-primary);
+  }
+}
+
+.accountAction[data-identity-state='signed-in'] {
+  color: var(--dsw-alias-label-primary);
+}
+
+/* Compact unavailable/locked indicator for the icon-only phone state. */
+.accountAction[data-identity-state='unavailable']::after,
+.accountAction[data-identity-state='locked']::after {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  corner-shape: round;
+  content: '';
+  background: var(--dsw-alias-state-warn-primary);
+}
+
+.accountAction[data-identity-state='available'] {
+  color: var(--dsw-alias-label-primary);
+}
+
+.accountLabel,
+.installLabel {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.accountMenuAnchor {
+  min-width: 160px;
+}
+
+.accountMenuItem {
+  display: flex;
+  width: 100%;
+  min-height: 32px;
+  align-items: center;
+  padding: 0 10px;
+  border: none;
+  border-radius: var(--dsw-radius-sm);
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .accountMenuItem:hover {
+    background: var(--dsw-alias-interactive-bg-hover);
+  }
+}
+
+/* Topbar theme and plugin-center entries. */
+.topbarActions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+}
+
+.topbarAction,
+.topbarIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  border: none;
+  border-radius: var(--dsw-radius-sm);
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+}
+
+.topbarAction {
+  padding: 0 9px;
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.topbarIcon {
+  width: 32px;
+  padding: 0;
+}
+
+@media (hover: hover) {
+  .topbarAction:hover,
+  .topbarIcon:hover {
+    background: var(--dsw-alias-interactive-bg-hover);
+    color: var(--dsw-alias-label-primary);
+  }
+}
+
+.topbarAction:active,
+.topbarIcon:active {
+  background: var(--dsw-alias-interactive-bg-hover-solid);
+}
+
+@media (max-width: 900px) {
+  .topbarActionLabel,
+  .accountLabel,
+  .installLabel {
+    display: none;
+  }
+
+  .topbarAction,
+  .accountAction,
+  .installAction {
+    width: 32px;
+    padding: 0;
+  }
+}
+
+/* Phone footer follows the prototype's 27px / 8px scale. */
+@media (max-width: 640px) {
+  .statusbar {
+    height: 27px;
+    padding: 0 15px;
+    gap: 8px;
+    font-size: 8px;
+  }
+
+  .statusRight {
+    gap: 8px;
+  }
+
+  .statusVersion {
+    max-width: 132px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .tab {
+    min-height: 18px;
+    font-size: 10px;
+    line-height: 14px;
+  }
+
+  .viewTabs {
+    gap: 20px;
+    min-height: 18px;
+  }
+}
+
+@media (min-width: 641px) {
+  :global(body[data-dsh-brand='suiyi']) .root:is([data-phase='active'], [data-phase='settling']) .header {
+    height: 53px;
+    min-height: 53px;
+    padding-top: 20px;
+    padding-right: 35px;
+  }
+
+  :global(body[data-dsh-brand='suiyi']) .root:is([data-phase='active'], [data-phase='settling']) .headerLeading {
+    padding-top: 0;
+  }
+}
+
+:global(body[data-dsh-brand='suiyi']) .headerMain .tabs {
+  display: none;
+}
+
+:global(body[data-dsh-brand='suiyi']) .headerMain .titleRow {
+  flex: 1;
+  justify-content: flex-end;
+}
+
+:global(body[data-dsh-brand='suiyi']) .headerUtilities [data-context-menu-trigger] {
+  display: inline-flex;
+}
+
+:global(body[data-dsh-brand='suiyi']) .headerMenuButton {
+  width: 33px;
+  height: 33px;
+}
+
+.sessionMenuViews {
+  border-top: 1px solid var(--dsw-alias-border-l1);
+  margin-top: 4px;
+  padding-top: 4px;
+}
+
+/* Phone hero: the prototype chat-top shrinks to 49px, the card uses a 15px
+   side inset with a 360px body, and the home uses a 20px side inset. */
+@media (max-width: 640px) {
+  /* Home and active conversation share one compact workspace entry in the
+     49px band below global navigation. */
+  .header,
+  .headerBlank {
+    display: flex;
+    height: 49px;
+    min-height: 49px;
+    padding: 0 16px;
+    gap: 0;
+  }
+
+  .headerMain {
+    display: flex;
+    padding-top: 20px;
+  }
+
+  .headerMain .titleRow {
+    flex: 1;
+    justify-content: flex-end;
+  }
+
+  .headerActions,
+  .headerMain .tabs {
+    display: none;
+  }
+
+  .headerUtilities {
+    margin-left: 0;
+  }
+
+  .headerUtilities [data-context-menu-trigger] {
+    display: inline-flex;
+  }
+
+  .root:is([data-phase='active'], [data-phase='settling']) .header {
+    height: 53px;
+    min-height: 53px;
+    padding-top: 20px;
+  }
+
+  .root:is([data-phase='active'], [data-phase='settling']) :is(.headerLeading, .headerMain) {
+    padding-top: 0;
+  }
+
+  .headerMenuButton {
+    width: 33px;
+    height: 33px;
+  }
+
+  .headerLeading {
+    padding-top: 20px;
+  }
+
+  .headerLeading > :not(:first-child) {
+    display: none;
+  }
+
+  /* The header is back in flow, so the body starts at y104 without the
+     previous spacer; the home grid geometry is unchanged. */
+  .root[data-phase='hero'] .body {
+    padding-top: 0;
+  }
+
+  .headerBlank {
+    height: 49px;
+    min-height: 49px;
+    padding: 0 17px;
+  }
+
+  .header {
+    height: 49px;
+    min-height: 49px;
+    padding: 0 17px;
+    gap: 8px;
+  }
+
+  /* Phone active composer keeps the prototype's full 360px card: the scroll
+     body reserves a 5px gutter plus its 2px edge, so the seat gives that width
+     back on the right. Hero keeps its existing 360px geometry untouched. */
+  .root[data-phase='active'] .composerSeat {
+    width: calc(100% + var(--dsh-scrollbar-width) + 2px);
+  }
+
+  .header:where(:not(:has(.tabs))) {
+    height: 49px;
+  }
+
+  .body {
+    --dsh-composer-side-clearance: 15px;
+  }
+
+  .shellTopbar {
+    height: 55px;
+    padding: 0 13px 0 58px;
+    gap: 8px;
+  }
+
+  .shellTopbarLeft {
+    gap: 8px;
+  }
+
+  .headerLeading {
+    /* Prototype mobile chat-top: workspace chip y75 under the 55px topbar. */
+    padding-top: 20px;
+  }
+
+  .shellTitle {
+    font-size: 12px;
+  }
+
+  .shellWorkspace {
+    max-width: 42vw;
+    height: 29px;
+    margin-left: 0;
+    padding: 4px 7px;
+    font-size: 10px;
+  }
+
+  .composerHero {
+    grid-template-rows:
+      minmax(22px, 0.55fr)
+      auto
+      auto
+      auto
+      minmax(40px, 1.45fr);
+  }
+}
+
+@media (max-width: 640px) {
+  /* The active seat gives back the gutter width; keep its 2px overflow from
+     creating a horizontal scrollbar. */
+  .root[data-phase='active'] .scrollBody {
+    overflow-x: hidden;
+  }
 }

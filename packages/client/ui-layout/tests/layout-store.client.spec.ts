@@ -13,7 +13,7 @@ describe('createLayoutStore', () => {
     expect(store.getSnapshot()).toEqual({
       panelInfo: { activePanelId: null },
       layoutInfo: {
-        sidebar: 280,
+        sidebar: 242,
         viewportWidth: 1920,
         narrowExpanded: false,
         rightbar: null,
@@ -31,15 +31,15 @@ describe('createLayoutStore', () => {
     const b = createLayoutStore().create()
     a.actions.setSidebar(400)
     a.actions.openRightbar(true, false)
-    expect(b.store.getSnapshot().layoutInfo.sidebar).toBe(280)
+    expect(b.store.getSnapshot().layoutInfo.sidebar).toBe(242)
     expect(b.store.getSnapshot().layoutInfo.rightbar).toBeNull()
     expect(write).not.toHaveBeenCalled()
   })
 
-  it('clamps the sidebar to 264–420px', () => {
+  it('clamps the sidebar to 208–420px', () => {
     const { store, actions } = createLayoutStore().create()
     actions.setSidebar(1)
-    expect(store.getSnapshot().layoutInfo.sidebar).toBe(264)
+    expect(store.getSnapshot().layoutInfo.sidebar).toBe(208)
     actions.setSidebar(9999)
     expect(store.getSnapshot().layoutInfo.sidebar).toBe(420)
   })
@@ -50,29 +50,29 @@ describe('createLayoutStore', () => {
     actions.toggleSidebar()
     expect(store.getSnapshot().layoutInfo.sidebar).toBe(0)
     actions.toggleSidebar()
-    expect(store.getSnapshot().layoutInfo.sidebar).toBe(280)
+    expect(store.getSnapshot().layoutInfo.sidebar).toBe(242)
   })
 
   it('keeps the sidebar preference while toggling its narrow override', () => {
     const { store, actions } = createLayoutStore().create()
     actions.setSidebar(400)
-    actions.setViewportWidth(980)
+    actions.setViewportWidth(639)
     actions.toggleSidebar()
-    expect(store.getSnapshot().layoutInfo).toMatchObject({ sidebar: 400, viewportWidth: 980, narrowExpanded: true })
+    expect(store.getSnapshot().layoutInfo).toMatchObject({ sidebar: 400, viewportWidth: 639, narrowExpanded: true })
     actions.toggleSidebar()
     expect(store.getSnapshot().layoutInfo).toMatchObject({ sidebar: 400, narrowExpanded: false })
   })
 
-  it('clears the manual override only when crossing 1024px', () => {
+  it('clears the manual override only when crossing 640px', () => {
     const { store, actions } = createLayoutStore().create()
-    actions.setViewportWidth(980)
+    actions.setViewportWidth(639)
     actions.toggleSidebar()
-    actions.setViewportWidth(980)
-    actions.setViewportWidth(1023)
+    actions.setViewportWidth(639)
+    actions.setViewportWidth(639)
     expect(store.getSnapshot().layoutInfo.narrowExpanded).toBe(true)
-    actions.setViewportWidth(1024)
+    actions.setViewportWidth(640)
     expect(store.getSnapshot().layoutInfo.narrowExpanded).toBe(false)
-    actions.setViewportWidth(980)
+    actions.setViewportWidth(639)
     expect(store.getSnapshot().layoutInfo.narrowExpanded).toBe(false)
   })
 })
@@ -140,18 +140,18 @@ describe('main panel selection', () => {
 })
 
 describe('right panel', () => {
-  it('initializes at 45% of the latest frame only on first opening', () => {
+  it('initializes at 360px only on first opening', () => {
     const { store, actions } = createLayoutStore().create()
     actions.setViewportWidth(1000)
     expect(store.getSnapshot().layoutInfo.rightbar).toBeNull()
     actions.openRightbar(true, false)
-    expect(store.getSnapshot().layoutInfo.rightbar).toBe(450)
+    expect(store.getSnapshot().layoutInfo.rightbar).toBe(360)
     actions.setViewportWidth(2000)
     actions.openRightbar(true, true)
-    expect(store.getSnapshot().layoutInfo.rightbar).toBe(450)
+    expect(store.getSnapshot().layoutInfo.rightbar).toBe(360)
     actions.closeRightbar()
     actions.openRightbar(true, false)
-    expect(store.getSnapshot().layoutInfo.rightbar).toBe(450)
+    expect(store.getSnapshot().layoutInfo.rightbar).toBe(360)
   })
 
   it('keeps track and fullscreen reports independent and clears both on close', () => {
@@ -199,7 +199,7 @@ describe('right panel', () => {
   it('collapses a manually expanded narrow sidebar on opening, not presentation reports', () => {
     const { store, actions } = createLayoutStore().create()
     actions.setSidebar(400)
-    actions.setViewportWidth(800)
+    actions.setViewportWidth(639)
     actions.toggleSidebar()
     actions.openRightbar(true, false)
     expect(store.getSnapshot().layoutInfo).toMatchObject({ sidebar: 400, narrowExpanded: false })
@@ -300,11 +300,11 @@ describe('drawer navigation', () => {
     expect(store.getSnapshot().layoutInfo.narrowExpanded).toBe(false)
   })
 
-  it('keeps a tablet sidebar open when navigating', () => {
+  it('keeps a wide sidebar independent from navigation', () => {
     const { store, actions } = createLayoutStore().create()
-    actions.setViewportWidth(768)
-    actions.toggleSidebar()
+    actions.setViewportWidth(700)
     actions.selectPanel(null)
-    expect(store.getSnapshot().layoutInfo.narrowExpanded).toBe(true)
+    expect(store.getSnapshot().layoutInfo.narrowExpanded).toBe(false)
+    expect(store.getSnapshot().layoutInfo.sidebar).toBe(242)
   })
 })

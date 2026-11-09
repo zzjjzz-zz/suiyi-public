@@ -1,0 +1,42 @@
+/* The Agents main view hosting the existing preset roster section in the main
+   column. Roster data, default selection, composition viewer, and Creator entry
+   stay in AgentPresetSection; this sheet only frames the page. Tokens only. */
+.page {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 28px 32px 48px;
+  box-sizing: border-box;
+}
+
+.heading {
+  max-width: 960px;
+  margin: 0 auto 22px;
+}
+
+.heading h1 {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--dsw-alias-label-primary);
+}
+
+.intro {
+  margin: 8px 0 0;
+  max-width: 720px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.body {
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+@media (max-width: 640px) {
+  .page {
+    padding: 20px 16px 40px;
+  }
+}

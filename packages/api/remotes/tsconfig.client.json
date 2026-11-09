@@ -11,6 +11,7 @@
     "src/types.ts"
   ],
   "references": [
+    { "path": "../../mcp/plugin-hub-client" },
     { "path": "../../team/agent-team" },
     { "path": "../../client/product-analytics/tsconfig.client.json" },
     {

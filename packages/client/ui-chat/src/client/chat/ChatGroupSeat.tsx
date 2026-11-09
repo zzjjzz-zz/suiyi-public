@@ -17,6 +17,7 @@ import { chatRenderKey } from './render-entry.ts'
 import { processTitle } from './step-process.ts'
 import { useDisclosure } from './use-disclosure.ts'
 import { useProcessScroll } from './use-process-scroll.ts'
+import { RunningStatus } from './RunningStatus.tsx'
 import css from './ChatGroupSeat.module.css'
 
 type SeatProps = Omit<ComponentProps<typeof ChatNodeSeat>, 'nodeKey' | 'groupPart'>
@@ -24,6 +25,7 @@ type ChatGroupSeatProps = SeatProps & {
   readonly groupKey: GroupKey
   readonly useChatGroup: ChatFlowSlotProps['useChatGroup']
   readonly useGroupHeaderAction: ChatFlowSlotProps['useGroupHeaderAction']
+  readonly thinking?: { readonly mark: ReactNode; readonly paused: boolean; readonly holding: boolean } | undefined
 }
 const PROCESS_TITLE_MINIMUM_MS = 150
 
@@ -90,7 +92,9 @@ const GroupMembers = memo(function GroupMembers({ members, ...props }: SeatProps
     {...member.groupPart === undefined ? {} : { groupPart: member.groupPart }} />)
 })
 
-const ProcessGroupHeader = memo(function ProcessGroupHeader({ groupKey, useChatGroup, usePresentation, t, open, bodyId, toggle }: {
+const ProcessGroupHeader = memo(function ProcessGroupHeader({
+  groupKey, useChatGroup, usePresentation, t, open, bodyId, toggle, thinking,
+}: {
   readonly groupKey: GroupKey
   readonly useChatGroup: ChatFlowSlotProps['useChatGroup']
   readonly usePresentation: ChatFlowSlotProps['usePresentation']
@@ -98,6 +102,7 @@ const ProcessGroupHeader = memo(function ProcessGroupHeader({ groupKey, useChatG
   readonly open: boolean
   readonly bodyId: string
   readonly toggle: () => void
+  readonly thinking: ChatGroupSeatProps['thinking']
 }) {
   const data = useChatGroup(groupKey, group => group?.data)
   const detailed = usePresentation(policy => data?.closed === false && policy.liveProcessDetail)
@@ -107,6 +112,8 @@ const ProcessGroupHeader = memo(function ProcessGroupHeader({ groupKey, useChatG
     preparing: data?.summary.preparing === true,
   }, data !== undefined && !data.closed)
   if (data === undefined) return null
+  if (thinking !== undefined) return <RunningStatus startTime={undefined} paused={thinking.paused}
+    holding={thinking.holding} thinkingMark={thinking.mark} disclosure={{ open, bodyId, toggle }} t={t} />
   const label = data.closed ? processTitle(data.summary, t)
     : live.preparing ? t(`message.stepProcess.prepare.${live.activity === 'thinking' ? 'tools' : live.activity}`)
       : t(`message.stepProcess.${live.activity}`)
@@ -130,7 +137,9 @@ const ProcessGroupHeader = memo(function ProcessGroupHeader({ groupKey, useChatG
 })
 
 /** Render a process group with local disclosure and the existing outer-Turn visibility. */
-export const ChatGroupSeat = memo(function ChatGroupSeat({ groupKey, useChatGroup, useGroupHeaderAction, ...props }: ChatGroupSeatProps) {
+export const ChatGroupSeat = memo(function ChatGroupSeat({
+  groupKey, useChatGroup, useGroupHeaderAction, thinking, ...props
+}: ChatGroupSeatProps) {
   const members = useChatGroup(groupKey, group => group?.members)
   const turn = useChatGroup(groupKey, group => group?.data.turn)
   const closed = useChatGroup(groupKey, group => group?.data.closed)
@@ -194,7 +203,8 @@ export const ChatGroupSeat = memo(function ChatGroupSeat({ groupKey, useChatGrou
       data-step-process data-group-expanded-mode={!grouped || undefined}>
       <div ref={headerRef}>
         <ProcessGroupHeader groupKey={groupKey} useChatGroup={useChatGroup}
-          usePresentation={props.usePresentation} t={props.t} open={open} bodyId={bodyId} toggle={toggle} />
+          usePresentation={props.usePresentation} t={props.t} open={open} bodyId={bodyId} toggle={toggle}
+          thinking={thinking} />
       </div>
       <div ref={bodyRef} id={bodyId} className={classes.join(' ')} data-step-process-body
         data-scroll-up={edges.canScrollUp || undefined} data-scroll-down={edges.canScrollDown || undefined}

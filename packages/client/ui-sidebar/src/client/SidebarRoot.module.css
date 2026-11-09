@@ -6,15 +6,33 @@
    (.collapsed) only applies after the fade settles, so nothing reflows
    mid-slide. */
 
+.root[role='dialog'] .toggle {
+  width: 33px;
+  height: 33px;
+}
+
+.root[role='dialog'] {
+  /* The drawer floats over the conversation with the prototype's glass tint
+     and a real backdrop blur; the blurred page behind stays visible as shape,
+     not readable text. The mobile top group starts 10px higher than desktop. */
+  padding-top: 18px;
+  background: var(--dsw-brand-glass-nav, var(--dsw-specific-sidebar-fill));
+  -webkit-backdrop-filter: blur(24px) saturate(1.3);
+  backdrop-filter: blur(24px) saturate(1.3);
+  border-right: 1px solid var(--dsw-alias-border-l3);
+  box-shadow: inset -1px 0 color-mix(in srgb, var(--dsw-static-neutral-bluish-00) 23%, transparent),
+    0 18px 50px color-mix(in srgb, var(--dsw-alias-state-business-primary) 10%, transparent);
+}
+
 .root {
-  --dsh-sidebar-inline-padding: 8px;
-  --dsh-sidebar-row-padding: 12px;
+  --dsh-sidebar-inline-padding: 15px;
+  --dsh-sidebar-row-padding: 13px;
   --dsh-sidebar-label-gap: 6px;
-  --dsh-sidebar-paint-inset: 3px;
+  --dsh-sidebar-paint-inset: 0px;
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 6px var(--dsh-sidebar-inline-padding);
+  padding: 28px var(--dsh-sidebar-inline-padding) 12px;
   box-sizing: border-box;
   background: var(--dsw-specific-sidebar-fill);
   color: var(--dsw-alias-label-primary);
@@ -191,7 +209,7 @@
   justify-content: flex-end;
   height: 52px;
   box-sizing: border-box;
-  margin: -6px calc(-1 * var(--dsh-sidebar-inline-padding)) 0;
+  margin: -28px calc(-1 * var(--dsh-sidebar-inline-padding)) 0;
   /* The 2px foot centres the 28px toggle at y 25, level with the collapsed
      seat (ui-layout .leadingSeat, top 11) and the conversation title row, so
      collapse/expand never shifts it vertically. */
@@ -212,11 +230,11 @@
    tucks 12px back under it, still clear of the toggle (28px control centered
    in the strip ends at y 40). */
 .topStrip + .logoRow {
-  margin-top: -12px;
+  margin-top: 0;
 }
 
-/* Logo row: 8px vertical and leading padding, with no trailing padding or
-   bottom margin. Expanded keeps the panel toggle at the
+/* Logo row: the prototype's 42px mark centred on the 22px single-line
+   wordmark, with 7px between them. The row keeps its trailing toggle at the
    right edge; the rail gives every control the same base left anchor before
    the shared entry translation is applied. macOS hiddenInset titlebar: the row
    is marked `data-window-drag` in markup (SidebarRoot), so ui-web base.css's
@@ -234,8 +252,8 @@
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
-  height: 60px;
-  padding: 8px 0 8px 8px;
+  height: 82px;
+  padding: 22px 13px 18px;
   margin-bottom: 0;
   box-sizing: border-box;
   overflow: hidden;
@@ -275,12 +293,13 @@
 }
 
 /* Mark and name are independent slots; the shell owns their shared baseline,
-   spacing, and height so either occupant can vary in width. */
+   spacing, and height so either occupant can vary in width. The 42px mark and
+   one-line wordmark are the prototype's expanded brand row. */
 .brandIdentity {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  height: 24px;
+  gap: 7px;
+  height: 42px;
   min-width: 0;
 }
 
@@ -289,6 +308,15 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  width: 42px;
+  height: 42px;
+}
+
+/* The prototype's 42px logo button carries a 32px ribbon artwork; occupants
+   keep their own aspect ratio inside the box. */
+.brandMark svg {
+  width: 32px;
+  height: 32px;
 }
 
 .brandName {
@@ -296,15 +324,16 @@
   align-items: center;
   gap: 6px;
   min-width: 0;
-  height: 24px;
-  font-size: 18px;
-  font-weight: 600;
-  line-height: 24px;
+  height: 30px;
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 30px;
   letter-spacing: 0.04em;
 }
 
 .fallbackBrandName {
-  font-size: 17px;
+  font-size: 20px;
+  font-weight: 500;
   letter-spacing: 0px;
   white-space: nowrap;
 }
@@ -353,6 +382,26 @@
 @media (hover: hover) {
   .iconButton:hover {
     background-color: var(--dsw-alias-interactive-bg-hover);
+  }
+}
+
+/* Ordinary Web has one sidebar toggle: the global-toolbar control beside the
+   title on desktop and the drawer opener/close in place on mobile. Windows and
+   macOS keep their caption-hosted controls. */
+@media (min-width: 641px) {
+  :global(html:not([data-platform]):not([data-windows-titlebar])) .toggle {
+    position: fixed;
+    top: 14px;
+    left: calc(var(--dsh-frame-sidebar-width, 242px) + 24px);
+    width: 33px;
+    height: 33px;
+    z-index: 24;
+  }
+
+  :global(html:not([data-platform]):not([data-windows-titlebar])) .toggle svg {
+    width: 18px;
+    height: 18px;
+    transform: translateY(1.6px);
   }
 }
 
@@ -415,23 +464,25 @@
   white-space: nowrap;
 }
 
-/* New Session: 38px bar, 12px radius (figma 133:7634 geometry, squared-off
-   corners); collapsed it renders as the rail's plain icon control. */
+/* New Session: the prototype's full-width 44px action card with the leading
+   plus and a left-aligned label. Collapsed it renders as the rail's plain icon
+   control. */
 .newSession {
   container-type: inline-size;
   position: relative;
   flex: none;
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 0;
-  height: 38px;
-  padding: 8px 12px;
-  margin: 0 calc(var(--dsh-sidebar-paint-inset) + 1px);
+  justify-content: flex-start;
+  gap: 10px;
+  height: 48px;
+  padding: 13px 12px;
+  margin: 0;
   box-sizing: border-box;
-  border: 0.5px solid var(--dsw-alias-border-l3);
-  border-radius: var(--dsw-radius-md);
-  background: var(--dsw-alias-button-elevated-fill);
+  border: 1px solid var(--dsw-brand-glass-edge, var(--dsw-alias-border-l1));
+  border-radius: var(--dsw-radius-lg);
+  background: var(--dsw-brand-glass-toolbar, var(--dsw-alias-bg-layer-1));
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--dsw-alias-state-business-primary) 10%, transparent);
   color: var(--dsw-alias-label-primary);
   font-size: 14px;
   font-weight: 500;
@@ -509,7 +560,19 @@
     mask-image: linear-gradient(to right, black calc(100% - 16px), transparent);
   }
 }
-.newSessionContent { display: flex; width: 100cqw; align-items: center; justify-content: center; gap: 6px; }
+.newSessionPlus {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  color: var(--dsw-alias-state-business-primary);
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 20px;
+}
+
+.newSessionContent { display: flex; width: 100cqw; align-items: center; justify-content: flex-start; gap: 10px; }
 .newSessionContent > svg { flex: none; }
 
 .newSessionShortcut {
@@ -531,7 +594,7 @@
 }
 
 .scrollRegion {
-  margin-top: 4px;
+  margin-top: 0;
   position: relative;
   flex: 1;
   min-height: 0;
@@ -552,7 +615,7 @@
   min-height: 0;
   display: grid;
   grid-template-columns: 4px minmax(0, 1fr) calc(var(--dsh-sidebar-inline-padding) - 2px);
-  grid-template-rows: 8px max-content 2px max-content;
+  grid-template-rows: 0 max-content 2px max-content;
   align-content: start;
   margin-left: -4px;
   margin-right: calc(2px - var(--dsh-sidebar-inline-padding));
@@ -636,7 +699,13 @@
 
 .panelEntryActive,
 .panelEntry:has(:focus-visible) {
-  background-color: var(--dsw-alias-interactive-bg-hover);
+  background-color: color-mix(in srgb, var(--dsw-brand-accent-soft, var(--dsw-alias-state-business-tertiary)) 88%, var(--dsw-alias-bg-layer-1));
+}
+
+/* The prototype's selected row rides the brand ink, not the primary ink. */
+.panelEntryActive .panelRow {
+  color: var(--dsw-brand-accent-ink, var(--dsw-alias-state-business-primary));
+  font-weight: 500;
 }
 
 .panelUnpin {
@@ -676,28 +745,30 @@
   flex: none;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  margin-bottom: 8px;
+  gap: 4px;
+  margin-bottom: 14px;
 }
 
-/* Panel entries use a 3px paint inset, the New Session bar's 12px radius,
-   the session rows' hover/selected fill, and the primary ink. */
+/* Panel entries use a 3px paint inset, the prototype's 39px navigation row,
+   a 12px glyph-to-label gap, and the primary ink. */
 .panelRow {
   display: flex;
   align-items: center;
-  gap: var(--dsh-sidebar-label-gap);
+  gap: 12px;
   margin: 0;
-  min-height: 32px;
-  padding: 5px calc(var(--dsh-sidebar-row-padding) - var(--dsh-sidebar-paint-inset));
+  min-height: 41px;
+  padding: 11px calc(var(--dsh-sidebar-row-padding) - var(--dsh-sidebar-paint-inset));
   box-sizing: border-box;
   border: none;
   border-inline: var(--dsh-sidebar-paint-inset) solid transparent;
   border-radius: var(--dsw-radius-md);
   background: transparent;
   background-clip: padding-box;
-  color: var(--dsw-alias-label-primary);
+  color: var(--dsw-alias-label-secondary);
   font: inherit;
-  line-height: 22px;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 19px;
   text-align: left;
   cursor: pointer;
 }
@@ -719,6 +790,18 @@
   flex-direction: column;
 }
 
+.panelRow[data-active] {
+  background-color: color-mix(in srgb, var(--dsw-brand-accent-soft, var(--dsw-alias-state-business-tertiary)) 88%, var(--dsw-alias-bg-layer-1));
+  color: var(--dsw-brand-accent-ink, var(--dsw-alias-state-business-primary));
+  box-shadow: inset 0 1px color-mix(in srgb, var(--dsw-static-neutral-bluish-00) 27%, transparent);
+}
+
+@media (hover: hover) {
+  .panelRow[data-active]:hover {
+    background-color: color-mix(in srgb, var(--dsw-brand-accent-soft, var(--dsw-alias-state-business-tertiary)) 88%, var(--dsw-alias-bg-layer-1));
+  }
+}
+
 .panelRow[aria-expanded='true'] {
   background-color: var(--dsw-alias-interactive-bg-hover);
 }
@@ -733,6 +816,11 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+
+.panelGlyph svg {
+  width: 18px;
+  height: 18px;
 }
 
 .panelTitle {
@@ -760,6 +848,84 @@
   background-clip: border-box;
   padding: 0;
   color: var(--dsw-alias-label-primary);
+}
+
+/* The Conversation entry: the prototype's first navigation row, returning from
+   a global panel to the current Session's conversation. */
+.conversationRow {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 41px;
+  margin: 0 0 4px;
+  padding: 11px calc(var(--dsh-sidebar-row-padding) - var(--dsh-sidebar-paint-inset));
+  box-sizing: border-box;
+  border: none;
+  border-inline: var(--dsh-sidebar-paint-inset) solid transparent;
+  border-radius: var(--dsw-radius-md);
+  background: transparent;
+  background-clip: padding-box;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 19px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.conversationRow[aria-current='page'] {
+  background-color: color-mix(in srgb, var(--dsw-brand-accent-soft, var(--dsw-alias-state-business-tertiary)) 88%, var(--dsw-alias-bg-layer-1));
+  color: var(--dsw-brand-accent-ink, var(--dsw-alias-state-business-primary));
+  font-weight: 500;
+  box-shadow: inset 0 1px color-mix(in srgb, var(--dsw-static-neutral-bluish-00) 27%, transparent);
+}
+
+@media (hover: hover) {
+  .conversationRow:hover {
+    background-color: var(--dsw-alias-interactive-bg-hover);
+  }
+}
+
+.conversationRow:focus-visible,
+.conversationRail:focus-visible {
+  outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
+  outline-offset: -2px;
+}
+
+.conversationGlyph {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.conversationRail {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  margin-bottom: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: var(--dsw-radius-md);
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  cursor: pointer;
+}
+
+.conversationRail[aria-current='page'] {
+  color: var(--dsw-alias-state-business-primary);
+}
+
+@media (hover: hover) {
+  .conversationRail:hover {
+    background-color: var(--dsw-alias-interactive-bg-hover);
+  }
 }
 
 /* The workspace seat stays mounted while its wide and rail bodies change. */
@@ -791,6 +957,14 @@
   width: 100%;
 }
 
+/* The prototype separates the foot from the browsing list with one rule above
+   the settings/account seats; the rail keeps its plain control geometry. */
+.root:not(.collapsed) .settingsArea {
+  margin-top: 9px;
+  padding-top: 12px;
+  border-top: 1px solid var(--dsw-alias-border-l3);
+}
+
 .footerActions {
   display: flex;
 }
@@ -818,4 +992,52 @@
     transition: none;
     animation: none;
   }
+}
+
+:global(body[data-dsh-brand='suiyi']) .iconButton.toggle {
+  border-radius: 9px;
+  transition: background 0.2s, transform 0.2s;
+}
+
+@media (hover: hover) {
+  :global(body[data-dsh-brand='suiyi']) .iconButton.toggle:hover {
+    background: var(--dsw-alias-bg-module-platform);
+    color: var(--dsw-alias-label-primary);
+  }
+}
+
+:global(body[data-dsh-brand='suiyi']) .iconButton.toggle:focus-visible {
+  outline: 2px solid light-dark(#2678ed, #7bb5ff);
+  outline-offset: 4px;
+}
+
+:global(body[data-dsh-brand='suiyi']) .iconButton.toggle:active {
+  transform: scale(0.92);
+}
+
+:global(body[data-dsh-brand='suiyi']) .root[role='dialog'] {
+  --dsh-sidebar-inline-padding: 16px;
+  padding-top: 17px;
+  padding-bottom: 18px;
+  box-shadow: inset -1px 0 rgb(255 255 255 / 0.23), 8px 0 40px rgb(23 83 158 / 0.035);
+}
+
+:global(body[data-dsh-brand='suiyi']) .root[role='dialog'] .newSession {
+  font-weight: 550;
+  box-shadow: inset 0 1px light-dark(rgb(255 255 255 / 0.92), rgb(205 229 255 / 0.1)),
+    0 3px 12px rgb(27 79 148 / 0.13);
+  -webkit-backdrop-filter: blur(18px) saturate(1.28);
+  backdrop-filter: blur(18px) saturate(1.28);
+}
+
+:global(body[data-dsh-brand='suiyi'][data-ds-dark-theme]) .root[role='dialog'] .newSession {
+  box-shadow: inset 0 1px rgb(205 229 255 / 0.1), 0 4px 15px rgb(0 0 0 / 0.17);
+}
+
+:global(body[data-dsh-brand='suiyi']) .root[role='dialog'] .settingsArea {
+  border-top-color: light-dark(#e4eaf3, #2a3d53);
+}
+
+:global(body[data-dsh-brand='suiyi']) .root[role='dialog'] .scrollFade {
+  display: none;
 }

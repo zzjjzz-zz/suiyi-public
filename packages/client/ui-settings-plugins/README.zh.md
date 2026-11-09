@@ -29,6 +29,8 @@ kind: "package-reference"
 
 要贡献一个标签页，带 `id`、`order` 和本地化的 `label` 注册进 `settings.plugins.tab`；分区按序渲染条目，标签页在首次被选中时挂载。功能文案留在注册方自己的字典里。
 
+遂意客户端构建（`DSH_CLIENT_BUILD_PROFILE=suiyi`）下，本包既不注册导航项也不注册标签 slot：产品只展示业务插件目录，内部内置包因此没有设置入口。
+
 -----
 
 <a id="understand-the-implementation"></a>

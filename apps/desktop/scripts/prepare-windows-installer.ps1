@@ -76,16 +76,43 @@ $assetsDirectory = if ($null -eq $flavor -or $flavor -eq 'official') {
 } else {
     throw "Unknown desktop flavor '$flavor': Windows installer assets require official or suiyi."
 }
-foreach ($asset in @('brand', 'brand-2x', 'brand-dark', 'brand-dark-2x', 'uninstaller-sidebar')) {
-    $sourceImage = Join-Path $assetsDirectory "$asset.png"
+$assetNames = @('brand', 'brand-2x', 'brand-dark', 'brand-dark-2x', 'uninstaller-sidebar')
+if ($flavor -eq 'suiyi') {
+    # The progress page uses the prototype ribbon mark, not the horizontal brand lockup.
+    $assetNames += @('mark', 'mark-2x', 'mark-dark', 'mark-dark-2x')
+}
+foreach ($asset in $assetNames) {
+    # Suiyi progress uses the square prototype mark; map the legacy brand names onto it as well so
+    # any existing brand-path caller cannot resurrect the old black/gray horizontal lockup.
+    # The install/login prototype always uses the cyan logo-motion artwork, not the light mark.
+    # Reuse the existing dark RGB/alpha asset for mark/mark-2x; only official flavor keeps its own.
+    $sourceAsset = if ($flavor -eq 'suiyi' -and $asset -in @('mark', 'mark-2x')) {
+        $asset -replace '^mark', 'mark-dark'
+    } elseif ($flavor -eq 'suiyi' -and $asset -like 'brand*') {
+        $asset -replace '^brand', 'mark'
+    } else {
+        $asset
+    }
+    $sourceImage = Join-Path $assetsDirectory "$sourceAsset.png"
     if (-not (Test-Path -LiteralPath $sourceImage)) { throw "Missing Windows installer asset: $sourceImage" }
+    # Suiyi progress consumes the real alpha PNG directly through GDI+ Image; do not flatten
+    # it onto a white 24bpp BMP (that produced the 94x94 white square behind the ribbon).
+    if ($flavor -eq 'suiyi' -and $asset -like 'mark*') {
+        Copy-Item -LiteralPath $sourceImage -Destination (Join-Path $output "$asset.png") -Force
+        $staleBmp = Join-Path $output "$asset.bmp"
+        if (Test-Path -LiteralPath $staleBmp) { Remove-Item -LiteralPath $staleBmp -Force }
+        continue
+    }
     $image = [Drawing.Image]::FromFile($sourceImage)
     try {
         $bitmap = [Drawing.Bitmap]::new($image.Width, $image.Height, [Drawing.Imaging.PixelFormat]::Format24bppRgb)
         try {
             $graphics = [Drawing.Graphics]::FromImage($bitmap)
             try {
-                $background = if ($asset -like '*dark*') { [Drawing.Color]::FromArgb(21, 21, 23) } else { [Drawing.Color]::White }
+                # Brand bitmaps sit on the installer card; uninstaller artwork keeps the NSIS default page colour.
+                $background = if ($asset -like 'brand*' -or $asset -like 'mark*') {
+                    if ($asset -like '*dark*') { [Drawing.Color]::FromArgb(22, 38, 58) } else { [Drawing.Color]::White }
+                } elseif ($asset -like '*dark*') { [Drawing.Color]::FromArgb(21, 21, 23) } else { [Drawing.Color]::White }
                 $graphics.Clear($background)
                 $graphics.DrawImage($image, 0, 0, $image.Width, $image.Height)
             } finally { $graphics.Dispose() }

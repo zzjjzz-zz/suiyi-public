@@ -88,10 +88,12 @@ export const inject = ['slots', 'locale', 'remote', 'remote.pluginManager', 'rem
 /**
  * Contribute the Plugins entry to the sidebar with the management page it
  * opens, and keep it current on the Host's change events, while the current
- * Peer may list the installed bundles.
+ * Peer may list the installed bundles. The Suiyi build uses the business
+ * plugin center instead and exposes no internal Host bundles, rows, or tools.
  * @param ctx - the browser plugin context.
  */
 export function apply(ctx: ClientContext): void {
+  if (process.env.DSH_CLIENT_BUILD_PROFILE === 'suiyi') return
   ctx.effect(() => ctx.locale.register(NS, { zh, en, ja, es, fr, de, ru, pt }), 'ui-plugin-manager: dictionaries')
   const t = ctx.locale.bind(NS)
   const controller = new PluginManagerController(ctx)

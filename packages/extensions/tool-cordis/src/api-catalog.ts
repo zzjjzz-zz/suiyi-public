@@ -2236,6 +2236,56 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'pluginHub',
+    summary: 'The hub service.',
+    description: 'The hub service. Mutating lifecycle operations serialize on one queue so an enable, disable, initial restore, and poll refresh cannot interleave their catalog, approval, and instance changes.',
+    methods: [
+      {
+        signature: '@Remote async catalog(): Promise<PluginHubCatalog>',
+        description: 'Read the last committed catalog, instance views, and the hub enablement flag. This never contacts the platform; PluginHub.refresh does.',
+        parameters: [],
+        returns: 'the current client-visible state.',
+      },
+      {
+        signature: '@Remote({ mode: \'stream\' }) async* watch(signal: AbortSignal): AsyncIterable<PluginHubCatalog>',
+        description: 'Stream the current catalog and live instance status until this subscription ends.',
+        parameters: [{ name: 'signal', description: 'subscription lifetime.' }],
+        returns: 'coalesced complete snapshots; no credential crosses the Remote seam.',
+      },
+      {
+        signature: '@Remote async refresh(): Promise<PluginHubCatalog>',
+        description: 'Fetch and validate the platform catalog, then reconcile instances with the stored enablement. A failed read leaves the previous catalog and instances untouched.',
+        parameters: [],
+        returns: 'the state after reconciliation.',
+        throws: ['{RemoteError} `plugin-hub/unavailable`, `plugin-hub/credentials-*`, `plugin-hub/unknown-plugin`, or `gateway/internal`.'],
+      },
+      {
+        signature: '@Remote async add(pluginId: string): Promise<void>',
+        description: 'Add the catalog\'s current release to this account\'s directory without running it. The decision is durable and reports `added: true` with state `disabled`; PluginHub.enable starts it later.',
+        parameters: [{ name: 'pluginId', description: 'catalog plugin id.' }],
+        throws: ['{RemoteError} `plugin-hub/disabled`, `plugin-hub/invalid-request`, `plugin-hub/unknown-plugin`, `plugin-hub/instance-failed`, or `plugin-hub/settings-unavailable`.'],
+      },
+      {
+        signature: '@Remote async enable(pluginId: string): Promise<void>',
+        description: 'Add the catalog\'s current release to this account\'s directory if needed and start its instance. The active decision is persisted before mounting; an instance that cannot start keeps the decision and reports a sanitized `error` view, so the enabled state survives a restart.',
+        parameters: [{ name: 'pluginId', description: 'catalog plugin id.' }],
+        throws: ['{RemoteError} `plugin-hub/disabled`, `plugin-hub/invalid-request`, `plugin-hub/unknown-plugin`, `plugin-hub/instance-failed`, or `plugin-hub/settings-unavailable`.'],
+      },
+      {
+        signature: '@Remote async disable(pluginId: string): Promise<void>',
+        description: 'Keep one plugin in this account\'s directory but stop its instance to quiescence. The inactive decision is persisted before the transport starts closing, so a restart does not remount it; a failed unmount keeps the visible failure while the plugin stays added and disabled.',
+        parameters: [{ name: 'pluginId', description: 'catalog plugin id.' }],
+        throws: ['{RemoteError} `plugin-hub/disabled`, `plugin-hub/invalid-request`, `plugin-hub/instance-failed`, or `plugin-hub/settings-unavailable`.'],
+      },
+      {
+        signature: '@Remote async removeInstance(pluginId: string): Promise<void>',
+        description: 'Remove one plugin from this account\'s directory and unmount its instance to quiescence. The durable decision is removed before the transport starts closing; a failed unmount keeps the visible failure without restoring the removed decision.',
+        parameters: [{ name: 'pluginId', description: 'catalog plugin id.' }],
+        throws: ['{RemoteError} `plugin-hub/disabled`, `plugin-hub/invalid-request`, `plugin-hub/instance-failed`, or `plugin-hub/settings-unavailable`.'],
+      },
+    ],
+  },
+  {
     key: 'pluginManager',
     summary: 'Manage profile files and apply their declared reload lifecycle.',
     description: 'Manage profile files and apply their declared reload lifecycle.',
@@ -3799,6 +3849,25 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Allocate a real terminal and start one owned process session. This is the only non-pipe process primitive: implementations own terminal byte I/O, foreground groups, signals, and whole-session quiescence.',
         parameters: [{ name: 'spec', description: 'fully specified argv, cwd, environment, dimensions, grace, and allocation cancellation.' }],
         returns: 'the live terminal handle after allocation succeeds.',
+      },
+    ],
+  },
+  {
+    key: 'suiyiAccess',
+    summary: 'Lifecycle-bound current token exposed by the desktop Host.',
+    description: 'Lifecycle-bound current token exposed by the desktop Host. `current` returns undefined when no delivery was accepted or it expired.',
+    methods: [
+      {
+        signature: 'current(): SuiyiAccessToken | undefined',
+        description: 'Read the current unexpired token for one catalog, MCP, or invocation operation. It is undefined when no delivery was accepted, the delivery expired, or the provider cleared it.',
+        parameters: [],
+        returns: 'the current token facts, or undefined when none is usable.',
+      },
+      {
+        signature: 'subscribe(listener: () => void): () => void',
+        description: 'Observe replacement, expiry, and clear events.',
+        parameters: [{ name: 'listener', description: 'change recipient; it reads {@link current} at its call.' }],
+        returns: 'disposer removing the listener.',
       },
     ],
   },
@@ -5812,6 +5881,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface ButtonProps {\n    readonly label: string;\n    readonly hotkey?: string | undefined;\n    readonly disabled?: boolean | undefined;\n    readonly onPress?: (() => unknown) | undefined;\n}',
   },
   {
+    name: 'CatalogPlugin',
+    declaration: 'export interface CatalogPlugin {\n    pluginId: string;\n    workloadId: string;\n    releaseVersion: string;\n    name: string;\n    description: string;\n    icon?: string;\n    category: string;\n    allowedTools: PublishedTool[];\n    schemaFingerprint: string;\n    riskLevel: \'low\' | \'medium\' | \'high\';\n    visibility: \'public\' | \'roles\' | \'private\';\n    allowedRoles: string[];\n    status: \'published\';\n    mcpPath: string;\n}',
+  },
+  {
     name: 'ChangeRequestCheck',
     declaration: 'export interface ChangeRequestCheck {\n    readonly name: string;\n    readonly state: CheckState;\n    readonly url: string | null;\n    readonly workflow: string | null;\n    readonly startedAt: string | null;\n    readonly completedAt: string | null;\n}',
   },
@@ -7556,6 +7629,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type PluginFiberPhase = \'pending\' | \'loading\' | \'active\' | \'failed\' | \'unloading\' | null;',
   },
   {
+    name: 'PluginHubCatalog',
+    declaration: 'export interface PluginHubCatalog {\n    plugins: CatalogPlugin[];\n    catalogVersion: string;\n    instances: PluginInstanceView[];\n    enabled: boolean;\n}',
+  },
+  {
     name: 'PluginInfo',
     declaration: 'export type PluginInfo = PluginInventoryEntry & ({\n    patchId: string;\n    readOnlyReason?: never;\n} | {\n    patchId?: never;\n    readOnlyReason: ReadOnlyReason;\n});',
   },
@@ -7582,6 +7659,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'PluginInstallRequestId',
     declaration: 'export type PluginInstallRequestId = Branded<\'PluginInstallRequestId\'>;',
+  },
+  {
+    name: 'PluginInstanceView',
+    declaration: 'export interface PluginInstanceView {\n    pluginId: string;\n    releaseVersion: string;\n    state: \'disabled\' | \'connecting\' | \'enabled\' | \'error\';\n    added?: boolean;\n    error?: string;\n}',
   },
   {
     name: 'PluginInventoryEntry',
@@ -7838,6 +7919,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'PtcRunSpec',
     declaration: 'export interface PtcRunSpec extends PtcRunRequest {\n    cwd: string;\n    timeoutMs: number | null;\n}',
+  },
+  {
+    name: 'PublishedTool',
+    declaration: 'export interface PublishedTool {\n    name: string;\n    description?: string;\n    inputSchema: Record<string, JsonValue>;\n}',
   },
   {
     name: 'QueueAction',
@@ -9378,6 +9463,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'SubprocessTerminalSpawnSpec',
     declaration: 'export interface SubprocessTerminalSpawnSpec {\n    argv: readonly string[];\n    cwd: string;\n    env?: Record<string, string> | undefined;\n    rows: number;\n    cols: number;\n    terminalType: string;\n    shellActivity?: boolean | undefined;\n    graceMs: number;\n    signal?: AbortSignal | undefined;\n}',
+  },
+  {
+    name: 'SuiyiAccessToken',
+    declaration: 'export interface SuiyiAccessToken {\n    readonly accessToken: string;\n    readonly expiresAt: number;\n}',
   },
   {
     name: 'SurfaceEvent',

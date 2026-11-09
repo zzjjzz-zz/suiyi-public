@@ -18,6 +18,30 @@ describe('SidebarRight.module.css', () => {
       + String.raw`\.panel\[data-sidebar-right-open\] ${host}[^{}]*\{\s*transition: none;\s*}`))
   })
 
+  it('draws the workbench as a bordered surface pane with the prototype tab density', () => {
+    // A collapsed workbench keeps its box for the slide but must paint no
+    // surface: a closed panel may not cover the conversation or the composer.
+    const closed = /\.panel\s*\{([^{}]*)}/.exec(css)?.[1] ?? ''
+    expect(closed).not.toMatch(/background:/)
+    expect(closed).not.toMatch(/border-left:/)
+    const open = /\.panel\[data-sidebar-right-open\]\s*\{([^{}]*)}/.exec(css)?.[1] ?? ''
+    expect(open).toMatch(/background: var\(--dsw-alias-bg-layer-1\);/)
+    expect(open).toMatch(/border-left: 1px solid var\(--dsw-alias-border-l3\);/)
+    const chrome = /\.iconButton\s*\{([^{}]*)}/.exec(css)?.[1] ?? ''
+    expect(chrome).toMatch(/width: 24px;/)
+    expect(chrome).toMatch(/height: 24px;/)
+    expect(css).toMatch(/\.panel :global\(\[data-dockkit-tab\]\)\s*\{\s*font-size: 12px;\s*}/)
+  })
+
+  it('slides the workbench domain bar with the docked content instead of leaving it over the conversation', () => {
+    const slot = /\.workbenchBarSlot\s*\{([^{}]*)}/.exec(css)?.[1] ?? ''
+    expect(slot).toMatch(/transform: translateX\(var\(--dsh-sidebar-width\)\);/)
+    expect(slot).toMatch(/visibility: hidden;/)
+    const openSlot = /\.panel\[data-sidebar-right-open\]\s+\.workbenchBarSlot\s*\{([^{}]*)}/.exec(css)?.[1] ?? ''
+    expect(openSlot).toMatch(/transform: none;/)
+    expect(openSlot).toMatch(/visibility: visible;/)
+  })
+
   it('draws the reveal glow inside a docked pane above sticky code banners, and outside a floating panel over its own shadow', () => {
     const pane = String.raw`\.panel :global\(\[data-dockkit-pane\]\[data-sidebar-right-flash\]\)`
     const float = String.raw`\.panel :global\(\[data-dockkit-float\]\[data-sidebar-right-flash\]\)`

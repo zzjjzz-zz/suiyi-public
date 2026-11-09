@@ -503,6 +503,34 @@ describe('composer placeholder visibility', () => {
   })
 })
 
+describe('blank-home quick actions', () => {
+  it('renders the prototype shortcuts only on the hero composer', () => {
+    const hero = bench({ variant: 'hero' })
+    expect(hero.view.getByRole('button', { name: '整理资料' })).toBeTruthy()
+    expect(hero.view.getByRole('button', { name: '分析项目' })).toBeTruthy()
+    expect(hero.view.getByRole('button', { name: '制定计划' })).toBeTruthy()
+    cleanup()
+    const docked = bench()
+    expect(docked.view.queryByRole('button', { name: '整理资料' })).toBeNull()
+  })
+
+  it('writes a real draft and returns focus to the composer without submitting', async () => {
+    const b = bench({ variant: 'hero' })
+    fireEvent.click(b.view.getByRole('button', { name: '整理资料' }))
+    await vi.waitFor(() => {
+      expect(b.shell.state.getSnapshot().draft).toBe('请把我提供的资料整理成一份结构清晰的简报。')
+    })
+    expect(document.activeElement).toBe(b.textarea)
+    expect(b.sink).not.toHaveBeenCalled()
+  })
+
+  it('refuses the shortcuts while the composer has no live Session', () => {
+    const b = bench({ variant: 'hero', inert: true })
+    const button = b.view.getByRole('button', { name: '分析项目' })
+    expect((button as HTMLButtonElement).disabled).toBe(true)
+  })
+})
+
 describe('image draft rail', () => {
   it.each([false, true])('accepts pasted and dropped images for a continuable child (running=%s)', async (running) => {
     const addFiles = vi.fn(() => null)
@@ -829,6 +857,17 @@ describe('Enter semantics', () => {
         address: { parentSessionId: 'parent' as SessionId, childSessionId: SID, mode: 'continuable' },
       },
     }).placeholder).toBe('Cmd/Ctrl+Enter 插话发送全部排队消息')
+  })
+
+  it('uses the Suiyi ordinary active placeholder while preserving special hints', () => {
+    vi.stubEnv('DSH_CLIENT_BUILD_PROFILE', 'suiyi')
+    try {
+      expect(bench().placeholder).toBe('向遂意提问，或交代一项任务…')
+      expect(bench({ placeholder: '上层指定提示' }).placeholder).toBe('上层指定提示')
+      expect(bench({ plan: { active: true, pending: false } }).placeholder).toBe('描述你的任务以生成计划')
+    } finally {
+      vi.unstubAllEnvs()
+    }
   })
 
   it('keeps the owning placeholder or ordinary guidance when whole-queue steering is unavailable', () => {
@@ -2108,7 +2147,7 @@ describe('command launcher chrome and control seats', () => {
       'conversation.input.overlay', 'conversation.input.attachments',
       'conversation.input.permission', 'conversation.input.plan', 'conversation.input.left',
       'conversation.input.right', 'conversation.input.model', 'conversation.input.activity',
-      'conversation.composer.dock',
+      'conversation.composer.dock', 'conversation.composer.context',
     ])
     expect(view.queryByLabelText('Plan mode')).toBeNull()
     expect(view.queryByLabelText('Model')).toBeNull()

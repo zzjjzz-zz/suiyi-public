@@ -68,6 +68,16 @@ export interface AssistantActionOwnerProps {
   messageId: MessageId
 }
 
+/** Mark shown before an Assistant reply; the occupant supplies the artwork. */
+export interface AssistantMarkOwnerProps {
+  /** Requested square edge in pixels. */
+  readonly size: number
+  /** Whether the Assistant step is still streaming, so occupants can gate motion. */
+  readonly running: boolean
+  /** Host class preserving the surrounding mark geometry. */
+  readonly className?: string | undefined
+}
+
 /** Stable quota failure codes retained in the Session log; both raise the frame-wide notice. */
 export type QuotaNoticeCode = 'QUOTA' | 'ACCOUNT_QUOTA'
 
@@ -360,6 +370,8 @@ export interface ChatViewInjected {
 
 /** Session-owned node sources shared with the view, plus the flow's connection state. */
 export type ChatFlowDataInjected = Pick<ChatViewInjected, 'keyedHooks'> & {
+  /** Read group placement alongside the current Chat snapshot. */
+  readChatGroup: (key: string) => GroupSnapshot<ConversationGroupData<'chat'>> | undefined
   hooks: Pick<ChatViewInjected['hooks'], 'presentation'> & {
     /** Client connection lifecycle; the running clock pauses while it is not connected. */
     connectionState: ConnectionStateSource
@@ -378,7 +390,7 @@ export interface ChatFlowOwnerProps extends Pick<ChatNodeOwnerProps,
 /** Full props of the Chat-owned flow renderer. */
 export type ChatFlowSlotProps =
   PropsRuntime<'conversation.chat.flow'>
-  & PropsRenderSlots<'conversation.chat.node'>
+  & PropsRenderSlots<'conversation.chat.node' | 'conversation.chat.waiting.mark'>
   & PropsRenderFactories
   & PropsStore<ChatStore>
   & InjectFace<ChatFlowDataInjected>
@@ -479,6 +491,22 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      * values replace it. Contributions must preserve access to untranslated display text.
      */
     'conversation.chat.reasoning.body': { kind: 'single'; scope: 'session'; owner: ReasoningBodyOwnerProps }
+    /** Brand mark while the current model step has not produced reply content. */
+    'conversation.chat.waiting.mark': {
+      kind: 'single'
+      scope: 'session'
+      owner: AssistantMarkOwnerProps
+    }
+    /**
+     * Mark before one Assistant reply, occupied by the active brand. The
+     * renderer keeps a decorative fallback, so an unoccupied slot still
+     * anchors the reply column.
+     */
+    'conversation.chat.assistant.mark': {
+      kind: 'single'
+      scope: 'session'
+      owner: AssistantMarkOwnerProps
+    }
     /**
      * Ordered feature contributions before a completed Turn's action row. Each
      * entry receives the Turn, closing sequence, and file opener. A fresh `id`

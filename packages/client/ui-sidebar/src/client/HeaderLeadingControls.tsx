@@ -27,6 +27,7 @@ export function HeaderLeadingControls({
   // A page whose access snapshot excludes starting a Session keeps only the sidebar toggle here.
   const canStartSession = useRemoteAccess('session/create')
   const desktop = document.documentElement.hasAttribute('data-platform')
+  const glyphSize = desktop ? 16 : 18
   const shortcut = useShortcuts(rows => rows.find(row => row.id === 'sidebar.left.toggle'))
   const newShortcut = useShortcuts(rows => rows.find(row => row.id === 'session.new'))
   return (
@@ -40,7 +41,7 @@ export function HeaderLeadingControls({
           aria-keyshortcuts={shortcut?.aria}
           onClick={() => { toggleSidebar() }}
         >
-          <IconPanelLeftOutlineRegular size={16} />
+          <IconPanelLeftOutlineRegular size={glyphSize} />
         </button>
       </Tooltip>
       {desktop && canStartSession && (

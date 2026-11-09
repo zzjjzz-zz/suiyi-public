@@ -36,6 +36,7 @@ import type {} from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 // Type-only: pulls the SlotRegistry service merge (ctx.slots).
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
+import type { MainPanelId } from '@deepseek-ai/dsh-client-ui-layout/client'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 // Type-only: pulls the Session root standard-hook merge.
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
@@ -49,6 +50,9 @@ import { createWorkspaceShortcutControls, installWorkspaceShortcuts } from './sh
 import { UiWorkspaceService } from './navigation.ts'
 import { createWorkspaceViewStore } from './stores.ts'
 import { WorkspaceBrowser } from './rows/WorkspaceBrowser.tsx'
+import { WorkspacesPage, type WorkspacesPageInjected } from './WorkspacesPage.tsx'
+import { WorkspacePanelIcon } from './WorkspacePanelIcon.tsx'
+import { SidebarSearchTrigger } from './SidebarSearchTrigger.tsx'
 import { ArchiveSessionRowButton, SessionArchiveConfirmDialog } from './session-actions/ArchiveSession.tsx'
 import { derive } from './session-actions/derived.ts'
 import { registerSessionMenus } from './session-actions/context-menus.tsx'
@@ -333,6 +337,35 @@ export function apply(ctx: Context): void {
     },
     WorkspaceBrowser,
   ))
+  ctx.slots.inject('sidebar.search', () => ctx.slots.register({
+    name: 'sidebar.search',
+    locale: NS,
+    inject: () => ({ requestSearch: shortcutControls.search, hooks: { shortcuts: ctx.shortcuts.catalog } }),
+  }, SidebarSearchTrigger))
+  const WORKSPACES_PANEL_ID = 'workspaces' as MainPanelId
+  const addWorkspaceFromPage = async (): Promise<void> => {
+    const path = await uiWorkspace.pickDirectory()
+    if (path === null) return
+    const workspace = await workspaces.create({ path })
+    uiWorkspace.startSession(workspace.workspaceId)
+  }
+  const workspacesPageInjected = (): WorkspacesPageInjected => ({
+    startSession: (workspaceId) => { uiWorkspace.startSession(workspaceId) },
+    requestWorkspaceAction,
+    addWorkspace: addWorkspaceFromPage,
+  })
+  // A non-official build exposes the workspace management page and its real
+  // sidebar entry; official artifacts keep the shell's existing surfaces.
+  if (process.env.DSH_CLIENT_BUILD_PROFILE !== 'official') {
+    const t = ctx.locale.bind(NS)
+    ctx.slots.inject('main', () => ctx.slots.register({
+      name: 'main', key: WORKSPACES_PANEL_ID, locale: NS, inject: workspacesPageInjected,
+    }, WorkspacesPage))
+    ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({
+      name: 'sidebar.panellist', id: WORKSPACES_PANEL_ID, order: 5, locale: NS,
+      label: () => t('section.workspaces'),
+    }, WorkspacePanelIcon))
+  }
   ctx.slots.inject('contextMenu.content', () => ctx.slots.register({
     name: 'contextMenu.content', key: 'session',
     children: { 'sidebar.workspaces.session.menu.item': {

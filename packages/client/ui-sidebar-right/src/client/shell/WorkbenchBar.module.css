@@ -1,0 +1,178 @@
+/* The workbench's two-row chrome: the title/controls row and the five domain
+   tabs. Tokens only; the dock strip is a separate, conditional second row. */
+.bar {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  /* The workbench surface is opaque, like the prototype inspector; the
+     Suiyi base token is a translucent content wash and must not expose the
+     conversation behind the panel. */
+  /* Prototype's deep-blue glass chrome over the opaque panel surface. */
+  background: var(--dsw-brand-glass-chrome, var(--dsw-alias-bg-layer-1));
+  -webkit-backdrop-filter: blur(20px) saturate(1.3);
+  backdrop-filter: blur(20px) saturate(1.3);
+  /* The panel itself takes no pointer events; dockkit hosts opt back in. The
+     bar is panel chrome outside those hosts, so it opts in itself. */
+  pointer-events: auto;
+}
+
+/* Prototype inspector header: title on the left, panel controls on the right. */
+.titleBar {
+  display: flex;
+  box-sizing: border-box;
+  align-items: center;
+  justify-content: space-between;
+  height: 63px;
+  padding: 18px 18px 12px;
+}
+
+.title {
+  flex: none;
+  color: var(--dsw-alias-label-primary);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.actions {
+  display: flex;
+  flex: none;
+  gap: 3px;
+  align-items: center;
+}
+
+/* 33px panel control with a 16px glyph, matching the prototype's header
+   action box; the external glyph carries the frame and the close stays bare. */
+.chromeButton {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 33px;
+  height: 33px;
+  padding: 8px;
+  color: var(--dsw-alias-label-secondary);
+  line-height: 1;
+  background: transparent;
+  border: none;
+  border-radius: var(--dsw-radius-sm);
+  cursor: pointer;
+}
+
+.chromeButton svg {
+  width: 16px;
+  height: 16px;
+}
+
+@media (hover: hover) {
+  .chromeButton:hover {
+    background: var(--dsw-alias-interactive-bg-hover);
+  }
+}
+
+/* The five prototype tabs form their own 36px row under the title. */
+.tabs {
+  display: flex;
+  box-sizing: border-box;
+  gap: 3px;
+  align-items: stretch;
+  justify-content: space-between;
+  height: 36px;
+  min-width: 0;
+  padding: 0 12px;
+  border-bottom: 0.5px solid var(--dsw-alias-border-l3);
+}
+
+/* One prototype inspector tab: a 13px glyph, a 10px label, a 2px active rule. */
+.tab {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  padding: 10px 6px;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 10px;
+  line-height: normal;
+  white-space: nowrap;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  cursor: pointer;
+}
+
+.tab svg {
+  flex: none;
+  width: 13px;
+  height: 13px;
+}
+
+.tab[aria-current='page'] {
+  color: var(--dsw-brand-accent-ink, var(--dsw-alias-state-business-primary));
+}
+
+.tabContent {
+  position: relative;
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-width: 0;
+  padding: 0;
+}
+
+.tab[aria-current='page']::after {
+  position: absolute;
+  right: 6px;
+  bottom: 0;
+  left: 6px;
+  height: 2px;
+  background: currentColor;
+  border-radius: 1px;
+  content: '';
+}
+
+.tab[data-unavailable='true'] {
+  color: var(--dsw-alias-label-tertiary);
+}
+
+@media (hover: hover) {
+  .tab:hover {
+    color: var(--dsw-alias-label-primary);
+    background: var(--dsw-alias-interactive-bg-hover);
+  }
+}
+
+.label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The explicit unavailable state: one quiet line under the tabs, never a
+   fabricated list. */
+.notice {
+  margin: 0;
+  padding: 0 14px 7px;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+/* Narrow panes keep the title, controls and all five doors, giving up only
+   edge space. */
+@media (max-width: 640px) {
+  .tabs {
+    height: 41px;
+    justify-content: space-around;
+  }
+
+  .tab {
+    padding: 12px 8px;
+    font-size: 11px;
+  }
+}

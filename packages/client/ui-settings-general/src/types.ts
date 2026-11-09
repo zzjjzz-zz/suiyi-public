@@ -72,3 +72,35 @@ export interface DesktopChannelBridge {
    */
   subscribe(listener: (state: DesktopChannelState) => void): () => void
 }
+
+/** Current Suiyi identity state; contains no token, issuer, subject, email, or contact. */
+export type DesktopSuiyiIdentityState = 'signed-in' | 'locked' | 'unavailable'
+
+/** State the account surface renders; `displayName` is the verified ID-token name claim only. */
+export interface DesktopSuiyiIdentityView {
+  readonly state: DesktopSuiyiIdentityState
+  readonly displayName?: string
+}
+
+/** Result of one real Keycloak sign-in attempt. */
+export type DesktopSuiyiSignInResult =
+  | { readonly ok: true }
+  | { readonly ok: false; readonly reason: 'cancelled' | 'unavailable' | 'failed' }
+
+/**
+ * Suiyi identity bridge exposed only by the Suiyi Desktop preload. Web and
+ * official Desktop have no bridge and must show an unavailable state rather
+ * than a DeepSeek model-account identity.
+ */
+export interface DesktopSuiyiIdentityBridge {
+  /** Current safe view; callable at any time from the workspace. */
+  view(): Promise<DesktopSuiyiIdentityView>
+  /** Open the real Keycloak page in the locked state and wait for one attempt. */
+  signIn(): Promise<DesktopSuiyiSignInResult>
+  /** Clear the main-process token, stop the Host, lock, and open the login page. */
+  signOut(): Promise<void>
+  /** Reopen the native welcome page without changing the current identity; absent on older hosts. */
+  openWelcome?(): Promise<void>
+  /** Subscribe to signed-in/locked changes. */
+  subscribe(listener: (view: DesktopSuiyiIdentityView) => void): () => void
+}

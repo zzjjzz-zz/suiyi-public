@@ -108,37 +108,74 @@ describe('chrome content', () => {
   it('TriggerContent renders the icon with the label in the wide column', () => {
     const { container } = render(<TriggerContent {...kit} wide t={t} />)
     expect(container.querySelector('svg')).toBeTruthy()
-    expect(screen.getByText('Settings')).toBeTruthy()
+    expect(screen.getByText(en['title'])).toBeTruthy()
   })
 
   it('TriggerContent drops the label in the rail state', () => {
     const { container } = render(<TriggerContent {...kit} wide={false} t={t} />)
     expect(container.querySelector('svg')).toBeTruthy()
-    expect(screen.queryByText('Settings')).toBeNull()
+    expect(screen.queryByText(en['title'])).toBeNull()
   })
 
   it('HeaderContent and CloseLabel render their translated text', () => {
     render(<HeaderContent {...kit} t={t} />)
     render(<CloseLabel {...kit} t={t} />)
-    expect(screen.getByText('Settings')).toBeTruthy()
-    expect(screen.getByText('Close')).toBeTruthy()
+    expect(screen.getByText(en['title'])).toBeTruthy()
+    expect(screen.getByText(en['close'])).toBeTruthy()
   })
 })
 
 describe('GeneralSection', () => {
-  function mount() {
+  function mount(category?: GeneralSectionComponentProps['category']) {
     const renderSlot = vi.fn(
-      ((key: string) => <div data-testid={`slot-${key}`} />) as GeneralSectionComponentProps['renderSlot'],
+      ((key: string, _owner: unknown, options?: { only?: string }) => (
+        <div data-testid={`slot-${key}-${options?.only ?? 'all'}`} />
+      )) as GeneralSectionComponentProps['renderSlot'],
     )
-    const props: GeneralSectionComponentProps = { ...kit, renderSlot, close: vi.fn() }
+    const groups = createSnapshotStore([
+      { id: 'output' as const, rows: ['visual-output'] },
+      { id: 'appearance' as const, rows: ['appearance', 'reduced-motion'] },
+      { id: 'general' as const, rows: ['language', 'current-version'] },
+      { id: 'permissions' as const, rows: ['permission'] },
+      { id: 'runtime' as const, rows: ['shortcuts'] },
+      { id: 'version' as const, rows: ['current-version'] },
+    ])
+    const props: GeneralSectionComponentProps = {
+      ...kit, renderSlot, close: vi.fn(), t, ...(category === undefined ? {} : { category }),
+      useGroups: bindSnapshotSelector(groups),
+    }
     const view = render(<GeneralSection {...props} />)
-    return { view, renderSlot }
+    return { view, renderSlot, groups }
   }
 
-  it('renders the item slot as the section body', () => {
+  it('renders each prototype card with its rows', () => {
     const { renderSlot } = mount()
-    expect(renderSlot).toHaveBeenCalledWith('settings.general.item', {})
-    expect(screen.getByTestId('slot-settings.general.item')).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Output' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Appearance' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'General' })).toBeTruthy()
+    expect(screen.queryByRole('heading', { name: 'Permissions and privacy' })).toBeNull()
+    expect(screen.queryByRole('heading', { name: 'Runtime and plugins' })).toBeNull()
+    for (const id of ['visual-output', 'appearance', 'reduced-motion', 'language']) {
+      expect(renderSlot).toHaveBeenCalledWith('settings.general.item', {}, { only: id })
+      expect(screen.getByTestId(`slot-settings.general.item-${id}`)).toBeTruthy()
+    }
+  })
+
+  it('renders only the permissions or runtime card for those page categories', () => {
+    const permissions = mount('permissions')
+    expect(screen.getByRole('heading', { name: 'Permissions and privacy' })).toBeTruthy()
+    expect(screen.queryByRole('heading', { name: 'Output' })).toBeNull()
+    permissions.view.unmount()
+    mount('runtime')
+    expect(screen.getByRole('heading', { name: 'Runtime and plugins' })).toBeTruthy()
+    expect(screen.queryByRole('heading', { name: 'Output' })).toBeNull()
+  })
+
+  it('renders the version card only for the desktop category', () => {
+    mount('desktop')
+    expect(screen.getByRole('heading', { name: 'Version' })).toBeTruthy()
+    expect(screen.getByTestId('slot-settings.general.item-current-version')).toBeTruthy()
+    expect(screen.queryByRole('heading', { name: 'Output' })).toBeNull()
   })
 })
 

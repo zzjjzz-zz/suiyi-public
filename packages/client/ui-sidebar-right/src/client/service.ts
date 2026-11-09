@@ -756,6 +756,40 @@ export class SidebarRightController implements ISidebarRight {
   }
 
   /**
+   * Expand one adopted Session's workbench without a DOM target. Used by the
+   * retained global trigger after returning to that Session's Conversation.
+   * @param sessionId - Session whose stored layout should open.
+   * @returns whether an adopted Session action was available.
+   */
+  expandWorkbench(sessionId: SessionId): boolean {
+    const actions = this.actionsFor(sessionId)
+    if (actions === undefined) return false
+    actions.setExpanded(sessionId, true)
+    return true
+  }
+
+  /**
+   * Toggle one docked Session pane's display mode without a DOM target.
+   * The workbench title-bar control sits outside dockkit panes, so resolving
+   * `commandTarget()` from its focus would miss the pane; this path binds the
+   * known Session and pane directly.
+   * @param sessionId - Session whose adopted surface is toggled.
+   * @param paneId - docked pane that owns the control.
+   */
+  toggleFullscreenFor(sessionId: SessionId, paneId: PaneId): void {
+    const surface = this.adopted.get(sessionId)?.store.getSnapshot().bySession[sessionId]
+    if (surface === undefined || !surface.layout.expanded) return
+    const node = surface.layout.nodes[paneId]
+    if (node?.kind !== 'pane' || node.host !== 'dock') return
+    const actions = this.actionsFor(sessionId)
+    if (actions === undefined) return
+    const autoFullscreen = this.host.autoFullscreen()
+    const fullscreen = autoFullscreen || surface.layout.mode === 'fullscreen'
+    if (fullscreen && autoFullscreen) actions.setExpanded(sessionId, false)
+    actions.setMode(sessionId, fullscreen ? 'push' : 'fullscreen')
+  }
+
+  /**
    * Split a docked pane to its right when the budget and the room rule allow.
    * @param paneId - the pane to split; defaults to the active docked pane.
    * @returns the new pane's id, or `undefined` when nothing was split.

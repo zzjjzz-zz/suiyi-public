@@ -15,6 +15,11 @@ export const WELCOME_IPC = {
   copyLink: 'dsh-welcome:copy-link',
   state: 'dsh-welcome:state',
   takeNotice: 'dsh-welcome:take-notice',
+  suiyiStart: 'dsh-welcome:suiyi-start',
+  suiyiCancel: 'dsh-welcome:suiyi-cancel',
+  suiyiCopyLink: 'dsh-welcome:suiyi-copy-link',
+  suiyiState: 'dsh-welcome:suiyi-state',
+  suiyiReturn: 'dsh-welcome:suiyi-return',
 } as const
 
 /** Credential writes return a safe outcome without exposing Host diagnostics. */
@@ -53,11 +58,72 @@ export interface WelcomeOperations {
   skip(): Promise<void>
 }
 
-/** The renderer receives localized copy, login operations, and safe account snapshots. */
-export type WelcomeApi = DesktopLocale & WelcomeOperations & {
+/** Reason a Suiyi identity-center login attempt did not complete; never carries tokens or provider detail. */
+export type SuiyiLoginFailure =
+  /** Discovery or token endpoint could not be reached. */
+  | 'unreachable'
+  /** The configured issuer or its discovery document is unusable. */
+  | 'configuration'
+  /** The user closed the authorization page before finishing. */
+  | 'cancelled'
+  /** The loopback callback did not arrive before the login deadline. */
+  | 'timeout'
+  /** The identity center returned an invalid or rejected token. */
+  | 'rejected'
+  /** The attempt failed without a classified provider result. */
+  | 'unknown'
+
+/** Presentation state of the Suiyi Keycloak login window. */
+export interface SuiyiLoginView {
+  /** Ready shows the entry; working waits for the browser; error offers retry; success precedes the workspace. */
+  readonly phase: 'ready' | 'working' | 'error' | 'success'
+  /** Current browser authorization address; present while a working attempt can still be completed manually. */
+  readonly authorizeUrl?: string
+  /** Classified failure while `phase` is `error`. */
+  readonly failure?: SuiyiLoginFailure
+}
+
+/** Authorization-code login operations the Suiyi login window requests from the shell. */
+export interface SuiyiLoginOperations {
+  /** Start one Keycloak authorization-code login in the system browser; the next view arrives through `onState`. */
+  start(): Promise<void>
+  /** Abandon the active attempt and present the ready view again. */
+  cancel(): Promise<void>
+  /** Copy the active authorization address to the system clipboard. */
+  copyLink(): Promise<void>
+}
+
+/** Suiyi login face: shell operations plus the host-pushed presentation state. */
+export type SuiyiLoginApi = SuiyiLoginOperations & {
+  /** @param listener - presentation-state recipient. @returns subscription disposer. */
+  onState(listener: (view: SuiyiLoginView) => void): () => void
+}
+
+/** Official welcome window face: localized copy, account operations, and safe account snapshots. */
+export interface OfficialWelcomeApi extends DesktopLocale, WelcomeOperations {
   /** @param listener - safe account snapshot recipient. @returns subscription disposer. */
   onAccountState(listener: (state: AccountView) => void): () => void
+  /** Omitted in the official window; present only in the Suiyi login window. */
+  readonly suiyi?: undefined
 }
+
+/** Authenticated welcome revisit; its only operation closes this window. */
+export interface SuiyiReturnApi {
+  /** Return to the existing workspace without changing authentication or Session state. */
+  returnToWorkspace(): Promise<void>
+}
+
+/** Suiyi login or authenticated welcome window, with localized copy. */
+export interface SuiyiWelcomeApi extends DesktopLocale {
+  readonly suiyi: SuiyiLoginApi | SuiyiReturnApi
+}
+
+/**
+ * One of the two welcome window faces. The shell exposes exactly one member because the Suiyi
+ * login window must not carry account or API-key operations, and the official window must not
+ * render a Keycloak attempt it cannot drive.
+ */
+export type WelcomeApi = OfficialWelcomeApi | SuiyiWelcomeApi
 
 /** Authentication facts supplied at cold start or after a completed sign-out. */
 export interface WelcomeAuthentication {

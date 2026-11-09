@@ -1,9 +1,35 @@
-/* The owner supplies scrolling; Markdown uses prose whitespace inside its source-oriented container. */
+/* The workbench document card: 12px radius, 16px inset, 11px body on the
+   raised surface. The typography tokens are rebound inside the card so the
+   primitive's headings and tables share that 11px scale rather than the chat
+   scale. */
 .document {
+  box-sizing: border-box;
   min-width: 0;
-  padding: 10px 12px;
+  margin: 12px;
+  padding: 16px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 12px;
+  background: var(--dsw-alias-bg-layer-2);
   font-family: var(--dsw-font, inherit);
+  font-size: 11px;
+  line-height: 1.9;
   white-space: normal;
+  --dsw-font-markdown-base: 11px / 1.9 var(--dsw-font-family);
+  --dsw-font-markdown-base-strong: 500 11px / 1.9 var(--dsw-font-family);
+  --dsw-font-markdown-h1: 500 18px / 1.6 var(--dsw-font-family);
+  --dsw-font-markdown-h2: 500 16px / 1.6 var(--dsw-font-family);
+  --dsw-font-markdown-h3: 500 15px / 1.7 var(--dsw-font-family);
+  --dsw-font-markdown-h4: 500 12px / 1.8 var(--dsw-font-family);
+  --dsw-font-markdown-table: 11px / 1.7 var(--dsw-font-family);
+  --dsw-font-markdown-table-head: 500 11px / 1.7 var(--dsw-font-family);
+}
+
+/* Narrow panes keep the card but give back edge space to the prose. */
+@media (width < 400px) {
+  .document {
+    margin: 8px;
+    padding: 12px;
+  }
 }
 
 /* Leading YAML frontmatter: a bordered metadata box above the body, never heading text. */

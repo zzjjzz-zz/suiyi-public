@@ -5,9 +5,10 @@
   list-style: none;
 }
 
-/* Every nested level indents by one step; the root level sits flush. */
+/* Every nested level indents by the workbench tree's 24px step; the root level
+   sits flush. */
 .level .level {
-  padding-left: 18px;
+  padding-left: 24px;
 }
 
 .item {
@@ -20,25 +21,36 @@
   align-items: center;
   width: 100%;
   min-width: 0;
-  border-radius: var(--dsw-radius-md);
+  border-radius: 7px;
 }
 
 .action {
   display: flex;
   flex: 1;
-  gap: 6px;
+  gap: 9px;
   align-items: center;
   min-width: 0;
-  /* Rows abut, so the hover fill is the whole row; the tree's air is this
-     inset, not a gap between rows. */
-  padding: 5px 10px;
-  color: inherit;
+  /* The workbench tree's 36px row: 11px labels on a fixed row so a long name
+     never changes the rhythm. Rows abut, so the hover fill is the whole row;
+     the tree's air is this inset, not a gap between rows. */
+  min-height: 36px;
+  padding: 0 7px;
+  color: var(--dsw-alias-label-secondary);
   font: inherit;
+  font-size: 11px;
+  line-height: 1.6;
   text-align: left;
   background: transparent;
   border: 0;
-  border-radius: var(--dsw-radius-md);
+  border-radius: 7px;
   cursor: pointer;
+}
+
+/* A directory is the tree's only emphasised row: primary ink at medium
+   weight, as the prototype's folder rows are. */
+.folder {
+  color: var(--dsw-alias-label-primary);
+  font-weight: 500;
 }
 
 /* Local Components can render nothing; empty wrappers must not take row space. */
@@ -71,10 +83,16 @@
 /* The folder glyph rides the tertiary ink, as the workspace tree's does (ui-workspace Rows `.slot`). */
 .icon {
   flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
   color: var(--dsw-alias-label-tertiary);
 }
 
-/* The type's coloured sheet at the folder glyph's 16px; its colour is its own. */
+.folder .icon {
+  color: var(--dsw-alias-label-secondary);
+}
+
+/* The type's coloured sheet at the folder glyph's 14px; its colour is its own. */
 .fileIcon {
   flex: 0 0 auto;
 }
@@ -107,7 +125,8 @@
 
 .note {
   margin: 0;
-  padding: 3px 10px;
+  padding: 8px 7px;
   color: var(--dsw-alias-label-tertiary);
-  font-size: 12px;
+  font-size: 11px;
+  line-height: 1.6;
 }

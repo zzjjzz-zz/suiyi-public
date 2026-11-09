@@ -25,7 +25,29 @@
    padding (ui-chat StatsPills `.pill`, ContextMeter `.trigger`). A minimum,
    not a fixed height, so taller readings still size the row. */
 .root:not(.hero) > .dock {
-  min-height: calc(22px + var(--dsh-content-font-delta-secondary, 0px));
+  /* Prototype active caption: one 12px line, no permanent statistics row. */
+  min-height: 12px;
+  padding-top: 0;
+  padding-inline: 8px;
+  justify-content: flex-end;
+}
+
+/* Session statistics belong to the existing details surfaces; the permanent
+   composer caption keeps only context occupancy. */
+.root:not(.hero) > .dock [data-composer-stat] {
+  display: none;
+}
+
+.root:not(.hero) > .dock :global([data-context-meter] button) {
+  gap: 4px;
+  padding: 0 4px;
+  font-size: 10px;
+  line-height: 12px;
+}
+
+.root:not(.hero) > .dock :global([data-context-meter] svg) {
+  width: 10px;
+  height: 10px;
 }
 
 .hero .dock:empty {
@@ -56,26 +78,28 @@
   position: relative; /* overlay anchor positioning context */
   display: flex;
   flex-direction: column;
-  /* figma Input 75:8208: 12px between the text area and the button row; the
-     card's top pad before .InputText tightened from the drawn 10 to 8. */
-  gap: 12px;
+  /* Prototype composer: the baseline gap drawn between the text area and
+     the button row, tuned so the 1px bordered card totals 136px. */
+  gap: 4px;
   width: 100%;
   max-width: var(--dsh-composer-card-max-width);
-  padding-top: 8px;
-  /* Input stroke: the light neutral (l2, one step above the menus' l1),
-     drawn as the elevation hairline so it costs no layout; the shadow is the
-     soft elevation tier. Fill: the input surface token (elevated in dark). */
-  border: 0;
-  --dsw-elevation-stroke-color: var(--dsw-alias-border-l2);
-  border-radius: var(--dsw-radius-panel);
-  background: var(--dsw-specific-input-major);
-  box-shadow: var(--dsw-elevation-soft);
+  /* The frozen prototype's 23px capsule, expressed through the shared scale. */
+  padding: 16px 18px 12px;
+  /* The prototype border box is 136/140px; the negative bottom margin keeps
+     the grid row at its previously measured 135/139px so the home title and
+     composer y stay fixed while the card gains the final 1px. */
+  margin-bottom: -1px;
+  border: var(--dsw-brand-composer-border);
+  border-radius: calc(var(--dsw-radius-panel) - var(--dsw-radius-xs) - 1px);
+  background: var(--dsw-brand-composer-fill);
+  box-shadow: var(--dsw-brand-composer-shadow);
   /* The draft text follows the Settings font-size preference (the textarea,
      mirror, and backdrop all inherit from here, so the three layers stay in
-     step); the line height keeps the default 10px leading via the shared px
-     delta. */
+     step); the line height keeps the prototype's 1.65 leading. */
   font-size: var(--dsh-content-font-size, 14px);
-  line-height: calc(24px + var(--dsh-content-font-delta, 0px));
+  line-height: 1.65;
+  -webkit-backdrop-filter: blur(24px) saturate(1.08);
+  backdrop-filter: blur(24px) saturate(1.08);
   /* Elevated surface in dark, same as the menus: the draft scrollport inside
      scrolls once the composer hits its height cap, so the thumb takes the l2
      pair. Declared on the card because the elevation belongs to the surface,
@@ -83,6 +107,55 @@
      (see ui-theme styles/scrollbar.css for the rebinding contract). */
   --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
   --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
+}
+
+.card:focus-within {
+  border: var(--dsw-brand-composer-focus-border);
+  background: var(--dsw-brand-composer-focus-fill);
+  box-shadow: var(--dsw-brand-composer-focus-shadow);
+}
+
+.material {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.material::before {
+  content: var(--dsw-brand-composer-material-content);
+  position: absolute;
+  inset: 0;
+  height: 2px;
+  border-radius: inherit;
+  background: var(--dsw-brand-composer-sheen);
+  opacity: 0.9;
+  transform: translateX(-2%);
+  transition: opacity 340ms ease, transform 750ms cubic-bezier(.2, .8, .2, 1);
+}
+
+.material::after {
+  content: var(--dsw-brand-composer-material-content);
+  position: absolute;
+  inset: 1px;
+  border: 1px solid var(--dsw-brand-composer-inner-border);
+  border-radius: 24px;
+  box-shadow: var(--dsw-brand-composer-inner-shadow);
+  opacity: 0.65;
+}
+
+.card:focus-within > .material::before {
+  opacity: 1;
+  transform: translateX(9%);
+}
+
+@media (max-width: 640px) {
+  .material::after { border-radius: 21px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .material::before { transition: none; }
 }
 
 @media (pointer: coarse) {
@@ -145,9 +218,6 @@
 .scroll {
   max-height: var(--dsh-composer-text-max-height);
   overflow-y: auto;
-  /* Keeps the bar off the card's right border; .input's right pad gives the
-     4px back so the text column is unchanged. */
-  margin-right: 4px;
 }
 
 /* The card's corner arc still overlaps the scrollport's top (8px top
@@ -185,10 +255,9 @@
    bar inset. */
 .input {
   box-sizing: border-box;
-  /* Docked floor: one 24px line + 4px top pad = 28 content height; 36 leaves
-     an 8px breath below the line (the hero keeps its own 52px floor below). */
-  min-height: 36px;
-  padding: 4px 8px 0 14px;
+  /* Prototype text surface: 62px (two 23.1px lines plus the top pad). */
+  min-height: 62px;
+  padding: 0 2px;
   font-family: var(--dsw-font-family);
   font-size: inherit;
   line-height: inherit;
@@ -228,14 +297,14 @@
   visibility: hidden;
 }
 
-/* figma 34:10434: #ADB2B8 light / #81858C dark — the caption pair exactly.
-   Insets mirror .input's pads (the other right 4px sits on .scroll). One
-   ellipsized line: a wrapped second line would clip against the docked
-   36px floor. */
+/* Prototype composer placeholder uses the composer-muted pair; the brand
+   token owns its default and Suiyi values. Insets mirror .input's pads (the
+   other right 4px sits on .scroll). One ellipsized line: a wrapped second
+   line would clip against the docked 36px floor. */
 .placeholder {
   position: absolute;
-  inset: 4px 8px auto 14px;
-  color: var(--dsw-alias-label-caption);
+  inset: 0 6px auto 2px;
+  color: var(--dsw-brand-composer-placeholder-color);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -252,13 +321,12 @@
   cursor: pointer;
 }
 
-/* Hero (centered empty-state) keeps the 2-line floor (figma min-h 52 = ~2 × 24
-   line + 4pt); the docked composer collapses to the content height. */
+/* Hero (centered empty-state) keeps the same two-line floor. */
 .hero .input {
-  min-height: 52px;
+  min-height: 62px;
 }
 
-/* The hero's 52px floor fits two lines, so its placeholder clamps at two
+/* The hero floor fits two lines, so its placeholder clamps at two
    instead of the docked single line. */
 .hero .placeholder {
   white-space: normal;
@@ -268,18 +336,15 @@
   line-clamp: 2;
 }
 
-/* Toolbar: attach + Plan + Read-only on the left; model + send on the right
-   (figma Input_Bottom chrome). */
+/* Toolbar: attach + Plan + Read-only on the left; model + send on the right.
+   The card owns the outer inset, so the row is flush. */
 .row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  /* 2px moved from the bottom pad to the top: the whole control row sits 2px
-     lower in the card (it read too high against the textarea) while the
-     controls' own centering stays untouched. */
-  padding: 2px 8px 6px;
+  gap: 8px;
+  padding: 0;
   min-width: 0;
   /* Size container so the chips inside can collapse to icon-only when the
      card runs out of row width (PermissionSelect @container rule). Anonymous
@@ -294,11 +359,17 @@
 }
 
 .tools,
-.modes,
 .trailing {
   display: flex;
   align-items: center;
   min-width: 0;
+}
+
+/* The prototype toolbar shows only attach on the left and model on the right.
+   Permission and plan stay mounted for their command bindings but are reached
+   through the plus command menu, not as a visible chip. */
+.modes {
+  display: none;
 }
 
 /* figma 75:8208 drew 16 between + and the mode chips and 4 between Plan /
@@ -320,37 +391,46 @@
      model trigger (external:107). The auto margin re-anchors it right on the
      wrapped line; on a single line space-between already pins it right. */
   margin-left: auto;
-  gap: 12px;
+  /* Model chevron to Send: the prototype's tight trailing pair. */
+  gap: 4px;
 }
 
 /* Compact spacing preserves room for the fixed-width controls in narrow cards. */
 @container (max-width: 560px) {
   .tools,
-  .modes,
-  .trailing {
+  .modes {
     gap: 8px;
+  }
+
+  .trailing {
+    gap: 4px;
   }
 }
 
-/* Attach circle (figma + control): 28px, selector fill, primary glyph. */
+/* Attach control: 32px rounded-square at rest, matching the prototype's
+   compact toolbar target. */
 .add {
   display: grid;
   place-items: center;
   flex: none;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border: none;
-  border-radius: 999px;
-  corner-shape: round;
-  background: var(--dsw-specific-selector);
-  color: var(--dsw-alias-label-primary);
+  border-radius: var(--dsw-radius-sm);
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
   cursor: pointer;
 }
 
 @media (hover: hover) {
   .add:hover:not(:disabled) {
-    background: var(--dsw-alias-interactive-bg-hover-solid);
+    background: color-mix(in srgb, var(--dsw-alias-state-idle-primary) 9%, transparent);
+    color: var(--dsw-alias-label-primary);
   }
+}
+
+.add:active:not(:disabled) {
+  transform: scale(0.94);
 }
 
 .add:disabled {
@@ -362,7 +442,7 @@
    (figma ToggleButton: 13/20 medium secondary, 12px chevron). */
 .select {
   max-width: 220px;
-  height: 28px;
+  height: 32px;
   padding: 0 20px 0 8px;
   border: none;
   border-radius: var(--dsw-radius-sm);
@@ -373,7 +453,7 @@
   background-position: right 4px center;
   background-size: 12px 12px;
   color: var(--dsw-alias-label-secondary);
-  font-size: 13px;
+  font-size: 11px;
   line-height: 20px;
   font-weight: 500;
   white-space: nowrap;
@@ -392,28 +472,24 @@
   cursor: default;
 }
 
-/* Primary send (figma IconButton 34:10465): 34px circle, #3964FE light /
-   #679EFE dark — the info-fill pair (500→400), NOT button-primary (ink);
-   white glyph; empty text = 0.4 opacity. */
+/* Primary send: prototype 40px circle in the blue-ink pair, white glyph in
+   light and dark ink in the light-blue dark-theme fill. */
 .primary {
   display: grid;
   place-items: center;
   flex: none;
-  width: 34px;
-  height: 34px;
+  width: 40px;
+  height: 40px;
   border: none;
   border-radius: 999px;
   corner-shape: round;
-  background: var(--dsw-alias-button-info-fill);
-  /* Static white, not the foreground token: the arrow stays white on the blue
-     fill in both themes (design 34:10465). */
-  color: #fff;
+  background: var(--dsw-alias-state-idle-primary);
+  color: light-dark(#fff, #153251);
   cursor: pointer;
-  transition: background-color 100ms ease;
-  /* Opts out of the row's 2px downward shift (.row top pad): the send circle
-     keeps its original seat while the smaller chips sit lower. Transform, not
-     margin, so flex centering math is untouched. */
-  transform: translateY(-2px);
+  box-shadow: inset 0 1px color-mix(in srgb, var(--dsw-alias-bg-layer-1) 42%, transparent);
+  transition: background-color 100ms ease, transform 160ms ease;
+  /* Opts out of the row's downward shift. */
+  transform: none;
 }
 
 /* Solid artwork uses a smaller footprint than the thin send arrow. */
@@ -423,19 +499,32 @@
 
 @media (hover: hover) {
   .primary:hover:not(:disabled) {
-    background: var(--dsw-alias-button-info-hover);
+    background: color-mix(in srgb, var(--dsw-alias-state-idle-primary) 88%, var(--dsw-alias-label-primary));
+    transform: translateY(-1px);
   }
 }
 
+.primary:active:not(:disabled) {
+  transform: scale(0.91);
+}
+
 .primary:disabled {
-  opacity: 0.4;
+  /* Prototype final variables: surface3 #edf2f9/#27364b and the final muted
+     alias mapping (#526983/#b4c8df), not the intermediate styles base pair. */
+  background: light-dark(#edf2f9, #27364b);
+  color: var(--dsw-alias-label-secondary);
+  opacity: 0.8;
+  box-shadow: none;
   cursor: default;
+  transform: none;
 }
 
 /* Sending: the message waits for the Host to accept it. The circle keeps its
    full fill rather than the disabled fade, and an arc turns where the arrow was. */
 .primary[data-sending]:disabled {
   opacity: 1;
+  background: var(--dsw-alias-state-idle-primary);
+  color: var(--dsw-alias-bg-layer-1);
   cursor: progress;
 }
 
@@ -470,3 +559,122 @@
 .activity { display: flex; align-items: center; flex: none; }
 .activity:empty { display: none; }
 .activityExpanded { flex: 1; min-width: 0; }
+
+.hero .card {
+  margin-bottom: 0;
+}
+
+/* Blank-home shortcuts below the composer card: the prototype's three pill
+   actions, centered on the composer axis. They write a real draft and return
+   focus to the editor; they never submit. */
+.quickActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  max-width: var(--dsh-composer-card-max-width);
+  margin: 18px auto 0;
+}
+
+.quickAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 35px;
+  padding: 8px 12px;
+  border: 1px solid var(--dsw-brand-glass-edge);
+  border-radius: calc(var(--dsw-radius-xl) - 1px);
+  background: color-mix(in srgb, var(--dsw-static-neutral-bluish-00) 15%, transparent);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 11px;
+  line-height: 1.4;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 180ms ease, color 180ms ease, border-color 180ms ease, transform 180ms ease;
+}
+
+.quickAction svg {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  color: currentColor;
+}
+
+@media (hover: hover) {
+  .quickAction:hover:not(:disabled) {
+    border-color: transparent;
+    background: color-mix(in srgb, var(--dsw-alias-state-idle-primary) 12%, transparent);
+    color: var(--dsw-alias-state-idle-primary);
+    transform: translateY(-1px);
+  }
+}
+
+.quickAction:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.quickAction:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+@media (max-width: 640px) {
+  .quickActions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    justify-content: center;
+    gap: 6px;
+    width: min(100%, 348px);
+    margin: 16px auto 0;
+  }
+
+  .quickAction {
+    min-width: 0;
+    width: 100%;
+    min-height: 44px;
+    padding: 8px 5px;
+    gap: 4px;
+    font-size: 11px;
+  }
+
+  .quickAction svg {
+    width: 13px;
+    height: 13px;
+  }
+}
+
+/* Touch targets and the prototype's phone card: 44px controls and the
+   one-pixel taller card while the 16/18/12 inset and 62px text floor stay. */
+@media (pointer: coarse), (max-width: 640px) {
+  .add,
+  .primary {
+    width: 44px;
+    height: 44px;
+  }
+
+  .select {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 640px) {
+  /* The 12px active caption owns the bottom inset; removing the extra card-root
+     pad restores the prototype active card y665 without touching hero. */
+  .root:not(.hero) {
+    padding-bottom: 0;
+  }
+}
+
+@media (min-width: 641px) {
+  /* The active keyboard/caption sits one pixel above the prototype card edge
+     at 1440/1280; hero remains untouched. */
+  .root:not(.hero) {
+    padding-bottom: 5px;
+  }
+
+  .root:not(.hero) .card {
+    margin-bottom: 0;
+  }
+}

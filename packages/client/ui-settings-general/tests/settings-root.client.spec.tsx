@@ -68,6 +68,7 @@ function mount({
     { id: 'welcome', order: -100 },
     { id: 'credential', order: 0 },
   ],
+  page,
 }: {
   shortcuts?: readonly ShortcutCatalogEntry[]
   wide?: boolean
@@ -78,6 +79,7 @@ function mount({
   mainView?: boolean
   rows?: Row[]
   steps?: Step[]
+  page?: { open: () => void; close: () => void }
 } = {}) {
   // Mutable row source standing in for the bound useSections hook; bump()
   // plays a ledger change through the same observable contract.
@@ -133,6 +135,9 @@ function mount({
       return select(currentConnectionState)
     },
     useOnboardingSteps: select => select(steps),
+    useSuiyiIdentity: select => select({ view: { state: 'unavailable' as const }, pending: null, failed: false }),
+    signIn: vi.fn(),
+    signOut: vi.fn(),
     useSections: (select) => {
       const [, force] = useState(0)
       useEffect(() => {
@@ -143,6 +148,7 @@ function mount({
       return select(current)
     },
     renderSlot,
+    ...(page === undefined ? {} : { page }),
   }
   const view = render(<SettingsRoot {...props} />)
   const bump = (next: Row[]) => {
@@ -176,11 +182,24 @@ function mount({
 }
 
 function openPanel() {
-  const trigger = screen.getByRole('button', { name: 'Settings' })
+  const trigger = screen.getByRole('button', { name: en['trigger'] })
   trigger.focus()
   fireEvent.click(trigger)
   return trigger
 }
+
+describe('Suiyi full-page settings', () => {
+  it('opens the main-panel page instead of a modal', () => {
+    const page = { open: vi.fn(), close: vi.fn() }
+    mount({ page, onboardingActive: false })
+    const trigger = screen.getByRole('button', { name: en['trigger'] })
+    expect(trigger.getAttribute('aria-haspopup')).toBeNull()
+    expect(screen.getByText(en['account.unavailable'])).toBeTruthy()
+    fireEvent.click(trigger)
+    expect(page.open).toHaveBeenCalledOnce()
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+})
 
 describe('SettingsRoot trigger', () => {
   it('shows installation instead of expected backend reconnection and restores connection feedback after failure', () => {
@@ -195,10 +214,10 @@ describe('SettingsRoot trigger', () => {
     expect(screen.getByText('重新连接中')).toBeTruthy()
   })
   it.each([
-    { column: 'expanded English', wide: true, dictionary: en, name: 'Settings' },
-    { column: 'collapsed English', wide: false, dictionary: en, name: 'Settings' },
-    { column: 'expanded Chinese', wide: true, dictionary: zh, name: '设置' },
-    { column: 'collapsed Chinese', wide: false, dictionary: zh, name: '设置' },
+    { column: 'expanded English', wide: true, dictionary: en, name: en['trigger'] },
+    { column: 'collapsed English', wide: false, dictionary: en, name: en['trigger'] },
+    { column: 'expanded Chinese', wide: true, dictionary: zh, name: zh['trigger'] },
+    { column: 'collapsed Chinese', wide: false, dictionary: zh, name: zh['trigger'] },
   ])('uses the locale name and accepts keyboard-style activation for the $column trigger', ({
     wide, dictionary, name,
   }) => {
@@ -361,7 +380,7 @@ describe('SettingsPanel close paths', () => {
     </Modal>)
     const reference = screen.getByRole('dialog', { name: 'Keyboard reference' })
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Reference control' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
+    fireEvent.click(screen.getByRole('button', { name: en['trigger'] }))
     const settings = screen.getByRole('dialog', { name: 'Settings Title' })
     expect(settings.parentElement?.parentElement).toBe(document.body)
     expect(reference.parentElement!.compareDocumentPosition(settings.parentElement!)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
@@ -526,10 +545,10 @@ it('opens Account from the contributed sidebar launcher', () => {
 
 it('shows the effective settings binding on focus and exposes it to assistive technology', () => {
   mount({ shortcuts: [{ id: 'settings.open' as ShortcutCommandId, label: 'Open settings', aliases: [], keys: ['⌘', ','], aria: 'Meta+,', binding: { code: 'Comma', modifiers: ['meta'] }, modified: false, conflicts: [], issue: null }] })
-  const trigger = screen.getByRole('button', { name: 'Settings' })
+  const trigger = screen.getByRole('button', { name: en['trigger'] })
   expect(trigger.getAttribute('aria-keyshortcuts')).toBe('Meta+,')
   fireEvent.focus(trigger)
-  expect(screen.getByRole('tooltip').getAttribute('aria-label')).toBe('Settings ⌘ ,')
+  expect(screen.getByRole('tooltip').getAttribute('aria-label')).toBe(`${en['trigger']} ⌘ ,`)
 })
 
 it('passes current Settings key labels to the launcher and removes them when unbound', () => {

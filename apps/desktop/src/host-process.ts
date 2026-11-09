@@ -4,6 +4,7 @@ import { spawn, type ChildProcess } from 'node:child_process'
 import { join } from 'node:path'
 import { z } from 'zod'
 import type { PlatformSession } from '@deepseek-ai/dsh-deepseek-account'
+import type { SuiyiLoginResult } from './keycloak/login-gate.ts'
 import { desktopNodeEnvironment } from './node-environment.ts'
 import { parsePluginOperationRecord, type PluginOperationRecord, type PluginOperationRunId } from '@deepseek-ai/dsh-plugin-manager/diagnostic'
 
@@ -44,6 +45,27 @@ type DesktopHostEvent = ReadyEvent | FatalEvent | PlatformSessionEvent | {
   readonly activeTasks: boolean
   readonly scheduledTasks: boolean
   readonly error?: string
+}
+
+/** Minimal write face of a forked Host's private IPC channel. */
+export interface SuiyiAccessChannel {
+  readonly connected: boolean
+  send(message: object, callback?: (error: Error | null) => void): boolean
+}
+
+/**
+ * Send one verified access token to the Host over the child's private IPC channel. The Host's
+ * `suiyiAccess` service validates it and keeps it in memory; it is never placed in argv, the
+ * environment, a file, a log, or a renderer.
+ * @param child - the forked Host process channel.
+ * @param access - current verified token facts from the main process.
+ */
+export function sendSuiyiAccessToken(
+  child: SuiyiAccessChannel, access: Pick<SuiyiLoginResult, 'accessToken' | 'expiresAt'>,
+): void {
+  if (!child.connected) return
+  child.send({ type: 'suiyi-access-token', accessToken: access.accessToken, expiresAt: access.expiresAt },
+    (error) => { if (error !== null) console.error('desktop: Suiyi access token delivery failed') })
 }
 
 /** Correlated answer to one shell control request. */
@@ -187,6 +209,8 @@ export class DesktopHostProcess {
    * @param packageManager - Bundled pnpm entry and Node launcher directory, scoped to package operations.
    * @param onPlatformSession - Private credential updates for embedded Platform views.
    * @param onPluginOperation - Optional diagnostic sink; malformed records are ignored without failing the Host.
+   * @param suiyiAccess - Current verified access token for the Host's private channel; called at
+   *   spawn and readiness so the Host may refresh user-scoped plugin-hub requests.
    */
   constructor(
     private readonly node: string,
@@ -200,7 +224,19 @@ export class DesktopHostProcess {
 
     private readonly onPlatformSession?: (session: PlatformSession | null) => void,
     private readonly onPluginOperation?: (record: PluginOperationRecord) => void,
+    private readonly suiyiAccess?: () => Pick<SuiyiLoginResult, 'accessToken' | 'expiresAt'> | undefined,
   ) {}
+
+  /**
+   * Deliver the current verified access token over the private IPC channel. The Host stores it in
+   * memory only; it must never be logged, written to a file, placed in argv or the environment,
+   * or forwarded to a renderer. A failed delivery leaves the previous token in place.
+   */
+  refreshSuiyiAccess(): void {
+    const access = this.suiyiAccess?.()
+    if (access === undefined || this.child === undefined) return
+    sendSuiyiAccessToken(this.child, access)
+  }
 
   /**
    * Start this child once and await its Web application URL.
@@ -223,6 +259,7 @@ export class DesktopHostProcess {
       stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
     })
     this.child = child
+    child.once('spawn', () => { this.refreshSuiyiAccess() })
     child.stderr?.setEncoding('utf8')
     child.stderr?.on('data', (chunk: string) => { this.stderr = (this.stderr + chunk).slice(-MAX_HOST_DIAGNOSTIC_CHARS) })
     child.stdout?.pipe(process.stdout)
@@ -244,7 +281,10 @@ export class DesktopHostProcess {
         return
       }
       if (message.type === 'starting') this.runId = message.runId
-      else if (message.type === 'ready') this.readyResolve({ url: message.url, injections: message.injections })
+      else if (message.type === 'ready') {
+        this.refreshSuiyiAccess()
+        this.readyResolve({ url: message.url, injections: message.injections })
+      }
       else if (message.type === 'platform-session') this.onPlatformSession?.(message.session)
       else if (message.type === 'shutdown-complete') {
         if (this.stopping) this.shutdownCompleted = true

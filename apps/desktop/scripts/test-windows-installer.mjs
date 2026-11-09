@@ -2,6 +2,7 @@
 import { readInstallerLocales, renderInstallerStrings } from './installer-locales.mjs'
 import { execFile } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
+import { existsSync } from 'node:fs'
 import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { join } from 'node:path'
@@ -79,12 +80,21 @@ try {
       if (!match) throw new Error(`Missing installer caption color: ${name}`)
       return match[1]
     }
+    const markAssets = existsSync(join(output, 'ui', 'mark-2x.png')) &&
+      existsSync(join(output, 'ui', 'mark-dark-2x.png'))
     for (const dpi of [96, 192]) {
       for (const theme of ['light', 'dark']) {
-        const brand = theme === 'dark' ? 'brand-dark-2x.bmp' : 'brand-2x.bmp'
+        const brand = markAssets
+          ? (theme === 'dark' ? 'mark-dark-2x.png' : 'mark-2x.png')
+          : (theme === 'dark' ? 'brand-dark-2x.bmp' : 'brand-2x.bmp')
         const prefix = theme === 'dark' ? 'INSTALLER_DARK_CONTROL' : 'INSTALLER_CONTROL'
+        const surface = theme === 'dark' ? 'INSTALLER_DARK' : 'INSTALLER_LIGHT'
+        const fonts = ['NotoSansSC-Light.ttf', 'NotoSansSC-Regular.ttf', 'NotoSansSC-Medium.ttf']
+          .map(name => join(appRoot, 'installer', 'fonts', name))
         const result = await execute(renderTest, [join(output, 'ui', brand), String(dpi), theme,
-          captionColor(`${prefix}_HOVER`), captionColor(`${prefix}_PRESSED`)], childOptions)
+          captionColor(`${prefix}_HOVER`), captionColor(`${prefix}_PRESSED`),
+          captionColor(`${surface}_BG`), captionColor(`${surface}_CARD`), captionColor(`${surface}_ACCENT`),
+          ...fonts], childOptions)
         renderResults.push(result.stdout)
       }
     }

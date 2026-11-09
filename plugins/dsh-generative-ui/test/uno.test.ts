@@ -331,3 +331,26 @@ test("streaming frames define the theme variables, and do not re-append the them
     (globalThis as { document?: unknown }).document = previous;
   }
 });
+
+
+test("the first streaming delta carries utilities extracted into that same frame", async () => {
+  const previous = (globalThis as { document?: unknown }).document;
+  (globalThis as { document?: unknown }).document = {};
+  try {
+    const uno = await import("../src/client/runtime/uno.ts");
+    const stream = uno.createUnoCssDelta();
+    const css = await stream.next('<div className="p-4" />', true);
+    // p-4's declaration must be in the first delta, not only the preflight block.
+    expect(css).toContain("padding:");
+    expect(css).toMatch(/--spacing\s*:/);
+    expect(css).toContain(".ui4a-root");
+    // The first delta owns the frame's reset/preflight; later deltas must not.
+    expect(css).toContain("box-sizing: border-box");
+    const second = await stream.next('<div className="p-4 text-sm rounded-2xl" />', true);
+    expect(second).toContain("border-radius");
+    expect(second).not.toContain("box-sizing:border-box");
+    stream.dispose();
+  } finally {
+    (globalThis as { document?: unknown }).document = previous;
+  }
+});

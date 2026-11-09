@@ -113,7 +113,7 @@ export interface SessionEventWindow {
   readonly change: SessionEventChange
 }
 
-/** Conversation-facing event source exposed by one Session binding. */
+/** Contiguous event source exposed to Conversation assembly and live turn observers. */
 export type SessionEventSource = ObservableSnapshot<SessionEventWindow>
 
 /** Session-owned event feed; every accepted window mutation publishes synchronously. */

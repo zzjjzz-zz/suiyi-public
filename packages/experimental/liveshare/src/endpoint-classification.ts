@@ -138,6 +138,13 @@ export const VIEWER_ENDPOINT_CLASSES = {
   'workspaceFiles/read': 'owner-only', // absolute paths reach files outside the Workspace, so no share offers it
   'workspaceFiles/readBytes': 'owner-only', // absolute paths reach files outside the Workspace, so no share offers it
   'workspaceFiles/stat': 'owner-only', // absolute paths reach files outside the Workspace, so no share offers it
+  'pluginHub/add': 'owner-only', // owner plugin lifecycle
+  'pluginHub/catalog': 'owner-only', // per-user catalog belongs to the Host owner
+  'pluginHub/disable': 'owner-only', // owner plugin lifecycle
+  'pluginHub/enable': 'owner-only', // owner plugin lifecycle
+  'pluginHub/refresh': 'owner-only', // per-user catalog belongs to the Host owner
+  'pluginHub/removeInstance': 'owner-only', // owner plugin lifecycle
+  'pluginHub/watch': 'owner-only', // V1 uses the Host owner's platform identity
   'pluginManager/cancelInstall': 'owner-only', // owner plugin management
   'pluginManager/inspect': 'owner-only', // owner plugin management
   'pluginManager/installBundle': 'owner-only', // owner plugin management

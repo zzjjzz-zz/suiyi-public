@@ -82,7 +82,7 @@ export const canvasTabDefinition: SidebarRightTabDefinition = {
  * where it can only fail by failing to compile.
  */
 type Assert<T extends true> = T;
-type _SidebarSeatIsMerged = Assert<"sidebar.right.pane.tab" extends keyof SlotMap ? true : false>;
+export type SidebarSeatIsMerged = Assert<"sidebar.right.pane.tab" extends keyof SlotMap ? true : false>;
 
 /**
  * The canvas browser: a *page* type, which is a different thing from the file type above.

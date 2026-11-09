@@ -1,13 +1,14 @@
 /**
- * The text preview's layout: an optional banner, the path header, and the
- * content row, with the workspace navigator Factories in fixed positions.
+ * The text preview's layout: an optional banner, the 36px path toolbar, and
+ * the content row, with the workspace navigator Factories in fixed positions.
  *
  * Every preview state renders this one Component, so the navigator, its
  * header toggle, and the file handoff keep their DOM nodes, focus, and scroll position while the
  * preview moves between unsupported, loading, and text. The two Factory
  * positions are memoized Components whose props are only the tab hook and
  * `renderFactorySlot`; a preview-only update, such as a recorded scroll,
- * does not re-render them.
+ * does not re-render them. Long paths ellipsize inside the toolbar and never
+ * widen the pane.
  */
 import { memo, useCallback } from 'react'
 import type { ReactNode } from 'react'

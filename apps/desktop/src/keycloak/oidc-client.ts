@@ -44,6 +44,11 @@ export interface OidcIdentity {
   readonly name?: string
   /** Access token expiry in epoch milliseconds. */
   readonly expiresAt: number
+  /**
+   * Verified access token for user-scoped upstream APIs. It stays in the Electron main process
+   * and the Host's private IPC channel memory: never logged, persisted, or exposed to a renderer.
+   */
+  readonly accessToken: string
   /** Refresh token when the provider issued one. */
   readonly refreshToken?: string
 }
@@ -54,7 +59,9 @@ export type OidcFailure =
   | 'discovery-invalid'
   | 'issuer-mismatch'
   | 'callback-aborted'
+  | 'callback-server'
   | 'callback-timeout'
+  | 'browser-unavailable'
   | 'callback-replay'
   | 'callback-malformed'
   | 'token-network'
@@ -99,6 +106,8 @@ export interface OidcClientOptions {
     signal: AbortSignal) => Promise<CallbackServer>
   /** Browser opener for the system default browser. */
   readonly openBrowser: (url: string) => Promise<void>
+  /** Aborts discovery, the callback wait, and later exchanges; resolves as a cancelled attempt. */
+  readonly signal?: AbortSignal
   /** Deadline control for tests. */
   readonly timeoutMs?: number
   /** Clock reading, epoch milliseconds. */
@@ -325,7 +334,9 @@ export async function validateIdToken(
   readonly ok: true
   readonly claims: { readonly sub: string
     readonly nonce: string
-    readonly exp: number }
+    readonly exp: number
+    /** Verified display name from the `name` claim, when the provider supplies one. */
+    readonly name?: string }
 } | {
   readonly ok: false
   readonly failure: OidcFailure
@@ -361,7 +372,18 @@ export async function validateIdToken(
   if (typeof payload.exp !== 'number') {
     return { ok: false, failure: 'token-rejected', message: 'ID token has no expiry' }
   }
-  return { ok: true, claims: { sub: payload.sub, nonce: payload.nonce, exp: payload.exp } }
+  const displayName = typeof payload.name === 'string'
+    ? payload.name.replace(/[\u0000-\u001f\u007f]/gu, '').trim().slice(0, 80)
+    : ''
+  return {
+    ok: true,
+    claims: {
+      sub: payload.sub,
+      nonce: payload.nonce,
+      exp: payload.exp,
+      ...(displayName === '' ? {} : { name: displayName }),
+    },
+  }
 }
 
 /**
@@ -520,8 +542,16 @@ export async function runAuthorizationCodeLogin(options: OidcClientOptions): Pro
   const fetch = options.fetch ?? ((input: string, init?: RequestInit) => globalThis.fetch(input, init))
   const now = options.now ?? Date.now
   const timeoutMs = options.timeoutMs ?? SUIYI_LOGIN_TIMEOUT_MS
+  const signal = options.signal
+  // A method call keeps TypeScript from narrowing `aborted` across awaits; the flag changes
+  // outside this process's control.
+  const aborted = (): boolean => signal?.aborted === true
+  const cancelled = (): { readonly ok: false; readonly failure: 'callback-aborted'; readonly message: string } =>
+    ({ ok: false, failure: 'callback-aborted', message: 'login was cancelled' })
+  if (aborted()) return cancelled()
   const discovered = await discoverOidcEndpoints(options.issuer, fetch)
   if (!discovered.ok) return discovered
+  if (aborted()) return cancelled()
   const endpoints = discovered.endpoints
   const attempt: PendingAttempt = {
     state: randomUrlSafe(32),
@@ -540,6 +570,12 @@ export async function runAuthorizationCodeLogin(options: OidcClientOptions): Pro
     settled = true
     finished.resolve(value)
   }
+  const onAbort = (): void => {
+    controller.abort()
+    settle({ error: 'cancelled' })
+  }
+  if (aborted()) onAbort()
+  else signal?.addEventListener('abort', onAbort, { once: true })
   let redeemable = true
   const handler = (request: CallbackRequest, respond: CallbackRespond): void => {
     if (request.method !== 'GET') {
@@ -587,10 +623,12 @@ export async function runAuthorizationCodeLogin(options: OidcClientOptions): Pro
     respond(200, 'Suiyi login complete. You can close this window.')
   }
   try {
+    if (aborted()) return cancelled()
     try {
       callback = await createServerHook(handler, controller.signal)
     } catch {
-      return { ok: false, failure: 'callback-aborted', message: 'loopback callback server could not start' }
+      if (aborted()) return cancelled()
+      return { ok: false, failure: 'callback-server', message: 'loopback callback server could not start' }
     }
     // The listener owns its random port first; only that exact port is
     // registered as this attempt's redirect target.
@@ -610,10 +648,12 @@ export async function runAuthorizationCodeLogin(options: OidcClientOptions): Pro
     try {
       await options.openBrowser(authorizeUrl.href)
     } catch {
-      return { ok: false, failure: 'callback-aborted', message: 'the system browser could not open the login page' }
+      if (aborted()) return cancelled()
+      return { ok: false, failure: 'browser-unavailable', message: 'the system browser could not open the login page' }
     }
     const outcome = await finished.promise
     if ('error' in outcome) {
+      if (outcome.error === 'cancelled') return cancelled()
       if (outcome.error === 'timeout') return { ok: false, failure: 'callback-timeout', message: 'login timed out waiting for the browser' }
       if (outcome.error === 'access_denied' || outcome.error === 'login_required' || outcome.error === 'consent_required') {
         return { ok: false, failure: 'callback-aborted', message: 'login was cancelled in the browser' }
@@ -621,6 +661,7 @@ export async function runAuthorizationCodeLogin(options: OidcClientOptions): Pro
       if (outcome.error === 'missing_code') return { ok: false, failure: 'callback-malformed', message: 'the login callback carried no authorization code' }
       return { ok: false, failure: 'callback-malformed', message: `the login callback reported ${outcome.error}` }
     }
+    if (aborted()) return cancelled()
     const exchanged = await exchangeAuthorizationCode(
       endpoints.tokenEndpoint, options.clientId, outcome.code, attempt.verifier, redirectUri, fetch,
     )
@@ -636,10 +677,13 @@ export async function runAuthorizationCodeLogin(options: OidcClientOptions): Pro
         issuer: options.issuer,
         sub: validated.claims.sub,
         expiresAt: Math.min(now() + expiresInMs, validated.claims.exp * 1000),
+        accessToken: exchanged.tokens.access_token,
+        ...(validated.claims.name === undefined ? {} : { name: validated.claims.name }),
       },
     }
   } finally {
     clearTimeout(timer)
+    signal?.removeEventListener('abort', onAbort)
     controller.abort()
     callback?.server.close()
   }

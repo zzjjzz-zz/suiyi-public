@@ -1,49 +1,425 @@
-.dsh-suiyi-name {
-  display: inline-flex;
-  flex-direction: column;
-  gap: 2px;
-  line-height: 1.1;
-  white-space: nowrap;
+/* Suiyi build identity: the prototype's Noto Sans SC typography, 300-weight
+ * titles, 500-weight wordmark, and blue-cyan ambient scene. Every rule is
+ * scoped to body[data-dsh-brand='suiyi'], the attribute the plugin sets only
+ * under the suiyi build profile, so a build that loads this bundle yet renders
+ * the official identity keeps its own fonts, glass, and background.
+ *
+ * Colours arrive only through tokens: ui-theme's brand-identity contract
+ * supplies neutral defaults, and this package's theme override layer supplies
+ * the Suiyi values with both palette modes.
+ *
+ * The ambient scene is the prototype's own layer stack — a halo cloud, two
+ * tilted ribbon rings, and a veil — reproduced with its geometry, blur radii,
+ * drift curves, and alphas instead of a similar gradient. It sits at
+ * z-index -1 inside body's stacking context: above the body background and
+ * below the application frame. */
+
+body[data-dsh-brand='suiyi'] {
+  --dsh-font-family-text-default: 'Noto Sans SC', 'Source Han Sans SC', 'Noto Sans CJK SC',
+    'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  --dsw-brand-font-family: var(--dsh-font-family-text-default);
+  --dsw-brand-title-weight: 300;
+  --dsw-brand-wordmark-weight: 500;
+  --dsw-brand-wordmark-size: 22px;
+  --dsw-brand-wordmark-tracking: 0.04em;
+  --dsw-brand-wordmark-line-height: 1.4;
+  /* Brand-family text elsewhere (Desktop onboarding) follows the same Noto
+   * stack: the prototype has one Chinese UI face and no Montserrat wordmark. */
+  --dsw-font-family-brand: var(--dsw-brand-font-family);
+  font-synthesis: none;
 }
 
-.dsh-suiyi-name-hanzi {
-  font-size: 17px;
-  font-weight: 650;
-  letter-spacing: 0.08em;
-  color: var(--dsw-alias-label-primary);
+/* The blank home shows the ambient directly, as the prototype's empty home
+ * does. The conversation root consumes --dsw-alias-bg-base, so re-binding the
+ * token on the hero surface removes its content wash without touching its
+ * layout or CSS. */
+body[data-dsh-brand='suiyi'] [data-phase='hero'] {
+  --dsw-alias-bg-base: transparent;
 }
 
-.dsh-suiyi-name-roman {
-  font-size: 9px;
-  font-weight: 500;
-  letter-spacing: 0.34em;
-  color: var(--dsw-alias-label-secondary);
+/* Active conversations also keep a transparent page, as the prototype's
+ * .chat-page does; the ambient continues behind the session bar and composer.
+ * The background is cleared on the root itself rather than through the token,
+ * so nested surfaces that consume --dsw-alias-bg-base keep their own wash. */
+body[data-dsh-brand='suiyi'] [data-phase='active'],
+body[data-dsh-brand='suiyi'] [data-phase='settling'] {
+  background: transparent;
 }
 
-.dsh-suiyi-mark .dsh-suiyi-body,
-.dsh-suiyi-mark .dsh-suiyi-tail,
-.dsh-suiyi-mark .dsh-suiyi-orbit {
+/* Global pages (plugin centre, settings) replace the conversation column but
+ * paint no ground of their own; the prototype lays the content wash over the
+ * ambient for every page. The layout's global-panel seat carries that one
+ * layer, so pages do not show the raw scene while the blank home shows the
+ * ambient unwashed. */
+body[data-dsh-brand='suiyi'] [data-global-panel] {
+  background: var(--dsw-brand-page-wash);
+}
+
+/* The scene paints above the body background and below every application
+ * layer, so one ambient surface backs the whole window. */
+body[data-dsh-brand='suiyi'] {
+  background-color: var(--dsw-brand-scene-base);
+  isolation: isolate;
+}
+
+.dsh-suiyi-scene {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  background: var(--dsw-brand-scene-base);
+}
+
+.dsh-suiyi-scene-field {
+  position: absolute;
+  inset: -6%;
+  opacity: var(--dsw-brand-scene-strength);
+  filter: saturate(0.86);
+  transform: translate3d(0, 0, 0);
+  transition: transform 1.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.65s ease;
+}
+
+.dsh-suiyi-halo-cloud {
+  position: absolute;
+  inset: -9%;
+  background:
+    radial-gradient(
+      ellipse 38% 45% at 86% 18%,
+      color-mix(in srgb, var(--dsw-brand-scene-cyan) 52%, transparent),
+      transparent 75%
+    ),
+    radial-gradient(
+      ellipse 42% 39% at 21% 87%,
+      color-mix(in srgb, var(--dsw-brand-scene-blue) 55%, transparent),
+      transparent 75%
+    ),
+    radial-gradient(
+      ellipse 30% 26% at 66% 68%,
+      color-mix(in srgb, var(--dsw-brand-scene-ice) 38%, transparent),
+      transparent 77%
+    );
+  filter: blur(28px);
+  opacity: 0.7;
+}
+
+.dsh-suiyi-halo-ribbon {
+  position: absolute;
+  left: -13%;
+  top: 11%;
+  width: 126%;
+  height: 132%;
+  border-radius: 50%;
+  corner-shape: round;
+  background: radial-gradient(
+    ellipse at 50% 50%,
+    transparent 33%,
+    color-mix(in srgb, var(--dsw-brand-scene-ice) 10%, transparent) 37%,
+    color-mix(in srgb, var(--dsw-brand-scene-ice) 76%, transparent) 41%,
+    color-mix(in srgb, var(--dsw-brand-scene-cyan) 62%, transparent) 45%,
+    color-mix(in srgb, var(--dsw-brand-scene-blue) 56%, transparent) 50%,
+    color-mix(in srgb, var(--dsw-brand-scene-blue) 16%, transparent) 57%,
+    transparent 67%
+  );
+  filter: blur(24px);
+  opacity: 0.65;
+  transform: rotate(-26deg) scaleY(0.64);
+  transform-origin: 50% 50%;
+}
+
+.dsh-suiyi-halo-ribbon::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    ellipse at 50% 50%,
+    transparent 38.5%,
+    color-mix(in srgb, var(--dsw-brand-scene-ice) 83%, transparent) 40.5%,
+    color-mix(in srgb, var(--dsw-brand-scene-ice) 12%, transparent) 43%,
+    transparent 47%
+  );
+  opacity: 0.58;
+}
+
+.dsh-suiyi-halo-ribbon-far {
+  left: 30%;
+  top: -62%;
+  width: 110%;
+  height: 119%;
+  opacity: 0.24;
+  transform: rotate(-32deg) scaleY(0.65);
+  filter: blur(31px);
+}
+
+.dsh-suiyi-halo-veil {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse var(--dsw-brand-scene-veil-size) at var(--dsw-brand-scene-veil-position),
+    var(--dsw-brand-scene-veil),
+    transparent 85%
+  );
+}
+
+/* The prototype lifts the cloud to full opacity while the composer is focused. */
+body[data-dsh-brand='suiyi']:has([data-composer-card]:focus-within) .dsh-suiyi-halo-cloud {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .dsh-suiyi-halo-cloud {
+    animation: dsh-suiyi-halo-cloud-drift 24s ease-in-out infinite alternate;
+  }
+
+  .dsh-suiyi-halo-ribbon {
+    animation: dsh-suiyi-halo-ribbon-drift 26s ease-in-out infinite alternate;
+  }
+
+  .dsh-suiyi-halo-ribbon-far {
+    animation: dsh-suiyi-halo-far-drift 31s ease-in-out infinite alternate;
+  }
+}
+
+/* The mark: prototype artwork at the size its slot requests. */
+.dsh-suiyi-mark {
+  display: block;
+  flex: none;
+  overflow: visible;
+  filter: drop-shadow(0 5px 9px var(--dsw-brand-mark-glow));
+}
+
+.dsh-suiyi-mark .dsh-suiyi-ribbon {
   transform-box: fill-box;
   transform-origin: center;
 }
 
-/* The idle drift is the only motion; the reduced-motion preference turns it off. */
+/* The idle drift is the only resting mark motion; `running` switches the
+ * faster streaming drift, and the reduced-motion preference holds the mark
+ * still. */
 @media (prefers-reduced-motion: no-preference) {
-  .dsh-suiyi-mark .dsh-suiyi-body,
-  .dsh-suiyi-mark .dsh-suiyi-tail {
+  .dsh-suiyi-mark:not([data-assistant]) .dsh-suiyi-ribbon {
     animation: dsh-suiyi-drift 7.8s ease-in-out infinite;
+  }
+
+  .dsh-suiyi-mark:not([data-assistant]) .dsh-suiyi-gloss {
+    animation: dsh-suiyi-glimmer 7.8s ease-in-out infinite;
+  }
+
+  /* Assistant reply mark: the prototype's 2.8 s thinking drift and its 2.4 s
+   * orbit run together only while the step streams, then the answer settle
+   * runs once and leaves the mark still. */
+  .dsh-suiyi-mark[data-assistant][data-running] .dsh-suiyi-ribbon {
+    animation: dsh-suiyi-think 2.8s ease-in-out infinite;
+    filter: drop-shadow(0 0 5px color-mix(in srgb, var(--dsw-brand-scene-cyan) 30%, transparent));
+  }
+
+  .dsh-suiyi-mark[data-assistant][data-running] .dsh-suiyi-orbit {
+    opacity: 0.8;
+    animation: dsh-suiyi-think-orbit 2.4s linear infinite;
+  }
+
+  .dsh-suiyi-mark[data-assistant]:not([data-running]) .dsh-suiyi-ribbon {
+    animation: dsh-suiyi-mark-settle 0.5s ease-out both;
+  }
+}
+
+/* The orbit ring is decorative and hidden until the Assistant streams. */
+.dsh-suiyi-orbit {
+  opacity: 0;
+  transform-box: view-box;
+  transform-origin: center;
+}
+
+/* The single-line wordmark: 500 weight, 22px, tracked like the prototype's
+ * sidebar signature. */
+.dsh-suiyi-name {
+  display: inline-block;
+  overflow: hidden;
+  font-family: var(--dsw-brand-font-family);
+  font-size: var(--dsw-brand-wordmark-size);
+  font-weight: var(--dsw-brand-wordmark-weight);
+  line-height: var(--dsw-brand-wordmark-line-height);
+  letter-spacing: var(--dsw-brand-wordmark-tracking);
+  color: var(--dsw-alias-label-primary);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 640px) {
+  .dsh-suiyi-scene-field {
+    inset: -3%;
+    opacity: var(--dsw-brand-scene-strength-compact);
+  }
+
+  .dsh-suiyi-halo-cloud {
+    filter: blur(19px);
+    animation-duration: 32s;
+  }
+
+  .dsh-suiyi-halo-ribbon {
+    left: -83%;
+    top: 18%;
+    width: 250%;
+    height: 110%;
+    filter: blur(18px);
+    animation-duration: 34s;
+  }
+
+  .dsh-suiyi-halo-ribbon-far {
+    left: 12%;
+    top: -50%;
+    width: 210%;
+    height: 105%;
+    filter: blur(22px);
+    animation-duration: 40s;
+  }
+
+  .dsh-suiyi-halo-veil {
+    background: radial-gradient(
+      ellipse var(--dsw-brand-scene-veil-size-compact) at var(--dsw-brand-scene-veil-position-compact),
+      var(--dsw-brand-scene-veil-compact),
+      transparent var(--dsw-brand-scene-veil-fade-compact)
+    );
+  }
+
+  .dsh-suiyi-mark {
+    filter: drop-shadow(0 3px 6px var(--dsw-brand-mark-glow));
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .dsh-suiyi-mark .dsh-suiyi-body,
-  .dsh-suiyi-mark .dsh-suiyi-tail,
-  .dsh-suiyi-mark .dsh-suiyi-orbit {
+  .dsh-suiyi-scene-field {
+    transform: none;
+    transition: none;
+  }
+
+  .dsh-suiyi-halo-cloud,
+  .dsh-suiyi-halo-ribbon,
+  .dsh-suiyi-halo-ribbon-far {
     animation: none;
+  }
+
+  .dsh-suiyi-mark,
+  .dsh-suiyi-mark .dsh-suiyi-ribbon,
+  .dsh-suiyi-mark .dsh-suiyi-gloss {
+    animation: none;
+    transform: none;
+    filter: none;
+  }
+
+  .dsh-suiyi-orbit {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+@keyframes dsh-suiyi-halo-cloud-drift {
+  from {
+    transform: translate3d(-1.5%, -1%, 0) scale(1);
+  }
+
+  to {
+    transform: translate3d(2.8%, 2%, 0) scale(1.045);
+  }
+}
+
+@keyframes dsh-suiyi-halo-ribbon-drift {
+  from {
+    transform: translate3d(-1.5%, 1%, 0) rotate(-26deg) scaleY(0.64);
+  }
+
+  to {
+    transform: translate3d(3%, -2%, 0) rotate(-18deg) scaleY(0.69);
+  }
+}
+
+@keyframes dsh-suiyi-halo-far-drift {
+  from {
+    transform: translate3d(1%, -1%, 0) rotate(-32deg) scaleY(0.65);
+  }
+
+  to {
+    transform: translate3d(-3%, 3%, 0) rotate(-24deg) scaleY(0.71);
+  }
+}
+
+@keyframes dsh-suiyi-think-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes dsh-suiyi-mark-settle {
+  from {
+    transform: scale(1.06);
+    filter: drop-shadow(0 0 7px color-mix(in srgb, var(--dsw-brand-scene-cyan) 50%, transparent));
+  }
+
+  to {
+    transform: scale(1);
+    filter: none;
+  }
+}
+
+@keyframes dsh-suiyi-think {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-3deg) scale(0.96);
+    opacity: 0.8;
+  }
+
+  50% {
+    transform: translateY(-2px) rotate(4deg) scale(1.05);
+    opacity: 1;
+  }
+}
+
+@keyframes dsh-suiyi-glimmer {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+
+  45% {
+    opacity: 0.85;
+  }
+
+  75% {
+    opacity: 0.57;
   }
 }
 
 @keyframes dsh-suiyi-drift {
-  0%, 100% { transform: translateY(0) rotate(0deg) }
-  50% { transform: translateY(2px) rotate(1.2deg) }
+  0%,
+  100% {
+    transform: translateY(0) rotate(0);
+  }
+
+  46% {
+    transform: translateY(-2px) rotate(1.2deg);
+  }
+
+  76% {
+    transform: translateY(1px) rotate(-0.4deg);
+  }
+}
+
+body[data-dsh-brand='suiyi'] button[role='switch'] {
+  width: 34px;
+}
+
+body[data-dsh-brand='suiyi'] button[role='switch'] > span {
+  width: 14px;
+  height: 14px;
+  background: var(--dsw-alias-switch-thumb);
+}
+
+body[data-dsh-brand='suiyi'] button[role='switch'][aria-checked='true'] {
+  background: var(--dsw-brand-switch-on);
+  border-color: var(--dsw-brand-switch-on);
+}
+
+body[data-dsh-brand='suiyi'] button[role='switch'][aria-checked='true'] > span {
+  transform: translateX(14px);
 }

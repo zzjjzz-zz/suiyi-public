@@ -168,7 +168,9 @@ export function apply(ctx: Context): void {
       }),
     }, LinkOpeningRow))
   })
-  const transcriptView = new TranscriptViewPolicy(chatSettings, 'dshDesktop' in globalThis ? 'standard' : DEFAULT_TRANSCRIPT_VIEW_MODE)
+  const defaultTranscriptView = process.env.DSH_CLIENT_BUILD_PROFILE === 'suiyi' ? 'compact'
+    : 'dshDesktop' in globalThis ? 'standard' : DEFAULT_TRANSCRIPT_VIEW_MODE
+  const transcriptView = new TranscriptViewPolicy(chatSettings, defaultTranscriptView)
   const presentation = derivePresentationPolicy(transcriptView.mode, transcriptView.collapseTiming, transcriptView.foldedReplies)
   const performancePolicy = new PerformanceUsagePolicy(chatSettings)
   ctx.effect(() => () => { transcriptView.dispose(); performancePolicy.dispose() })
@@ -225,11 +227,17 @@ export function apply(ctx: Context): void {
     name: 'conversation.chat.flow', locale: NS, store: chatStore,
     children: {
       'conversation.chat.node': { kind: 'keyed', scope: 'session', inject: CHAT_NODE_INJECT },
+      'conversation.chat.waiting.mark': { kind: 'single', scope: 'session' },
     },
     inject: (sessionId: SessionId): ChatFlowDataInjected => {
       const binding = ctx.sessions.binding(sessionId)
       if (binding === undefined) throw new Error(`ui-chat: unknown session "${sessionId}"`)
-      return { ...nodeSources(binding), hooks: { presentation, connectionState } }
+      const sources = nodeSources(binding)
+      return {
+        ...sources,
+        readChatGroup: key => sources.keyedHooks.chatGroup(key)?.getSnapshot(),
+        hooks: { presentation, connectionState },
+      }
     },
   }, ChatFlow))
 
@@ -336,6 +344,8 @@ export function apply(ctx: Context): void {
 
   // One dock entry per pill, so a plugin replaces or adds a single pill by id.
   const statPillInject = () => ({ hooks: { performanceUsage } })
+  // The context-detail entry always exposes the detailed session dialog.
+  const detailedPerformanceUsage = createSnapshotStore<'compact' | 'detailed'>('detailed')
   ctx.slots.inject('conversation.composer.dock', function* () {
     yield ctx.slots.register({
       name: 'conversation.composer.dock', id: 'activity', order: 0, locale: NS, inject: statPillInject,
@@ -344,6 +354,10 @@ export function apply(ctx: Context): void {
       name: 'conversation.composer.dock', id: 'usage', order: 1, locale: NS, inject: statPillInject,
     }, UsagePill)
   })
+  ctx.slots.inject('conversation.composer.context', () => ctx.slots.register({
+    name: 'conversation.composer.context', id: 'session-usage', order: 0, locale: NS,
+    inject: () => ({ hooks: { performanceUsage: detailedPerformanceUsage } }),
+  }, UsagePill))
 
   ctx.slots.inject('conversation.approval.detail', () =>
     ctx.slots.register({ name: 'conversation.approval.detail' }, ApprovalCommand))

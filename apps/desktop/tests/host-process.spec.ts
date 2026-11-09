@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest'
@@ -33,6 +33,16 @@ server.listen(0, '127.0.0.1', () => {
   process.send({ type: 'ready', url: 'http://127.0.0.1:' + server.address().port + '/?token=fixture' })
 })
 process.on('message', message => {
+  if (message.type === 'suiyi-access-token') {
+    writeFileSync(join(process.argv[3], 'suiyi-access.json'), JSON.stringify({
+      accessToken: message.accessToken,
+      expiresAt: message.expiresAt,
+      env: process.env.DSH_SUIYI_ACCESS_TOKEN ?? null,
+      argv: process.argv,
+      envKeys: Object.keys(process.env).filter(key => key.includes('SUIYI')),
+    }))
+    return
+  }
   if (message.type === 'file-drag-cancel') {
     process.send({ type: 'file-drag-resource', requestId: message.requestId, resource: null })
     return
@@ -127,6 +137,36 @@ process.send({ type: 'ready', url: 'http://127.0.0.1:3080/' }, () => { ${trigger
     expect(report).toContain("hostRunId: 'c254ab28-97c9-4382-95e6-2db9c66f98c8'")
     if (kind === 'exception') expect(report).toContain('qualification-runtime-cause')
     if (kind === 'exit') expect(report).toContain('7')
+  })
+
+  it('delivers the verified access token only over the private Host channel', async () => {
+    const runtime = projectWithHost()
+    let access: { accessToken: string; expiresAt: number } | undefined = {
+      accessToken: 'access-token-first', expiresAt: 2_000_000_000_000,
+    }
+    const host = new DesktopHostProcess(process.execPath, runtime, runtime, undefined, process.env,
+      undefined, undefined, undefined, undefined, undefined, () => access)
+    hosts.push(host)
+    await host.start()
+    const file = join(runtime, 'suiyi-access.json')
+    await vi.waitFor(() => { expect(existsSync(file)).toBe(true) })
+    const first = JSON.parse(readFileSync(file, 'utf8')) as {
+      accessToken: string
+      env: string | null
+      argv: string[]
+      envKeys: string[]
+    }
+    expect(first.accessToken).toBe('access-token-first')
+    expect(first.env).toBeNull()
+    expect(first.argv.join(' ')).not.toContain('access-token-first')
+    expect(first.envKeys.some(key => key.includes('TOKEN'))).toBe(false)
+
+    access = { accessToken: 'access-token-second', expiresAt: 2_000_000_000_001 }
+    host.refreshSuiyiAccess()
+    await vi.waitFor(() => {
+      expect((JSON.parse(readFileSync(file, 'utf8')) as { accessToken: string }).accessToken).toBe('access-token-second')
+    })
+    await host.stop()
   })
 
   it('persists validated operation IPC across Host lifetimes and isolates a failing diagnostic sink', async () => {

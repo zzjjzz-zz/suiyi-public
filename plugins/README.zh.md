@@ -1,12 +1,14 @@
 # 可选独立插件
 
+[English](README.md) | 中文
+
 本目录收纳**不默认启用**的可选独立插件源码，随主仓一起版本化，但不参与主仓的 pnpm workspace 构建，也不改变现有 Web / 桌面 bundle 与 agent-loop、核心包。
 
 ## dsh-generative-ui
 
-MindLab 出品的生成式 UI 插件（独立 Cordis 双端包）：模型以 ```ui4a/tsx 围栏代码块或画布文件输出 TSX，由 dsh Web 端在对话内与画布面板中实时渲染。
+MindLab 出品的生成式 UI 插件（独立 Cordis 双端包）：模型以 `ui4a/tsx` 围栏代码块或画布文件输出 TSX，由 dsh Web 端在对话内与画布面板中实时渲染。
 
-- **来源**：[zzjjzz-zz/dsh-generative-ui](https://github.com/zzjjzz-zz/dsh-generative-ui) 的 main 分支，以 `git subtree add --prefix=plugins/dsh-generative-ui <repo> main --squash` 引入，对应源 commit `0eab211b0b75ebeb50e9b474080a92e0981ef79b`。
+- **来源**：[zzjjzz-zz/dsh-generative-ui](https://github.com/zzjjzz-zz/dsh-generative-ui) 的 main 分支，以 `git subtree add --prefix=plugins/dsh-generative-ui <repo> main --squash` 引入；维护中的上游版本以该仓库的 [tags](https://github.com/zzjjzz-zz/dsh-generative-ui/tags) 为准。
 - **许可**：Apache-2.0，见目录内 `LICENSE` 与 `NOTICE`。
 - **同步方式**：后续更新通过 `git subtree pull --prefix=plugins/dsh-generative-ui https://github.com/zzjjzz-zz/dsh-generative-ui.git main --squash` 合入，独立插件仓库保留。
 

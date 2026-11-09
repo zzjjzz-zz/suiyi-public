@@ -1,5 +1,7 @@
+import { useId } from 'react'
 import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SidebarBrandMarkOwnerProps } from '@deepseek-ai/dsh-client-ui-sidebar/client'
+import type { HeroBrandMarkOwnerProps } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import './brand.css'
 import { NS } from './locales.ts'
 
@@ -9,73 +11,172 @@ import { NS } from './locales.ts'
  */
 export type SuiyiBrandT = TranslateNS<typeof NS>
 
+/** Presentation shared by every mark position; the host supplies its own geometry class. */
+interface RibbonMarkProps {
+  /** Requested square edge in pixels. */
+  size: number
+  /** Host class carrying the surrounding mark geometry. */
+  className?: string | undefined
+  /** Whether the Assistant step is still streaming; gates the faster motion. */
+  running?: boolean | undefined
+  /** Marks the Assistant reply position, which stays still once the step settles. */
+  assistant?: boolean | undefined
+  /** Accessible name of the artwork. */
+  label: string
+}
+
 /**
- * Render the Suiyi fluid mark with the presentation requested by its host surface.
- * @param props - host-supplied mark presentation plus the locale copy seat.
- * @returns the Suiyi ribbon mark, still under `prefers-reduced-motion`.
+ * Render the Suiyi fluid ribbon: the prototype's two crossings, their glass
+ * highlights, and the wake stroke. The four painted gradients read the
+ * `--dsw-brand-mark-*` theme tokens, so the light and dark artwork follow the
+ * active palette; the white glass highlights are part of the artwork and stay
+ * scheme-invariant. The sidebar and hero positions idle-drift; the Assistant
+ * position runs the prototype's 2.8 s thinking drift with its 2.4 s orbit while
+ * streaming, then settles through the 0.5 s answer transition. The
+ * reduced-motion preference holds every position still and hides the orbit.
  */
-export function SuiyiBrandMark({ size, t }: SidebarBrandMarkOwnerProps & { t: SuiyiBrandT }) {
+function RibbonMark({ size, className, running, assistant, label }: RibbonMarkProps) {
+  // useId returns colons, which url(#id) references cannot carry in a selector.
+  const scope = useId().replace(/[^\w-]/g, '')
+  const wing = `dsh-suiyi-wing-${scope}`
+  const wake = `dsh-suiyi-wake-${scope}`
+  const glass = `dsh-suiyi-glass-${scope}`
+  const side = `dsh-suiyi-side-${scope}`
+  const orbit = `dsh-suiyi-orbit-${scope}`
   return (
     <svg
-      className="dsh-suiyi-mark"
+      className={className === undefined ? 'dsh-suiyi-mark' : `dsh-suiyi-mark ${className}`}
       width={size}
       height={size}
       viewBox="0 0 128 128"
       role="img"
-      aria-label={t('mark.label')}
+      aria-label={label}
+      data-assistant={assistant === true ? '' : undefined}
+      data-running={running === true ? '' : undefined}
     >
       <defs>
-        <linearGradient id="dsh-suiyi-wing" gradientUnits="userSpaceOnUse" x1="25" y1="24" x2="96" y2="66">
-          <stop offset="0" stopColor="var(--dsw-alias-brand-primary)" />
-          <stop offset="1" stopColor="var(--dsw-alias-state-idle-primary)" />
+        <linearGradient id={wing} x1="17%" y1="0%" x2="92%" y2="94%">
+          <stop offset="0" stopColor="var(--dsw-brand-mark-wing-1)" />
+          <stop offset="0.27" stopColor="var(--dsw-brand-mark-wing-2)" />
+          <stop offset="0.63" stopColor="var(--dsw-brand-mark-wing-3)" />
+          <stop offset="1" stopColor="var(--dsw-brand-mark-wing-4)" />
         </linearGradient>
-        <linearGradient id="dsh-suiyi-wake" gradientUnits="userSpaceOnUse" x1="32" y1="102" x2="96" y2="48">
-          <stop offset="0" stopColor="var(--dsw-alias-state-idle-primary)" />
-          <stop offset="1" stopColor="var(--dsw-alias-brand-primary)" />
+        <linearGradient id={wake} x1="0%" y1="84%" x2="100%" y2="9%">
+          <stop offset="0" stopColor="var(--dsw-brand-mark-wake-1)" />
+          <stop offset="0.34" stopColor="var(--dsw-brand-mark-wake-2)" />
+          <stop offset="0.68" stopColor="var(--dsw-brand-mark-wake-3)" />
+          <stop offset="1" stopColor="var(--dsw-brand-mark-wake-4)" />
         </linearGradient>
-        <linearGradient id="dsh-suiyi-line" gradientUnits="userSpaceOnUse" x1="8" y1="90" x2="113" y2="38">
-          <stop offset="0" stopColor="var(--dsw-alias-state-idle-primary)" />
-          <stop offset="0.52" stopColor="var(--dsw-alias-brand-primary)" />
-          <stop offset="1" stopColor="var(--dsw-alias-state-idle-primary)" />
+        <linearGradient id={glass} x1="4%" y1="4%" x2="84%" y2="90%">
+          <stop stopColor="#ffffff" stopOpacity="0.93" />
+          <stop offset="0.47" stopColor="#e6faff" stopOpacity="0.37" />
+          <stop offset="1" stopColor="#ffffff" stopOpacity="0" />
+        </linearGradient>
+        <linearGradient id={side} x1="100%" y1="15%" x2="0%" y2="100%">
+          <stop stopColor="#fcffff" stopOpacity="0.56" />
+          <stop offset="1" stopColor="#fcffff" stopOpacity="0" />
+        </linearGradient>
+        <linearGradient id={orbit} x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0" stopColor="var(--dsw-brand-mark-wake-1)" />
+          <stop offset="1" stopColor="var(--dsw-brand-mark-wing-3)" />
         </linearGradient>
       </defs>
-      <ellipse
-        className="dsh-suiyi-orbit"
-        cx="64"
-        cy="66"
-        rx="51.2"
-        ry="22.4"
-        transform="rotate(-24 64 66)"
-        fill="none"
-        stroke="url(#dsh-suiyi-line)"
-        strokeWidth="1.85"
-        opacity="0.82"
-      />
-      <path
-        className="dsh-suiyi-body"
-        d="M90.4 29.2C77.6 22 61.6 22 46.4 26.8C27.2 32.4 19.2 43.6 23.2 54C26.4 65.2 40.8 69.2 53.6 62.8C41.6 60.4 40 54 44 46.8C51.2 36.4 71.2 32.4 90.4 29.2Z"
-        fill="url(#dsh-suiyi-wing)"
-      />
-      <path
-        className="dsh-suiyi-tail"
-        d="M34.4 100.4C52 100.4 72.8 94.8 85.6 82.8C96.8 71.6 96.8 57.2 88 50.8C81.6 45.2 70.4 44.4 62.4 50C72.8 50.8 79.2 59.6 73.6 68.4C66.4 82.8 51.2 92.4 34.4 100.4Z"
-        fill="url(#dsh-suiyi-wake)"
-      />
+      <g className="dsh-suiyi-orbit" aria-hidden="true">
+        <circle
+          cx="64"
+          cy="64"
+          r="60"
+          fill="none"
+          stroke={`url(#${orbit})`}
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeDasharray="152 225"
+        />
+      </g>
+      <g className="dsh-suiyi-ribbon">
+        <path
+          d="M98 29.4C79.9 19.3 57.9 19.3 41.7 27.5C27 34.8 19.3 46 25.9 56.2C31.4 65.3 43.7 69.7 55.9 65C49.2 61 47.8 56 51.8 49.8C58.4 39.5 77.5 32.7 98 29.4Z"
+          fill={`url(#${wing})`}
+        />
+        <path
+          className="dsh-suiyi-gloss"
+          d="M42.4 29.2C58.8 21.4 78.7 21.9 94.5 29C71.8 34.8 59.3 40.7 52.2 48.5C58.7 39.4 75.8 32.1 98 29.4C79.9 19.3 57.9 19.3 41.7 27.5Z"
+          fill={`url(#${glass})`}
+          opacity="0.66"
+        />
+        <path
+          d="M30 103C50.8 104.1 72.3 97.7 87.8 85C101.3 73.7 107 59 99 51.3C91.4 43.3 76.2 44.6 65.3 52.4C77.6 55.8 80.8 62.3 76.1 71.3C68.7 84 50.8 95.6 30 103Z"
+          fill={`url(#${wake})`}
+        />
+        <path
+          className="dsh-suiyi-gloss"
+          d="M30 103C48.4 97.3 68.8 84.3 76.1 71.3C81 62.6 76.2 55.1 65.3 52.4C76.2 44.6 91.4 43.3 99 51.3C86 49.7 86 63.6 79.8 74.7C68.3 90.3 50.7 99.4 30 103Z"
+          fill={`url(#${side})`}
+          opacity="0.66"
+        />
+        <path
+          d="M27.8 49.5C28.3 55 32.1 59.7 38.6 61.8"
+          fill="none"
+          stroke="#e9ffff"
+          strokeOpacity="0.55"
+          strokeWidth="0.85"
+          strokeLinecap="round"
+        />
+      </g>
     </svg>
   )
 }
 
 /**
- * Render the two-line Suiyi wordmark: the hanzi name over the romanization.
- * The browser palette tokens drive its color, so light and dark stay legible.
+ * Render the Suiyi mark for the sidebar brand slot.
+ * @param props - host-supplied mark presentation plus the locale copy seat.
+ * @returns the Suiyi ribbon mark at the requested size.
+ */
+export function SuiyiBrandMark({ size, t }: SidebarBrandMarkOwnerProps & { t: SuiyiBrandT }) {
+  return <RibbonMark size={size} label={t('mark.label')} />
+}
+
+/**
+ * Render the Suiyi mark before the blank-session headline, keeping the host's
+ * geometry class on the artwork so the hero hover target and layout still
+ * apply.
+ * @param props - hero mark presentation, host class, and the locale copy seat.
+ * @returns the Suiyi ribbon mark at the hero size.
+ */
+export function SuiyiHeroMark({ size, className, t }: HeroBrandMarkOwnerProps & { t: SuiyiBrandT }) {
+  return <RibbonMark size={size} className={className} label={t('mark.label')} />
+}
+
+/**
+ * Owner data of `conversation.chat.assistant.mark`. ui-chat declares the slot
+ * with exactly this face but keeps the interface out of its client entry, so
+ * this component restates it and the slot's derived props remain assignable.
+ */
+interface AssistantMarkPresentation {
+  /** Requested square edge in pixels. */
+  size: number
+  /** Whether the Assistant step is still streaming. */
+  running: boolean
+  /** Host class carrying the surrounding mark geometry. */
+  className?: string | undefined
+}
+
+/**
+ * Render the Suiyi mark before one Assistant reply. The host class keeps the
+ * reply-column geometry; `running` selects the faster streaming drift.
+ * @param props - assistant mark presentation, host class, and the locale copy seat.
+ * @returns the Suiyi ribbon mark at the reply-mark size.
+ */
+export function SuiyiAssistantMark({ size, running, className, t }: AssistantMarkPresentation & { t: SuiyiBrandT }) {
+  return <RibbonMark size={size} className={className} running={running} assistant label={t('mark.label')} />
+}
+
+/**
+ * Render the single-line Suiyi wordmark. The prototype drops the romanization
+ * subline, so the name holds one 500-weight line in the brand font.
  * @param props - locale copy seat declared by this package's registration.
- * @returns the two-line Chinese wordmark.
+ * @returns the Chinese wordmark.
  */
 export function SuiyiBrandName({ t }: { t: SuiyiBrandT }) {
-  return (
-    <span className="dsh-suiyi-name">
-      <strong className="dsh-suiyi-name-hanzi">{t('name.hanzi')}</strong>
-      <small className="dsh-suiyi-name-roman" aria-label={t('name.romanLabel')}>{t('name.roman')}</small>
-    </span>
-  )
+  return <strong className="dsh-suiyi-name">{t('name.hanzi')}</strong>
 }

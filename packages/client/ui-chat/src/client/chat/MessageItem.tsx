@@ -216,9 +216,18 @@ function UserStyleBubble({
     ...(referenceLabels === undefined ? {} : { sessionLabels: referenceLabels }),
     ...(skillNames === undefined ? {} : { skillNames }),
   }), [inputFacts, referenceLabels, skillNames])
+  const revealActions = process.env.DSH_CLIENT_BUILD_PROFILE === 'suiyi' && actions !== undefined
   return (
     <div
       className={css.userRow}
+      data-message-actions-on-demand={revealActions || undefined}
+      tabIndex={revealActions ? -1 : undefined}
+      onPointerDown={revealActions ? (event) => {
+        if (event.pointerType === 'touch' && event.target instanceof Element
+          && !event.target.closest('button,a,input,textarea,select,[contenteditable]')) {
+          event.currentTarget.focus({ preventScroll: true })
+        }
+      } : undefined}
       data-pending-steering={pending || undefined}
       data-submission-echo={echo || undefined}
       data-chat-steering-batch={batchStart ? 'start' : undefined}

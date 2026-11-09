@@ -21,8 +21,35 @@
   }
 }
 
+/* The recent list is secondary navigation: muted ink at rest, primary ink on
+   hover and for the selected Session. */
+.sessionRow {
+  color: var(--dsw-alias-label-secondary);
+}
+
 .sessionRow.selected {
-  background-color: var(--dsw-alias-interactive-bg-hover);
+  background-color: color-mix(in srgb, var(--dsw-alias-bg-layer-1) 65%, transparent);
+  color: var(--dsw-alias-label-primary);
+}
+
+.markerSlot {
+  position: relative;
+}
+
+.markerSlot > :not(.sessionGlyph) {
+  position: absolute;
+  inset: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.markerSlot:has([data-session-schedule-mark]) .sessionGlyph {
+  display: none;
+}
+
+.sessionGlyph {
+  color: var(--dsw-alias-label-tertiary);
 }
 
 .dragPreview {
@@ -108,25 +135,50 @@
   color: var(--dsw-alias-label-secondary);
 }
 
-/* Compact one-line Workspace row after removing the session-count subtitle. */
+/* Compact one-line Workspace row after removing the session-count subtitle;
+   34px matches the prototype's recent-list row height. */
 .projectRow {
-  height: 32px;
+  height: 34px;
   align-items: center;
   box-sizing: border-box;
+  gap: 8px;
 }
 
 .projectRow .rowActions {
   height: 20px;
 }
 
-/* Session titles share the workspace icon slot and compact label gap. */
+/* Session titles share the workspace icon slot and the prototype's 8px gap. */
 .sessionRow {
-  height: 32px;
-  gap: 0;
+  height: 36px;
+  gap: 8px;
 }
 
+/* Recent Sessions read one step below the Workspace row, as in the prototype. */
 .sessionRow .title {
-  margin: 0 6px 0 var(--dsh-sidebar-label-gap);
+  margin: 0 6px 0 8px;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.sessionRow.suiyiRecent {
+  padding-inline-start: calc(var(--dsh-sidebar-row-padding) - var(--dsh-sidebar-paint-inset) - 1px + var(--dsh-workspace-indent, 0px));
+  gap: 9px;
+}
+
+.suiyiRecent > .slot {
+  width: 14px;
+}
+
+.suiyiRecent .title {
+  margin-inline-start: 0;
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.projectRow .title {
+  font-size: 13px;
+  font-weight: 500;
 }
 
 .slot {
@@ -317,6 +369,7 @@
 @media (hover: hover) {
   .sessionRow:hover {
     background-color: var(--dsw-alias-interactive-bg-hover);
+    color: var(--dsw-alias-label-primary);
   }
 
   .sessionRow:hover .rowActions,

@@ -30,8 +30,8 @@ import {
 } from 'electron'
 import { resolveDesktopPaths, initializeSuiyiStorage, suiyiUserHostEnvironment, applySuiyiUserElectronStorage, suiyiUserDirectory, type SuiyiVerifiedIdentity } from './paths.ts'
 import {
-  runSuiyiLoginGate, watchSuiyiSession, suiyiLoginSession, suiyiSessionTimer, suiyiSessionDeadline,
-  SESSION_LOCK_COPY, LOGIN_GATE_COPY, type SuiyiLoginSession,
+  runSuiyiLoginAttempt, watchSuiyiSession, suiyiLoginSession, suiyiSessionTimer, suiyiSessionDeadline,
+  SESSION_LOCK_COPY, type SuiyiLoginResult, type SuiyiLoginSession,
 } from './keycloak/login-gate.ts'
 import { DesktopProjectManager } from './project-manager.ts'
 import { DesktopHostFatalError, DesktopHostProcess, DesktopHostUncleanExitError } from './host-process.ts'
@@ -40,7 +40,10 @@ import { installDesktopFileDrag } from './file-drag.ts'
 import { installDesktopDirectoryPicker } from './directory-picker.ts'
 import { installMicrophonePermissions } from './microphone-permissions.ts'
 import { DesktopBackendController } from './backend-controller.ts'
-import { DESKTOP_IPC, SCHEME, assertDesktopSender, type DesktopUpdateState } from './ipc.ts'
+import {
+  DESKTOP_IPC, SCHEME, assertDesktopSender,
+  type DesktopSuiyiIdentityView, type DesktopSuiyiSignInResult, type DesktopUpdateState,
+} from './ipc.ts'
 import { readDeviceInfo } from './device-info.ts'
 import { desktopUpdateReadyConfirmation, formatDesktopMessage, resolveDesktopLocale, resolveDesktopStartupLocale } from './locale.ts'
 import type { DesktopMessages } from './locale.ts'
@@ -54,6 +57,7 @@ import { DesktopFatalRecovery } from './fatal-recovery.ts'
 import { pruneCrashReports, RendererConsoleTail, writeCrashReport, type CrashReportSource } from './crash-report.ts'
 import { OperationJournal } from './operation-journal.ts'
 import { runOperationReportJob, type OperationReportJobResult } from './operation-report-job.ts'
+import { openSuiyiLoginWindow, openSuiyiWelcomeWindow } from './suiyi-login-window.ts'
 import { openWelcomeWindow } from './welcome-window.ts'
 import { WELCOME_IPC, needsWelcome, type WelcomeNotice } from './welcome-api.ts'
 import { connectDesktopWelcome, type DesktopWelcomeBackend } from './welcome-backend.ts'
@@ -400,41 +404,56 @@ async function main(): Promise<void> {
   let suiyiIdentity: SuiyiVerifiedIdentity | undefined
   let suiyiLocked = false
   let suiyiDeadline = 0
+  // Verified bearer token kept only in the main process and the Host's private channel.
+  let suiyiAccess: Pick<SuiyiLoginResult, 'accessToken' | 'expiresAt'> | undefined
+  // Safe display name from the verified ID token; never an email, username, or issuer value.
+  let suiyiDisplayName: string | undefined
   let suiyiExpiryWatch: { promptWhileLocked(): void; expire(): void; cancel(): void } | undefined
   let suiyiResume: (session: SuiyiLoginSession) => Promise<void> = async () => {}
   let armSuiyiExpiry: (() => void) | undefined
+  let promptSuiyiLogin = (): Promise<SuiyiLoginResult | undefined> => Promise.resolve(undefined)
+  let suiyiSignIn = (): Promise<DesktopSuiyiSignInResult> => Promise.resolve({ ok: false, reason: 'unavailable' })
+  let suiyiSignOut = (): Promise<void> => Promise.resolve()
   if (desktopIdentity.suiyi) {
     // This machine-wide issuer setting belongs to the pre-login profile;
     // keep its path stable after userData switches to the verified user.
     const issuerSettingsRoot = app.getPath('userData')
-    let login = await runSuiyiLoginGate({
-      appData: issuerSettingsRoot,
-      openBrowser: url => shell.openExternal(url),
-      showRetry: async ({ message }) => {
-        const result = await dialog.showMessageBox({
-          type: 'warning', title: LOGIN_GATE_COPY.title, message,
-          buttons: ['Retry', 'Cancel'], defaultId: 0, cancelId: 1,
-        })
-        return result.response
-      },
-    })
-    while (login !== undefined && suiyiSessionDeadline({ expiresAt: login.expiresAt, now: Date.now() }) <= Date.now()) {
-      const retry = await dialog.showMessageBox({ type: 'warning', title: LOGIN_GATE_COPY.title,
-        message: LOGIN_GATE_COPY.expiredPrompt,
-        buttons: ['Retry', 'Cancel'], defaultId: 0, cancelId: 1 })
-      if (retry.response !== 0) { login = undefined; break }
-      login = await runSuiyiLoginGate({ appData: issuerSettingsRoot, openBrowser: url => shell.openExternal(url),
-        showRetry: async ({ message }) => (await dialog.showMessageBox({ type: 'warning', title: LOGIN_GATE_COPY.title,
-          message, buttons: ['Retry', 'Cancel'], defaultId: 0, cancelId: 1 })).response })
+    // No Host, user home, or user-scoped storage exists yet, so the login page
+    // reads only the pre-login locale cache and the OS language preference.
+    const loginLocale = brandDesktopLocale(resolveDesktopStartupLocale(
+      readDesktopLocaleCache(app.getPath('userData')) ?? null, app.getPreferredSystemLanguages()))
+    // One verified login page drives first login, failed retries, and expiry re-login.
+    promptSuiyiLogin = async (): Promise<SuiyiLoginResult | undefined> => {
+      const prompt = await openSuiyiLoginWindow({
+        locale: loginLocale,
+        attempt: ({ signal, onAuthorizeUrl }) => runSuiyiLoginAttempt({
+          appData: issuerSettingsRoot,
+          openBrowser: async (url) => {
+            onAuthorizeUrl(url)
+            await shell.openExternal(url)
+          },
+          signal,
+        }),
+        onCancel: quitWithoutConfirmation,
+      })
+      const verified = await prompt.result
+      prompt.close()
+      return verified
     }
-    if (login === undefined) {
-      await dialog.showMessageBox({ type: 'info', title: LOGIN_GATE_COPY.title,
-        message: LOGIN_GATE_COPY.cancelPrompt, buttons: ['OK'], cancelId: 0 })
-      quitWithoutConfirmation()
-      return
+    let login: SuiyiLoginResult | undefined
+    while (login === undefined) {
+      const verified = await promptSuiyiLogin()
+      if (verified === undefined) return
+      // A token that expired before the window closed cannot authorize the Host;
+      // ask for a fresh login instead of entering a locked workspace.
+      if (suiyiSessionDeadline({ expiresAt: verified.expiresAt, now: Date.now() }) <= Date.now()) continue
+      login = verified
     }
-    // Verified issuer+sub now own every data root and the Host environment; the
-    // tokens that proved them are not kept past this point.
+    suiyiAccess = { accessToken: login.accessToken, expiresAt: login.expiresAt }
+    suiyiDisplayName = login.displayName
+    // Verified issuer+sub now own every data root and the Host environment. The
+    // refresh token is dropped; the access token stays in this process and the
+    // Host's private channel memory only.
     const appData = app.getPath('appData')
     const userPaths = applySuiyiUserElectronStorage(app, appData, login)
     suiyiBrowserPartition = `persist:suiyi-${suiyiUserDirectory(login)}`
@@ -453,10 +472,18 @@ async function main(): Promise<void> {
     app.setAppLogsPath(join(app.getPath('userData'), 'logs'))
     // Register the expiry watcher only after the Host and every lock effect
     // are initialized; startup I/O may outlive a short-lived access token.
-    const verifiedLogin = login
+    let expiryQuitBound = false
     armSuiyiExpiry = () => {
+      if (suiyiIdentity === undefined || suiyiAccess === undefined || suiyiDeadline <= 0) return
+      const currentSession = suiyiLoginSession({
+        issuer: suiyiIdentity.issuer,
+        sub: suiyiIdentity.sub,
+        expiresAt: suiyiDeadline,
+        accessToken: suiyiAccess.accessToken,
+        ...(suiyiDisplayName === undefined ? {} : { name: suiyiDisplayName }),
+      }, Date.now())
       const expiry = watchSuiyiSession({
-        session: suiyiLoginSession(verifiedLogin, Date.now()),
+        session: currentSession,
         timer: suiyiSessionTimer(),
         effects: {
           closeWorkspace: async () => { await suiyiLock.closeWorkspace() },
@@ -473,21 +500,18 @@ async function main(): Promise<void> {
           },
           openBrowser: url => shell.openExternal(url),
         },
-        login: () => runSuiyiLoginGate({
-          appData: issuerSettingsRoot,
-          openBrowser: url => shell.openExternal(url),
-          showRetry: async ({ message }) => {
-            const result = await dialog.showMessageBox({
-              type: 'warning', title: LOGIN_GATE_COPY.title, message,
-              buttons: ['Retry', 'Cancel'], defaultId: 0, cancelId: 1,
-            })
-            return result.response
-          },
+        login: () => promptSuiyiLogin().catch(() => {
+          // A window that cannot open leaves the workspace locked; activation retries.
+          console.error('Suiyi re-login window failed')
+          return undefined
         }),
         onRelogin: session => suiyiResume(session),
       })
       suiyiExpiryWatch = expiry
-      app.on('will-quit', () => { expiry.cancel() })
+      if (!expiryQuitBound) {
+        expiryQuitBound = true
+        app.on('will-quit', () => { suiyiExpiryWatch?.cancel() })
+      }
     }
   }
   // The Host profile remains bound to the first verified account even if its
@@ -553,13 +577,25 @@ async function main(): Promise<void> {
   let workspaceRecovery: Promise<void> | undefined
   let mainWindow: BrowserWindow | undefined
   let welcomeWindow: BrowserWindow | undefined
+  let suiyiWelcomeWindow: BrowserWindow | undefined
+  let openingSuiyiWelcome: Promise<void> | undefined
+  /** Safe identity view consumed by the account menu and top bar. */
+  const suiyiIdentityView = (): DesktopSuiyiIdentityView => {
+    if (!desktopIdentity.suiyi) return { state: 'unavailable' }
+    if (suiyiLocked || suiyiIdentity === undefined) return { state: 'locked' }
+    return { state: 'signed-in', ...(suiyiDisplayName === undefined ? {} : { displayName: suiyiDisplayName }) }
+  }
+  const publishSuiyiIdentity = (): void => {
+    if (mainWindow === undefined || mainWindow.isDestroyed()) return
+    mainWindow.webContents.send(DESKTOP_IPC.suiyiIdentityChanged, suiyiIdentityView())
+  }
   // The stopped backend rejects in-flight Host work and frees the child so no
   // background session outlives the verified login.
   suiyiLock.stopHost = async () => {
     try { await backend.stop() }
     catch (error) {
       // A failed stop cannot be treated as a successful teardown or re-login.
-      await backend.close().catch((closeError: unknown) => { console.error(closeError) })
+      await backend.close().catch(() => { console.error('Suiyi Host close after failed stop also failed') })
       throw error
     }
   }
@@ -598,15 +634,18 @@ async function main(): Promise<void> {
     suiyiLocked = true
     suiyiIdentity = undefined
     suiyiDeadline = 0
+    suiyiAccess = undefined
+    suiyiDisplayName = undefined
     hostUrl = undefined
     hostCookie = undefined
     injections = []
     enteredWorkspace = false
     // Hide and destroy sensitive content before awaiting native view cleanup.
-    for (const window of [welcomeWindow, mainWindow]) {
+    for (const window of [welcomeWindow, suiyiWelcomeWindow, mainWindow]) {
       if (window !== undefined && !window.isDestroyed()) { window.hide(); window.destroy() }
     }
     welcomeWindow = undefined
+    suiyiWelcomeWindow = undefined
     mainWindow = undefined
     platformView.setSession(null)
     await platformView.closeAndWait()
@@ -618,6 +657,8 @@ async function main(): Promise<void> {
     suiyiResume = async (relogin) => {
       suiyiIdentity = relogin.identity
       suiyiDeadline = relogin.deadline
+      suiyiAccess = { accessToken: relogin.accessToken, expiresAt: relogin.deadline }
+      suiyiDisplayName = relogin.displayName
       try {
         // Backend startup may run while the screen remains locked, but only
         // a confirmed ready Host can release the workspace access gate.
@@ -631,8 +672,87 @@ async function main(): Promise<void> {
         suiyiLocked = true
         suiyiIdentity = undefined
         suiyiDeadline = 0
-        await backend.stop().catch((stopError: unknown) => { console.error(stopError) })
+        await backend.stop().catch(() => { console.error('Suiyi Host stop after failed resume also failed') })
         throw error
+      }
+    }
+    let suiyiSignFlow: Promise<'ok' | 'cancelled' | 'failed'> | undefined
+    let suiyiSigningOut = false
+    const promptAndResumeSuiyi = (): Promise<'ok' | 'cancelled' | 'failed'> => {
+      if (suiyiSignFlow !== undefined) return suiyiSignFlow
+      const flow = (async (): Promise<'ok' | 'cancelled' | 'failed'> => {
+        const verified = await promptSuiyiLogin()
+        if (verified === undefined) return 'cancelled'
+        // A different account requires a full restart so per-user storage and
+        // Electron partitions cannot be rebound in place.
+        if (verifiedHostOwner !== undefined
+          && (verified.issuer !== verifiedHostOwner.issuer || verified.sub !== verifiedHostOwner.sub)) {
+          return 'failed'
+        }
+        const session = suiyiLoginSession(verified, Date.now())
+        if (session.deadline <= Date.now()) return 'failed'
+        await suiyiResume(session)
+        suiyiExpiryWatch?.cancel()
+        armSuiyiExpiry?.()
+        publishSuiyiIdentity()
+        return 'ok'
+      })().catch(() => {
+        // Authentication errors can carry provider detail; log only the fixed class.
+        console.error('Suiyi sign-in failed')
+        return 'failed' as const
+      }).finally(() => { suiyiSignFlow = undefined })
+      suiyiSignFlow = flow
+      return flow
+    }
+    suiyiSignIn = async () => {
+      if (!desktopIdentity.suiyi) return { ok: false, reason: 'unavailable' }
+      if (!suiyiLocked) return { ok: true }
+      const outcome = await promptAndResumeSuiyi()
+      return outcome === 'ok' ? { ok: true } : { ok: false, reason: outcome }
+    }
+    const reportSuiyiSignOutFailure = async (): Promise<void> => {
+      // A failed cleanup cannot leave a background shell with no UI: report once,
+      // then quit through the same confirmation-free exit the lock path uses.
+      try {
+        await dialog.showMessageBox({ type: 'error', title: SESSION_LOCK_COPY.title,
+          message: SESSION_LOCK_COPY.cleanupFailed, buttons: ['OK'] })
+      } catch {
+        // A dialog failure must not keep the process alive without a window.
+      }
+      quitWithoutConfirmation()
+    }
+    suiyiSignOut = async () => {
+      if (!desktopIdentity.suiyi || suiyiLocked || suiyiIdentity === undefined || suiyiSigningOut) return
+      suiyiSigningOut = true
+      suiyiExpiryWatch?.cancel()
+      suiyiExpiryWatch = undefined
+      try {
+        try {
+          await suiyiLock.closeWorkspace()
+        } catch {
+          console.error('Suiyi sign-out lock failed')
+          await reportSuiyiSignOutFailure()
+          return
+        }
+        try {
+          await suiyiLock.stopHost()
+          await suiyiLock.clearBrowserStorage()
+        } catch {
+          console.error('Suiyi sign-out cleanup failed')
+          await reportSuiyiSignOutFailure()
+          return
+        }
+        publishSuiyiIdentity()
+        const outcome = await promptAndResumeSuiyi()
+        // Cancelling or failing the real login page must not leave a windowless
+        // background process; quit explicitly (the Host is already stopped).
+        if (outcome !== 'ok') quitWithoutConfirmation()
+      } catch {
+        console.error('Suiyi sign-out failed')
+        await reportSuiyiSignOutFailure()
+      } finally {
+        suiyiSigningOut = false
+        publishSuiyiIdentity()
       }
     }
   }
@@ -753,7 +873,7 @@ async function main(): Promise<void> {
           segmentBytes: 256 * 1024, recordBytes: 4096, queuedBytes: 64 * 1024,
         })
         operationJournal.enqueue(JSON.stringify(record))
-      })
+      }, () => suiyiAccess)
     return {
       start: async () => {
         const ready = await host.start()
@@ -1161,6 +1281,48 @@ async function main(): Promise<void> {
   ipcMain.handle(DESKTOP_IPC.updatesStatus, (event) => {
     assertProductSender(event)
     return updatePresentation(updates.state)
+  })
+  ipcMain.handle(DESKTOP_IPC.suiyiIdentityView, (event) => {
+    assertProductSender(event)
+    return suiyiIdentityView()
+  })
+  ipcMain.handle(DESKTOP_IPC.suiyiWelcome, async (event) => {
+    assertProductSender(event)
+    if (!desktopIdentity.suiyi || !suiyiAccessAllowed()) throw new Error('Suiyi welcome requires a valid login')
+    if (suiyiWelcomeWindow !== undefined && !suiyiWelcomeWindow.isDestroyed()) {
+      suiyiWelcomeWindow.show()
+      suiyiWelcomeWindow.focus()
+      return
+    }
+    if (openingSuiyiWelcome !== undefined) return openingSuiyiWelcome
+    const opening = (async (): Promise<void> => {
+      const window = await openSuiyiWelcomeWindow(locale)
+      if (!suiyiAccessAllowed() || isQuitting()) { window.destroy(); return }
+      suiyiWelcomeWindow = window
+      window.once('closed', () => {
+        if (suiyiWelcomeWindow === window) suiyiWelcomeWindow = undefined
+        if (suiyiAccessAllowed() && mainWindow !== undefined && !mainWindow.isDestroyed()) mainWindow.focus()
+      })
+      window.show()
+      window.focus()
+    })().finally(() => { openingSuiyiWelcome = undefined })
+    openingSuiyiWelcome = opening
+    return opening
+  })
+  ipcMain.handle(DESKTOP_IPC.suiyiIdentitySignIn, async (event) => {
+    assertProductSender(event)
+    return await suiyiSignIn()
+  })
+  ipcMain.handle(DESKTOP_IPC.suiyiIdentitySignOut, (event) => {
+    assertProductSender(event)
+    // The handler acknowledges before the workspace is torn down; the caller
+    // window is intentionally destroyed by the lock lifecycle.
+    setImmediate(() => {
+      void suiyiSignOut().catch(() => {
+        // The sign-out path owns its cleanup; this is the last unhandled guard.
+        console.error('Suiyi sign-out failed')
+      })
+    })
   })
   ipcMain.handle(DESKTOP_IPC.deviceInfo, (event) => {
     assertProductSender(event)
@@ -1583,6 +1745,7 @@ async function main(): Promise<void> {
     if (activate) window.show()
     else window.showInactive()
     enteredWorkspace = true
+    publishSuiyiIdentity()
     if (welcomeWindow !== undefined) {
       welcomeWindow.close()
       window.webContents.send(DESKTOP_IPC.enterWorkspace)
@@ -1683,7 +1846,11 @@ async function main(): Promise<void> {
   }
   focusPrimaryWindow = () => {
     if (quitting) return
-    if (!suiyiAccessAllowed()) { suiyiExpiryWatch?.promptWhileLocked(); return }
+    if (!suiyiAccessAllowed()) {
+      if (suiyiExpiryWatch !== undefined) suiyiExpiryWatch.promptWhileLocked()
+      else void suiyiSignIn()
+      return
+    }
     if (isMandatory()) { mandatoryUI?.focus(); return }
     const window = welcomeWindow ?? mainWindow
     if (window === undefined || window.isDestroyed()) {
@@ -1732,7 +1899,7 @@ async function main(): Promise<void> {
       }),
       platformView.dispose(),
       disposeFileDrag(),
-    ].map(cleanup => cleanup.catch((error: unknown) => { console.error(error) })))
+    ].map(cleanup => cleanup.catch(() => { console.error('Desktop quit cleanup failed') })))
       .then(() => { app.quit() })
   }
   app.on('before-quit', (event) => {

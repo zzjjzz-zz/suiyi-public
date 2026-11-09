@@ -15,7 +15,7 @@ import { apply } from "../src/index.ts";
 
 type Registration = { deps: readonly string[]; effects: string[] };
 
-const applyWith = (available: readonly string[], config: unknown = {}) => {
+const applyWith = (available: readonly string[], config: unknown = { visualOutput: true }) => {
   const registrations: Registration[] = [];
   const asked = new Set<string>();
   const effects: string[] = [];
@@ -55,7 +55,7 @@ const applyWith = (available: readonly string[], config: unknown = {}) => {
 const ALL = ["webServer", "sessions", "connection", "fs", "sandboxPolicy", "shell", "llm", "agentDefaultModel", "skills", "settings", "web", "agents"];
 
 test("a full profile registers every route", () => {
-  const { effects } = applyWith(ALL, { allowExec: true });
+  const { effects } = applyWith(ALL, { allowExec: true, allowData: true, visualOutput: true });
   for (const label of ["dsh-generative-ui: workspace files", "dsh-generative-ui: commands", "dsh-generative-ui: model stream", "dsh-generative-ui: skill"]) {
     expect(effects).toContain(label);
   }
@@ -67,15 +67,17 @@ test("a full profile registers every route", () => {
 // against the schema itself — asserting it from here would be asserting it about an object the
 // host would never hand us.
 test("an explicit off leaves the command route unregistered", () => {
-  const { effects } = applyWith(ALL, { allowExec: false });
+  const { effects } = applyWith(ALL, { allowExec: false, allowData: false, visualOutput: true });
   expect(effects).not.toContain("dsh-generative-ui: commands");
-  expect(effects).toContain("dsh-generative-ui: workspace files");
+  // Workspace and web access have their own opt-in; rendering alone must not mount them.
+  expect(effects).not.toContain("dsh-generative-ui: workspace files");
+  expect(effects).not.toContain("dsh-generative-ui: web search");
   expect(effects).toContain("dsh-generative-ui: skill");
 });
 
 // And the other direction, which nothing checked: the setting has to actually reach the route.
 test("with commands on, the route is registered", () => {
-  const { effects } = applyWith(ALL, { allowExec: true });
+  const { effects } = applyWith(ALL, { allowExec: true, allowData: true, visualOutput: true });
   expect(effects).toContain("dsh-generative-ui: commands");
 });
 
@@ -88,7 +90,7 @@ test("with commands on, the route is registered", () => {
 test("a profile without `shell` loses only the command route", () => {
   const { effects } = applyWith(
     ALL.filter((name) => name !== "shell"),
-    { allowExec: true },
+    { allowExec: true, allowData: true, visualOutput: true },
   );
   expect(effects).not.toContain("dsh-generative-ui: commands");
   expect(effects).toContain("dsh-generative-ui: workspace files");
@@ -99,7 +101,7 @@ test("a profile without `shell` loses only the command route", () => {
 // The skill and the prompt sit outside the webServer inject on purpose: a profile with no web
 // server at all still tells the model how to write a card.
 test("a profile with no web server still registers the prompt and the skill", () => {
-  const { effects } = applyWith(["skills"]);
+  const { effects } = applyWith(["skills"], { visualOutput: true });
   expect(effects).toContain("dsh-generative-ui: skill");
   expect(effects).not.toContain("dsh-generative-ui: workspace files");
 });
@@ -112,6 +114,15 @@ test("a profile with no web server still registers the prompt and the skill", ()
  * the same check in `smoke.ts`; this is its counterpart, and the list is short enough that a
  * genuinely new dependency is a deliberate one-line edit here.
  */
+test("visual output off removes the prompt and skill but keeps the runtime routes", () => {
+  const { effects } = applyWith(ALL, { allowExec: false, allowData: false, visualOutput: false });
+  expect(effects).not.toContain("dsh-generative-ui: skill");
+  expect(effects).not.toContain("dsh-generative-ui: inline prompt");
+  // The sandbox/readiness routes are not prompt registrations and stay mounted.
+  expect(effects).toContain("dsh-generative-ui: isolated runtime");
+  expect(effects).toContain("dsh-generative-ui: visual output readiness");
+});
+
 test("apply() asks for no service that does not exist", () => {
   const { asked } = applyWith(ALL);
   expect([...asked].filter((name) => !ALL.includes(name))).toEqual([]);

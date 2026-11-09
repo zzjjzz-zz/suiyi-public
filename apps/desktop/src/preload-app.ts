@@ -4,7 +4,10 @@ import type { FileSaveResult } from '@deepseek-ai/dsh-client-ui-file-actions/typ
 import type { DesktopChannelState, DesktopChannelChangeResult } from '@deepseek-ai/dsh-client-ui-settings-general/types'
 import type { DesktopShortcutInput, ShortcutConfigSnapshot, ShortcutSaveResult } from '@deepseek-ai/dsh-client-shortcuts/protocol'
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
-import { DESKTOP_IPC, SCHEME, type DshDesktopProductApi, type DesktopUpdatePresentation } from './ipc.ts'
+import {
+  DESKTOP_IPC, SCHEME, type DesktopSuiyiIdentityBridge, type DesktopSuiyiIdentityView,
+  type DesktopSuiyiSignInResult, type DshDesktopProductApi, type DesktopUpdatePresentation,
+} from './ipc.ts'
 import { PLATFORM_IPC } from './platform-ipc.ts'
 import { markDocumentPlatform, syncWindowFullscreen } from './preload-platform.ts'
 import { syncNativeTheme } from './preload-theme.ts'
@@ -12,6 +15,21 @@ import { syncWindowsAppearance } from './preload-windows.ts'
 import { installMandatoryUpdateOverlay } from './preload-mandatory-overlay.ts'
 import { createDesktopBrowserBridge } from './preload-browser.ts'
 import type { FileDragHandle } from '@deepseek-ai/dsh-util-file-drag'
+
+/** Suiyi-only identity bridge; its absence means the identity center is unavailable. */
+function createSuiyiIdentityBridge(): DesktopSuiyiIdentityBridge {
+  return {
+    view: () => ipcRenderer.invoke(DESKTOP_IPC.suiyiIdentityView) as Promise<DesktopSuiyiIdentityView>,
+    signIn: () => ipcRenderer.invoke(DESKTOP_IPC.suiyiIdentitySignIn) as Promise<DesktopSuiyiSignInResult>,
+    signOut: () => ipcRenderer.invoke(DESKTOP_IPC.suiyiIdentitySignOut) as Promise<void>,
+    openWelcome: () => ipcRenderer.invoke(DESKTOP_IPC.suiyiWelcome) as Promise<void>,
+    subscribe(listener) {
+      const handle = (_event: Electron.IpcRendererEvent, view: DesktopSuiyiIdentityView): void => { listener(view) }
+      ipcRenderer.on(DESKTOP_IPC.suiyiIdentityChanged, handle)
+      return () => { ipcRenderer.off(DESKTOP_IPC.suiyiIdentityChanged, handle) }
+    },
+  }
+}
 
 function createProductApi(): DshDesktopProductApi {
   return {
@@ -83,6 +101,7 @@ function createProductApi(): DshDesktopProductApi {
         return () => { ipcRenderer.off(DESKTOP_IPC.updatesPresentation, handle) }
       },
     },
+    ...(process.env.DSH_CLIENT_BUILD_PROFILE === 'suiyi' ? { suiyiIdentity: createSuiyiIdentityBridge() } : {}),
   }
 }
 

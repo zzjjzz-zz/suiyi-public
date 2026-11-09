@@ -66,12 +66,17 @@ const pressed = (name: RegExp): string | null =>
   screen.getByRole('button', { name }).getAttribute('aria-pressed')
 
 describe('AppearanceRow', () => {
-  it('renders the title and three cubes with the preference cube selected', () => {
+  it('renders the title and three window-preview cards with the preference selected', () => {
     mount('dark')
     expect(screen.getByText('Appearance')).toBeDefined()
     expect(pressed(/Dark/)).toBe('true')
     expect(pressed(/Light/)).toBe('false')
     expect(pressed(/System/)).toBe('false')
+    for (const id of ['light', 'dark', 'system']) {
+      expect(document.querySelector(`[data-preview="${id}"]`)).not.toBeNull()
+    }
+    // The prototype cards are window thumbnails, not icon tiles.
+    expect(document.querySelectorAll('svg')).toHaveLength(0)
   })
 
   it('click drives setTheme; selection follows the store mirror, not the click echo', () => {

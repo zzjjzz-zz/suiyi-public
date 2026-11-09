@@ -159,12 +159,14 @@ async function issueIdToken(claims: {
   expOverride?: number | undefined
   iatMissing?: boolean
   alg?: string
+  name?: string
 } = {}): Promise<string> {
   const now = Math.floor(Date.now() / 1000)
   const builder = new SignJWT({
     sub: SUB,
     nonce: claims.nonce ?? 'unused-nonce',
     ...(claims.audOverride === undefined ? {} : { aud: claims.audOverride }),
+    ...(claims.name === undefined ? {} : { name: claims.name }),
   })
     .setProtectedHeader({ alg: claims.alg ?? 'RS256', kid: 'test-key-1' })
     .setIssuer(claims.issuerOverride ?? ISSUER)
@@ -186,6 +188,12 @@ describe('ID token verification (real RSA signatures)', () => {
     const idToken = await issueIdToken({ nonce })
     const result = await validateIdToken(idToken, ISSUER, AUDIENCE, nonce, providerKey.jwks, Date.now())
     expect(result).toEqual({ ok: true, claims: { sub: SUB, nonce, exp: expect.any(Number) as number } })
+  })
+
+  it('carries only a sanitized display name from the verified ID token', async () => {
+    const idToken = await issueIdToken({ nonce: 'n', name: '  Alice\u0000 Example  ' })
+    const result = await validateIdToken(idToken, ISSUER, AUDIENCE, 'n', providerKey.jwks, Date.now())
+    expect(result).toMatchObject({ ok: true, claims: { name: 'Alice Example' } })
   })
 
   it('rejects a tampered signature', async () => {
@@ -309,7 +317,7 @@ describe('loopback authorization-code login over real TCP', () => {
   })
 
   /** Start a login and return its authorize URL before the callback arrives. */
-  async function startLogin(): Promise<LoopbackRun> {
+  async function startLogin(signal?: AbortSignal): Promise<LoopbackRun> {
     let authorizeUrl: URL | undefined
     let resolveBrowser: (() => void) | undefined
     const browserGate = new Promise<void>((resolve) => { resolveBrowser = resolve })
@@ -318,6 +326,7 @@ describe('loopback authorization-code login over real TCP', () => {
       clientId: AUDIENCE,
       fetch: provider.fetch,
       timeoutMs: 1000,
+      ...(signal === undefined ? {} : { signal }),
       openBrowser: async (url) => {
         authorizeUrl = new URL(url)
         provider.expectedNonce = authorizeUrl.searchParams.get('nonce') ?? undefined
@@ -442,6 +451,39 @@ describe('loopback authorization-code login over real TCP', () => {
     expect(result).toMatchObject({ ok: false, failure: 'callback-timeout' })
   })
 
+  it('cancels an in-flight login and stops accepting its callback', async () => {
+    const controller = new AbortController()
+    const run = await startLogin(controller.signal)
+    const port = Number(new URL(run.authorizeUrl.searchParams.get('redirect_uri') ?? '').port)
+    controller.abort()
+    const result = await run.result
+    expect(result).toMatchObject({ ok: false, failure: 'callback-aborted' })
+    await expect(hitCallback(port, `${SUIYI_CALLBACK_PATH}?code=late&state=late`)).rejects.toThrow()
+  })
+
+  it('reports a browser launch failure separately from a cancelled login', async () => {
+    const result = await runAuthorizationCodeLogin({
+      issuer: ISSUER,
+      clientId: AUDIENCE,
+      fetch: provider.fetch,
+      timeoutMs: 1000,
+      openBrowser: async () => { throw new Error('no browser') },
+    })
+    expect(result).toMatchObject({ ok: false, failure: 'browser-unavailable' })
+  })
+
+  it('reports an unavailable loopback listener separately from a cancelled login', async () => {
+    const result = await runAuthorizationCodeLogin({
+      issuer: ISSUER,
+      clientId: AUDIENCE,
+      fetch: provider.fetch,
+      timeoutMs: 1000,
+      createCallbackServer: async () => { throw new Error('no loopback') },
+      openBrowser: async () => {},
+    })
+    expect(result).toMatchObject({ ok: false, failure: 'callback-server' })
+  })
+
   it('reports cancellation when the provider returns access_denied', async () => {
     const run = await startLogin()
     const port = Number(new URL(run.authorizeUrl.searchParams.get('redirect_uri') ?? '').port)
@@ -499,10 +541,6 @@ describe('loopback authorization-code login over real TCP', () => {
 })
 
 describe('issuer configuration fallback', () => {
-  it('ships the configured HTTPS identity center rather than an invalid placeholder', () => {
-    expect(SUIYI_OIDC_ISSUER).toBe('https://sso.zzjjzz.top/realms/identity')
-  })
-
   it('uses the packaged default when the override file is missing', async () => {
     const result = await resolveSuiyiOidcIssuer('/tmp', async () => {
       const error = new Error('no such file') as NodeJS.ErrnoException

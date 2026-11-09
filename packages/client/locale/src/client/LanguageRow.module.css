@@ -33,6 +33,12 @@
   color: var(--dsw-alias-label-primary);
 }
 
+.description {
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-secondary);
+}
+
 /* Language selector uses the standard control size. */
 .selector {
   display: inline-flex;

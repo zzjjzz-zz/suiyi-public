@@ -45,6 +45,14 @@ const CLIENT_ARTIFACT_PATTERNS = [
   'packages/*/*/lib/client.*.js',
   'packages/*/*/lib/client.*.js.map',
   'packages/*/*/lib/assets/**/*',
+  // Built-in capabilities kept outside packages/ still ship browser bundles.
+  'plugins/*/lib/client.js',
+  'plugins/*/lib/client.js.map',
+  'plugins/*/lib/client.*.js',
+  'plugins/*/lib/client.*.js.map',
+  'plugins/*/lib/assets/**/*',
+  // The opaque-origin sandbox runtime and its exact wasm are browser artifacts too.
+  'plugins/*/lib/sandbox/**/*',
 ] as const
 
 /** Public values embedded in one set of client artifacts. */

@@ -51,6 +51,9 @@
     },
     {
       "path": "../../packages/util/brand"
+    },
+    {
+      "path": "../../packages/mcp/plugin-hub-client"
     }
   ]
 }

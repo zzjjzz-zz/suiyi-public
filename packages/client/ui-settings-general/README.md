@@ -26,6 +26,8 @@ The Settings panel uses a shared 800 × 800 layout, bounded by the viewport. Lon
 
 In browsers below 768px viewport width, the panel fills the viewport and navigation becomes a horizontal strip: the title shares the first row with the header's action and close seats, the registered section cells scroll sideways on the second, and the active section fills the rest. Cells grow into spare width and hold a minimum width, and the strip scrolls instead of truncating, so a registrant's label length or a longer section roster cannot wrap or clip a name; the selected cell carries initial focus, which brings it into the strip's view. Section content keeps a 16px inline padding at that width, and the 48px gutter separating a preference label from its control narrows with it.
 
+In Suiyi, the General card includes a welcome-page entry. It invokes the native identity bridge without signing out; Web and older hosts keep it disabled with an explicit availability description.
+
 <a id="use-this-package"></a>
 ## Use this package
 
@@ -45,11 +47,21 @@ Settings visibility and section selection live in the shell owner store. The she
 
 ### The General section
 
+Completion reminders default off. Enabling requests this browser’s notification permission from the toggle gesture, then saves intent in `ui-settings-general.turnCompleteNotification`. Only live successful turns produce a notification containing the Session title; historical replay, cancellation and errors do not. Permission revocation or delivery failure shows an inactive state without erasing saved intent; the row can clear that intent. Disconnect, Host reset and disposal close notifications and invalidate pending permission requests.
+
+Suiyi returns from full-page Settings through shared navigation and the Settings shortcut. Cards use 20 px spacing, 44 px headings, and rows at least 77 px tall (73 px below 768 px). Status and error text can grow a row without clipping its controls.
+
 The current release version appears at the bottom of General Settings in Web and Desktop, using the build’s `DSH_CLIENT_VERSION` metadata and the active language. Partial builds without version metadata omit the row.
 
 The Coding Tools switch controls the shared `ui-settings.enabled` preference described by [ui-settings](../ui-settings/README.md#use-this-package). It is available in both Web and desktop, follows accepted changes immediately, and disables duplicate input while a write settles. A failed write displays localized retry guidance. On Desktop, a change made with this switch reports `code_work_view_toggle` with the new value through the optional [product analytics](../product-analytics/README.md) service, timestamped at the click. Only a write that changes a known value and leaves the preference at the requested value reports; requesting the current value, an unknown previous value, a failed write, and preference updates made elsewhere report nothing.
 
-The General section holds the built-in Coding Tools and Current version rows alongside rows registered into `settings.general.item` by feature packages. Each registrant owns its row copy and behavior. The Appearance row, for example, lives in ui-theme.
+The General section groups feature-owned rows into the General page's **Output**, **Appearance**, and **General** cards. Group membership follows the row `order` the ledger already uses for display: 5–9 under Output, 10–14 under Appearance, 0 and 100 under General, while permissions and runtime rows move to their own page categories. Appearance rows always read preview → reduce motion → type size, work-step rows belong to Runtime, and the card heading replaces the row's duplicate title. General orders language, completion reminders, the default assistant and the existing shortcut editor; shortcut order 16 does not move that entry to Runtime. This package owns the card headings; each registrant still owns its row copy and behavior. The Appearance row, for example, lives in ui-theme.
+
+In the Suiyi client build, Settings opens as a real main-panel page instead of the centered modal, with the five prototype categories Appearance and general, Permissions and privacy, Runtime and plugins, Account, and Desktop and updates. Runtime keeps the real Models and Agent presets providers, the Account category consumes the real Suiyi Keycloak bridge, and Desktop and updates uses the real preload update state or an explicit unavailable line. Its sidebar foot is two rows, Settings and preferences first and the Suiyi account entry second: the sidebar entry, the `settings.open` shortcut, and onboarding section links all open or leave the same `main` key, and the shell store remains the single source for open state and the selected section. The page renders the heading, subtitle, and active section; the official build keeps the modal shell.
+
+The Turn complete notification row writes the volatile `ui-settings-general.turnCompleteNotification` preference (default off). It may set the preference to true only after the user grants browser notification permission from that gesture; an unsupported environment or denied permission leaves the effective control off and reports that state without clearing the persisted choice. Sessions raise the notification from their own completed turn event; this package only owns the preference and its row.
+
+The Visual output row reports an absent provider as unavailable and, while a provider is mounted, follows that provider's readiness and preference sources. The Reduce motion row writes the Host-backed `ui-settings-general` preference and sets `data-dsh-reduce-motion` on the document root; the package's rule quiets animation and transition durations without removing their end events. Under the Suiyi client build, internal surfaces stay hidden: the Built-in plugins section, the Coding Tools row, and the local configuration-file action are not registered.
 
 ### Opening the configuration file
 
@@ -130,6 +142,7 @@ These limits define what the shell itself provides versus what features must sup
 
 - **Mobile software keyboards require device validation** — browser regression tests cover layout and focus, but native Safari keyboard panning and installed-PWA behavior remain unverified.
 - **Additional General rows require their feature plugins** — the shell supplies Coding Tools and Current version; feature plugins supply the remaining preferences.
+- **General card assignment follows row order** — the three cards derive from contributed `order` values rather than an explicit group option, so a future slot option can replace the thresholds without changing the components.
 - **The Windows caption badge keeps a side-opening bubble** — `DesktopUpdateBadge` occupies `sidebar.toggle.badge` in the caption and requests `side="right"`, so the Desktop-owned menu text can cover its bubble while the sidebar is collapsed on Windows; the sidebar toggle and New Session bubbles open below the caption instead (#4688).
 
 <a id="dev-note"></a>

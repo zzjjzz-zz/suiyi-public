@@ -1,5 +1,7 @@
 # `$dsh/*` type declarations
 
+English | [中文](README.zh.md)
+
 Two import maps, because the commands want different things:
 
 | File | For | Targets |

@@ -76,3 +76,12 @@
   /* Optical align with the 28px action hit targets. */
   margin-left: -6px;
 }
+
+
+/* Phone reply body: 13px at the prototype's 1.95 leading. */
+@media (max-width: 640px) {
+  .root {
+    font-size: 13px;
+    line-height: 25.35px;
+  }
+}

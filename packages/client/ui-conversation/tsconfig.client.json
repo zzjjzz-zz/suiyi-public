@@ -3,7 +3,14 @@
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "lib/types",
-    "tsBuildInfoFile": "lib/tsconfig.client.tsbuildinfo"
+    "tsBuildInfoFile": "lib/tsconfig.client.tsbuildinfo",
+    // The settings owner publishes this neutral contract from src/types.ts,
+    // but that file belongs to both its host and client projects. Mapping the
+    // public module to its generated declaration keeps this client project's
+    // rootDir boundary while consuming the same public type.
+    "paths": {
+      "@deepseek-ai/dsh-client-ui-settings-general/types": ["../ui-settings-general/lib/types/types.d.ts"]
+    }
   },
   "include": [
     "src"

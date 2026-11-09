@@ -10,7 +10,8 @@
  * ComposerContentEditable; chips render as decorator portals, and the
  * keymap registers submit/menu/paste gestures on the editor command layer.
  * The no-session state renders the SAME div inert as the Workspace-picker
- * trigger instead of a parallel tree.
+ * trigger instead of a parallel tree. The hero variant also renders the
+ * prototype's three draft-preparing shortcuts below the card.
  */
 
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
@@ -42,6 +43,59 @@ import { observeControlRow } from './control-row-layout.ts'
 import css from './InputBar.module.css'
 
 export type InputBarProps = ComposerBarProps
+
+/** Frozen prototype glyphs for the three home shortcuts, reused as local artwork. */
+function QuickFileIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden fill="none" stroke="currentColor" strokeWidth={1.65}
+      strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H5a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9l-7-7ZM14 2v7h7M7 13h10M7 17h7" />
+    </svg>
+  )
+}
+
+function QuickCodeIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden fill="none" stroke="currentColor" strokeWidth={1.65}
+      strokeLinecap="round" strokeLinejoin="round">
+      <path d="m8 6-6 6 6 6M16 6l6 6-6 6M14 3l-4 18" />
+    </svg>
+  )
+}
+
+function QuickListIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden fill="none" stroke="currentColor" strokeWidth={1.65}
+      strokeLinecap="round" strokeLinejoin="round">
+      <path d="m3 5 2 2 3-4M11 5h10M3 12l2 2 3-4M11 12h10M3 19l2 2 3-4M11 19h10" />
+    </svg>
+  )
+}
+
+/**
+ * Blank-home shortcuts from the frozen prototype. Each writes a real draft
+ * into the resident composer; none simulates a send or a model response.
+ */
+const HOME_QUICK_ACTIONS = [
+  {
+    id: 'tidy',
+    label: 'hero.quick.tidy',
+    prompt: 'hero.quick.tidyPrompt',
+    Icon: QuickFileIcon,
+  },
+  {
+    id: 'analyze',
+    label: 'hero.quick.analyze',
+    prompt: 'hero.quick.analyzePrompt',
+    Icon: QuickCodeIcon,
+  },
+  {
+    id: 'plan',
+    label: 'hero.quick.plan',
+    prompt: 'hero.quick.planPrompt',
+    Icon: QuickListIcon,
+  },
+] as const
 
 export const InputBar = memo(function InputBar({
   useSession, useInput, inputActions, keyboard, addFiles, removeAttachment, resolveDraftAttachments,
@@ -187,6 +241,14 @@ export const InputBar = memo(function InputBar({
   // is the ruler; no mirror layer exists to consult.
   const revealSelection = (): void => {
     revealDraftSelection(scrollRef)
+  }
+
+  // A blank-home shortcut prepares the real draft and returns the caret to the
+  // composer. The user still reviews and sends it; nothing is submitted here.
+  const applyQuickAction = (prompt: string): void => {
+    if (inputActions === undefined || locked || machineBusy) return
+    inputActions.setDraft(prompt)
+    if (editor !== null) focusDraftEditor(editor, revealSelection)
   }
 
   // Automatic desktop focus restores and reveals the draft selection without
@@ -421,7 +483,11 @@ export const InputBar = memo(function InputBar({
   // (the gate never consults plan mode), so the actionable hint wins.
     : canSteerQueue
       ? t('placeholder.steerQueue')
-      : planActive ? t('placeholder.plan') : t('placeholder.default'))
+      : planActive
+        ? t('placeholder.plan')
+        : process.env.DSH_CLIENT_BUILD_PROFILE === 'suiyi'
+          ? t('placeholder.heroSuiyi')
+          : t('placeholder.default'))
 
   return (
     <div className={clsx(css.root, variant === 'hero' && css.hero)}>
@@ -453,6 +519,7 @@ export const InputBar = memo(function InputBar({
         onPointerDown={workspaceTrigger ? (e) => { e.stopPropagation() } : undefined}
         onMouseDown={onCardMouseDown}
       >
+        <span className={css.material} aria-hidden="true" />
         {sessionId !== undefined && (
           <div className={css.overlayAnchor} data-composer-overlay>{renderSlot('conversation.input.overlay', {})}</div>
         )}
@@ -542,8 +609,9 @@ export const InputBar = memo(function InputBar({
                   onMouseDown={keepFocus}
                   onClick={stopAction}
                 >
-                  <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden>
-                    <rect x="3" y="3" width="10" height="10" rx="3" fill="currentColor" />
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+                    strokeWidth={1.65} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <path d="M6 6h12v12H6z" />
                   </svg>
                 </button>
               </Tooltip>
@@ -561,8 +629,9 @@ export const InputBar = memo(function InputBar({
                   onClick={onPrimary}
                 >
                   {primaryStops ? (
-                    <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden>
-                      <rect x="3" y="3" width="10" height="10" rx="3" fill="currentColor" />
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+                      strokeWidth={1.65} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                      <path d="M6 6h12v12H6z" />
                     </svg>
                   ) : sending ? (
                     <svg className={css.sendingSpinner} viewBox="0 0 16 16" width="16" height="16" aria-hidden>
@@ -572,8 +641,9 @@ export const InputBar = memo(function InputBar({
                   ) : primaryRetries ? (
                     <IconTriangleRightFillRegular size={16} className={css.continueIcon} />
                   ) : (
-                    <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden>
-                      <path d="M8.3125 0.980183C8.66767 1.0531 8.97902 1.20418 9.2627 1.43233C9.48724 1.61297 9.73029 1.85793 9.97949 2.10714L14.707 6.83468L13.293 8.24874L9 3.95577V15.0417H7V3.95577L2.70703 8.24874L1.29297 6.83468L6.02051 2.10714C6.26971 1.85793 6.51277 1.61297 6.7373 1.43233C6.97662 1.23986 7.28445 1.04402 7.6875 0.980183C7.8973 0.947006 8.1031 0.95516 8.3125 0.980183Z" fill="currentColor" />
+                    <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor"
+                      strokeWidth={1.65} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                      <path d="M12 19V5M5 12l7-7 7 7" />
                     </svg>
                   )}
                 </button>
@@ -586,8 +656,30 @@ export const InputBar = memo(function InputBar({
         {variant === 'composer' && input !== undefined && sessionId !== undefined
           ? renderSlot('conversation.composer.dock', {})
           : null}
-        {activity ? null : <ContextMeter useProjection={useProjection} t={t} />}
+        {activity ? null : (
+          <ContextMeter useProjection={useProjection} t={t}>
+            {renderSlot('conversation.composer.context', {})}
+          </ContextMeter>
+        )}
       </div>
+      {variant === 'hero' && (
+        <div className={css.quickActions} data-home-quick-actions aria-label={t('hero.quickActions')}>
+          {HOME_QUICK_ACTIONS.map(({ id, label, prompt, Icon }) => (
+            <button
+              key={id}
+              type="button"
+              className={css.quickAction}
+              data-home-quick-action={id}
+              disabled={!live || locked}
+              onMouseDown={keepFocus}
+              onClick={() => { applyQuickAction(t(prompt)) }}
+            >
+              <Icon />
+              <span>{t(label)}</span>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 })

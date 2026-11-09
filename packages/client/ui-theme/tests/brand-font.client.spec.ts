@@ -27,4 +27,31 @@ describe('offline brand font', () => {
     expect(manifest.files).toContain('lib/styles')
     expect(manifest.exports['./brand-font.css']).toBe('./lib/styles/brand-font.css')
   })
+
+  it('carries the local Noto Sans SC subsets through the same stylesheet', () => {
+    const css = readFileSync(new URL('../src/styles/brand-font.css', import.meta.url), 'utf8')
+    expect(css).toContain("@import url('./noto-sans-sc.css')")
+    expect(css.indexOf('@import')).toBeLessThan(css.indexOf('@font-face'))
+
+    const noto = readFileSync(new URL('../src/styles/noto-sans-sc.css', import.meta.url), 'utf8')
+    expect(noto).toContain("font-family: 'Noto Sans SC'")
+    expect(noto).toContain('font-weight: 300 600')
+    expect(noto).toContain('font-display: swap')
+    expect(noto).not.toMatch(/url\(https?:/)
+    const subsets = [...noto.matchAll(/url\(\.\/noto-sans-sc\/([^)]+\.woff2)\)/g)].map(([, file = '']) => file)
+    expect(subsets).toHaveLength(101)
+    expect(new Set(subsets).size).toBe(subsets.length)
+    for (const subset of subsets) {
+      const font = readFileSync(new URL(`../src/styles/noto-sans-sc/${subset}`, import.meta.url))
+      expect(font.readUInt32BE(0), subset).toBe(0x774f4632)
+    }
+
+    const license = readFileSync(new URL('../src/styles/noto-sans-sc/NotoSansSC-OFL.txt', import.meta.url), 'utf8')
+    expect(license).toContain('SIL OPEN FONT LICENSE Version 1.1')
+
+    const copy = readFileSync(new URL('../tsdown.config.ts', import.meta.url), 'utf8')
+    expect(copy).toContain("'src/styles/noto-sans-sc.css'")
+    expect(copy).toContain("'src/styles/noto-sans-sc/{*.woff2,NotoSansSC-OFL.txt}'")
+    expect(copy).toContain("'lib/styles/noto-sans-sc'")
+  })
 })

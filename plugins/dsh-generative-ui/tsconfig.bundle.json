@@ -1,0 +1,10 @@
+{
+  // Bundling input only: the runtime packages ship their own JavaScript, and the
+  // type-check paths in tsconfig.client.json name declarations for TypeScript,
+  // never module code for rolldown.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "paths": {}
+  }
+}
