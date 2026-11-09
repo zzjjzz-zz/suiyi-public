@@ -1097,6 +1097,32 @@ static void InvalidateCaptionButtons(HWND window, const ProgressPage& page) {
     InvalidateRect(window, &bounds, FALSE);
 }
 
+// Desktop rail details share the same assets and coordinates across native pages.
+// Narrow layouts retain their compact step strip without these decorations.
+static bool PaintRailDetails(Graphics& graphics, const Palette& palette, const InstallerLayout& layout,
+        Image& brand, const std::wstring& wordmark, const std::wstring* descriptions, const std::wstring& note) {
+    if (!layout.desktop) return true;
+    Font small(g_fontCatalog->regular, 10.0f, FontStyleRegular, UnitPixel);
+    if (!FontReady(small)) return false;
+    SolidBrush muted(Color(palette.muted));
+    if (brand.GetWidth() == brand.GetHeight()) {
+        Font title(g_fontCatalog->medium, 22.0f, FontStyleRegular, UnitPixel);
+        if (!FontReady(title)) return false;
+        SolidBrush text(Color(palette.text));
+        graphics.DrawImage(&brand, RectF(layout.cardX + 27.0f, layout.cardY + 30.0f, 43.0f, 43.0f));
+        DrawTextBlock(graphics, wordmark, title, text,
+            layout.cardX + 79.0f, layout.cardY + 34.6f, 150.0f, 32.0f);
+    }
+    for (int index = 0; index < 4; ++index) {
+        DrawTextBlock(graphics, descriptions[index], small, muted,
+            layout.stepLabelX, layout.stepLabelY + static_cast<REAL>(index) * layout.stepGap + 26.0f,
+            index == 3 ? layout.stepLastW : layout.stepLabelW, 17.0f, true);
+    }
+    DrawTextBlock(graphics, note, small, muted,
+        layout.cardX + 27.0f, layout.cardY + layout.cardH - 64.0f, 197.0f, 52.0f, true);
+    return true;
+}
+
 // Rebuilds the static layer once per state change: normal progress or terminal failure.
 static void RenderProgressStatic(ProgressPage& page) {
     Graphics graphics(page.buffer);
@@ -1120,13 +1146,9 @@ static void RenderProgressStatic(ProgressPage& page) {
     SolidBrush pageMuted(Color(palette.muted));
     DrawTextBlock(graphics, page.labels[13], pageSubtitle, pageMuted,
         layout.pageTitleX, layout.pageSubtitleY, layout.pageTitleW, 22.5f);
-    if (layout.desktop && page.brand && page.squareBrand) {
-        graphics.DrawImage(page.brand, RectF(layout.cardX + 27.0f, layout.cardY + 30.0f, 43.0f, 43.0f));
-        const std::wstring& wordmark = page.labels[18];
-        Font wordmarkFont(&mediumFamily, 22.0f, FontStyleRegular, UnitPixel);
-        if (!FontReady(wordmarkFont)) { page.fontError = true; return; }
-        DrawTextBlock(graphics, wordmark, wordmarkFont, pageText,
-            layout.cardX + 79.0f, layout.cardY + 34.6f, 150.0f, 32.0f);
+    if (!PaintRailDetails(graphics, palette, layout, *page.brand, page.labels[18], page.labels + 14, page.labels[9])) {
+        page.fontError = true;
+        return;
     }
     Font step(&mediumFamily, layout.desktop ? 13.0f : 10.0f, FontStyleRegular, UnitPixel);
     if (!FontReady(step)) { page.fontError = true; return; }
@@ -1136,18 +1158,6 @@ static void RenderProgressStatic(ProgressPage& page) {
         const REAL stepWidth = index == 3 ? layout.stepLastW : layout.stepLabelW;
         SolidBrush stepInk(Color(index == 2 ? palette.text : palette.muted));
         DrawTextBlock(graphics, page.labels[3 + index], step, stepInk, stepX, stepY, stepWidth, layout.desktop ? 22.1f : 17.0f);
-        if (layout.desktop) {
-            Font stepSmall(&bodyFamily, 10.0f, FontStyleRegular, UnitPixel);
-            if (!FontReady(stepSmall)) { page.fontError = true; return; }
-            DrawTextBlock(graphics, page.labels[14 + index], stepSmall, pageMuted,
-                stepX, stepY + 26.0f, stepWidth, 17.0f, true);
-        }
-    }
-    if (layout.desktop) {
-        Font railNote(&bodyFamily, 10.0f, FontStyleRegular, UnitPixel);
-        if (!FontReady(railNote)) { page.fontError = true; return; }
-        DrawTextBlock(graphics, page.labels[9], railNote, pageMuted,
-            layout.cardX + 27.0f, layout.cardY + layout.cardH - 64.0f, 197.0f, 52.0f, true);
     }
     if (page.failed) {
         Font heading(&mediumFamily, 23.0f, FontStyleRegular, UnitPixel);
@@ -1346,20 +1356,21 @@ static LRESULT CALLBACK ProgressProc(HWND window, UINT message, WPARAM wparam, L
     return DefWindowProcW(window, message, wparam, lparam);
 }
 
-static void SplitLabels(const WCHAR* source, std::wstring (&labels)[19]) {
+template <std::size_t Count>
+static void SplitLabels(const WCHAR* source, std::wstring (&labels)[Count]) {
     std::size_t index = 0;
     std::wstring current;
     for (const WCHAR* character = source; character && *character; ++character) {
         if (*character == L'\n') {
             if (!current.empty() && current.back() == L'\r') current.pop_back();
-            if (index < 19) labels[index++] = current;
+            if (index < Count) labels[index++] = current;
             current.clear();
         } else {
             current.push_back(*character);
         }
     }
     if (!current.empty() && current.back() == L'\r') current.pop_back();
-    if (index < 19) labels[index] = current;
+    if (index < Count) labels[index] = current;
 }
 
 // Copies the current static layer into an independent GDI+ bitmap. The Graphics
@@ -1539,8 +1550,11 @@ extern "C" __declspec(dllexport) BOOL __cdecl InstallerFinishProgress(HWND windo
 
 // Paints the NSIS welcome/finish backdrop into a DIB for the page's static control.
 // Phase 0 is the setup card, phase 1 the completion card; the caller owns the bitmap.
-extern "C" __declspec(dllexport) HBITMAP __cdecl InstallerCreateBackdrop(UINT width, UINT height, UINT dpi, BOOL dark, int phase) {
-    if (width < 96 || height < 96 || width > 8192 || height > 8192 || dpi < 72 || dpi > 768 || phase < 0 || phase > 4) {
+// Private fonts must be loaded. Rail labels contain four descriptions, brand and note.
+extern "C" __declspec(dllexport) HBITMAP __cdecl InstallerCreateBackdrop(UINT width, UINT height, UINT dpi, BOOL dark, int phase,
+        const WCHAR* brandPath, const WCHAR* railLabels) {
+    if (width < 96 || height < 96 || width > 8192 || height > 8192 || dpi < 72 || dpi > 768 || phase < 0 || phase > 4 ||
+        !g_fontCatalog || !brandPath || !railLabels) {
         return nullptr;
     }
     ULONG_PTR token = 0;
@@ -1561,7 +1575,11 @@ extern "C" __declspec(dllexport) HBITMAP __cdecl InstallerCreateBackdrop(UINT wi
     if (dc && bitmap && pixels) {
         HGDIOBJ previous = SelectObject(dc, bitmap);
         if (previous && previous != HGDI_ERROR) {
+            bool painted = false;
             {
+                Image brand(brandPath);
+                std::wstring labels[6];
+                SplitLabels(railLabels, labels);
                 Graphics graphics(dc);
                 graphics.ScaleTransform(dpi / 96.0f, dpi / 96.0f);
                 graphics.SetSmoothingMode(SmoothingModeAntiAlias);
@@ -1572,12 +1590,13 @@ extern "C" __declspec(dllexport) HBITMAP __cdecl InstallerCreateBackdrop(UINT wi
                 const REAL logicalHeight = static_cast<REAL>(height) * 96.0f / static_cast<REAL>(dpi);
                 const InstallerLayout layout = ComputeInstallerLayout(logicalWidth, logicalHeight);
                 PaintBackdrop(graphics, palette, layout, phase, false);
+                painted = brand.GetLastStatus() == Ok && PaintRailDetails(graphics, palette, layout, brand, labels[4], labels, labels[5]);
             }
             // Static controls consume RGB; force opaque alpha for any future DIB/print consumer.
             auto* bytes = static_cast<BYTE*>(pixels);
             const std::size_t count = static_cast<std::size_t>(width) * static_cast<std::size_t>(height);
             for (std::size_t index = 0; index < count; ++index) bytes[index * 4 + 3] = 0xFF;
-            result = bitmap;
+            if (painted) result = bitmap;
             SelectObject(dc, previous);
         }
     }

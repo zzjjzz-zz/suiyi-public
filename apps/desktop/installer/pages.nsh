@@ -292,7 +292,18 @@ Function InstallerRefreshBackdrop
     ${ElseIf} $InstallerPhase == "success"
         StrCpy $2 1
     ${EndIf}
-    System::Call '$PLUGINSDIR\window-frame.dll::InstallerCreateBackdrop(i r0, i r1, i $InstallerDpi, i $InstallerDark, i r2) p.r3 ?c'
+    StrCpy $4 "$PLUGINSDIR\brand-2x.bmp"
+    !ifdef DSH_SUIYI
+        StrCpy $4 "$PLUGINSDIR\mark-2x.png"
+    !endif
+    ${If} $InstallerDark == 1
+        StrCpy $4 "$PLUGINSDIR\brand-dark-2x.bmp"
+        !ifdef DSH_SUIYI
+            StrCpy $4 "$PLUGINSDIR\mark-dark-2x.png"
+        !endif
+    ${EndIf}
+    StrCpy $5 "$(INSTALLER_STEP_PREPARE_DESC)$\r$\n$(INSTALLER_STEP_SETUP_DESC)$\r$\n$(INSTALLER_STEP_INSTALL_DESC)$\r$\n$(INSTALLER_STEP_FINISH_DESC)$\r$\n$InstallerDisplayBrand$\r$\n$(INSTALLER_PROGRESS_NOTE)"
+    System::Call '$PLUGINSDIR\window-frame.dll::InstallerCreateBackdrop(i r0, i r1, i $InstallerDpi, i $InstallerDark, i r2, w r4, w r5) p.r3 ?c'
     StrCpy $InstallerBackdropBitmap $3
     ${If} $InstallerBackdropBitmap == 0
         MessageBox MB_OK|MB_ICONSTOP "$(INSTALLER_UI_ERROR)"

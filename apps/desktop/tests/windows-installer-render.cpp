@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <cstdio>
 #include <cstdlib>
+#include <sstream>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -71,7 +73,8 @@ struct InstallerLayoutMetrics {
     LONG failureDescY;
 };
 extern "C" __declspec(dllimport) BOOL __cdecl InstallerQueryLayout(UINT width, UINT height, UINT dpi, InstallerLayoutMetrics* out);
-extern "C" __declspec(dllimport) HBITMAP __cdecl InstallerCreateBackdrop(UINT width, UINT height, UINT dpi, BOOL dark, int phase);
+extern "C" __declspec(dllimport) HBITMAP __cdecl InstallerCreateBackdrop(UINT width, UINT height, UINT dpi, BOOL dark, int phase,
+    const WCHAR* brandPath, const WCHAR* railLabels);
 extern "C" __declspec(dllimport) BOOL __cdecl InstallerLoadFonts(LPCWSTR light, LPCWSTR regular, LPCWSTR medium);
 extern "C" __declspec(dllimport) void __cdecl InstallerUnloadFonts(LPCWSTR light, LPCWSTR regular, LPCWSTR medium);
 extern "C" __declspec(dllimport) BOOL __cdecl InstallerFontDiagnostics(
@@ -167,6 +170,11 @@ int wmain(int argc, wchar_t** argv) {
         L"Installs for the current user. Administrator access is not required.\n"
         L"Choose the desktop platform\nConfirm the location and options\n"
         L"View installation progress\nStart the application and sign in\nSuiyi";
+    std::wistringstream labelStream(labels);
+    std::wstring progressLabels[19];
+    for (auto& label : progressLabels) std::getline(labelStream, label);
+    const std::wstring railLabels = progressLabels[14] + L"\n" + progressLabels[15] + L"\n" +
+        progressLabels[16] + L"\n" + progressLabels[17] + L"\n" + progressLabels[18] + L"\n" + progressLabels[9];
     const auto createProgress = [&]() {
         return InstallerShowProgress(window, source, dark, static_cast<UINT>(dpi), hoverArgb, pressedArgb, argv[1], labels,
             localizedPreview ? argv[14] : L"Preparing %d%%", localizedPreview ? argv[15] : L"Extracting %d%%",
@@ -196,8 +204,8 @@ int wmain(int argc, wchar_t** argv) {
     // Warm the backdrop/card-shadow path as well; the measured backdrops below must not be
     // charged for first-use GDI+ caches. The finalGdi assertion stays unchanged.
     for (int cycle = 0; cycle < 2; ++cycle) {
-        HBITMAP warmSetup = InstallerCreateBackdrop(MulDiv(clientWidth, dpi, 96), MulDiv(clientHeight, dpi, 96), static_cast<UINT>(dpi), dark, 0);
-        HBITMAP warmFinish = InstallerCreateBackdrop(MulDiv(clientWidth, dpi, 96), MulDiv(clientHeight, dpi, 96), static_cast<UINT>(dpi), dark, 1);
+        HBITMAP warmSetup = InstallerCreateBackdrop(MulDiv(clientWidth, dpi, 96), MulDiv(clientHeight, dpi, 96), static_cast<UINT>(dpi), dark, 0, argv[1], railLabels.c_str());
+        HBITMAP warmFinish = InstallerCreateBackdrop(MulDiv(clientWidth, dpi, 96), MulDiv(clientHeight, dpi, 96), static_cast<UINT>(dpi), dark, 1, argv[1], railLabels.c_str());
         if (warmSetup) DeleteObject(warmSetup);
         if (warmFinish) DeleteObject(warmFinish);
     }
@@ -389,8 +397,8 @@ int wmain(int argc, wchar_t** argv) {
         total / samples.size(), samples[samples.size() / 2], samples[samples.size() * 95 / 100], samples.back());
     std::printf("fixture_alive_after_frames parent=%d progress=%d\n", IsWindow(window), IsWindow(progress));
     const DWORD gdiBeforeBackdrop = GetGuiResources(GetCurrentProcess(), GR_GDIOBJECTS);
-    HBITMAP setupBackdrop = InstallerCreateBackdrop(MulDiv(clientWidth, dpi, 96), MulDiv(clientHeight, dpi, 96), static_cast<UINT>(dpi), dark, 0);
-    HBITMAP finishBackdrop = InstallerCreateBackdrop(MulDiv(clientWidth, dpi, 96), MulDiv(clientHeight, dpi, 96), static_cast<UINT>(dpi), dark, 1);
+    HBITMAP setupBackdrop = InstallerCreateBackdrop(MulDiv(clientWidth, dpi, 96), MulDiv(clientHeight, dpi, 96), static_cast<UINT>(dpi), dark, 0, argv[1], railLabels.c_str());
+    HBITMAP finishBackdrop = InstallerCreateBackdrop(MulDiv(clientWidth, dpi, 96), MulDiv(clientHeight, dpi, 96), static_cast<UINT>(dpi), dark, 1, argv[1], railLabels.c_str());
     const bool backdropCreated = setupBackdrop != nullptr && finishBackdrop != nullptr;
     if (setupBackdrop) DeleteObject(setupBackdrop);
     if (finishBackdrop) DeleteObject(finishBackdrop);
