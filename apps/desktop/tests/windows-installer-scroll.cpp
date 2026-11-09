@@ -8,6 +8,7 @@
 #include <cstdio>
 #include <initializer_list>
 #include <stdexcept>
+#include <string>
 
 // Standard-class initialization requires the themed Common Controls assembly.
 #pragma comment(linker, "/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
@@ -126,6 +127,16 @@ static void Exercise(int width, int height, UINT dpi) {
 
 int wmain() {
     try {
+        const HMODULE executable = GetModuleHandleW(nullptr);
+        const HRSRC manifest = FindResourceW(executable, MAKEINTRESOURCEW(1), MAKEINTRESOURCEW(24));
+        Require(manifest != nullptr, "embedded executable manifest exists");
+        const HGLOBAL resource = LoadResource(executable, manifest);
+        Require(resource != nullptr, "load executable manifest");
+        const auto* bytes = static_cast<const char*>(LockResource(resource));
+        Require(bytes != nullptr, "read executable manifest");
+        const std::string xml(bytes, SizeofResource(executable, manifest));
+        Require(xml.find("Microsoft.Windows.Common-Controls") != std::string::npos
+            && xml.find("6.0.0.0") != std::string::npos, "embedded themed controls dependency");
         INITCOMMONCONTROLSEX init{sizeof(init), ICC_STANDARD_CLASSES};
         Require(InitCommonControlsEx(&init) != FALSE, "initialize common controls");
         Require(!InstallerConfigurePageScroll(nullptr, 900, 96, nullptr, nullptr, nullptr), "reject invalid page");

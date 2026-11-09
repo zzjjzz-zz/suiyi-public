@@ -33,7 +33,7 @@ if ($TestProgress -or $CompileProgressOnly) {
     $scrollSource = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../tests/windows-installer-scroll.cpp'))
     $scrollExecutable = Join-Path $output 'scroll-test.exe'
     $scrollScript = Join-Path $output 'compile-scroll-test.cmd'
-    [IO.File]::WriteAllLines($scrollScript, @('@echo off', ('call "{0}" >nul' -f $vcvars), 'if errorlevel 1 exit /b %errorlevel%', ('cl /nologo /MT /W4 /WX /EHsc "{0}" /Fo"{1}" /Fe"{2}" /link "{3}" user32.lib comctl32.lib' -f $scrollSource, (Join-Path $output 'scroll-test.obj'), $scrollExecutable, (Join-Path $output 'window-frame.lib'))), [Text.Encoding]::Default)
+    [IO.File]::WriteAllLines($scrollScript, @('@echo off', ('call "{0}" >nul' -f $vcvars), 'if errorlevel 1 exit /b %errorlevel%', ('cl /nologo /MT /W4 /WX /EHsc "{0}" /Fo"{1}" /Fe"{2}" /link /MANIFEST:EMBED "{3}" user32.lib comctl32.lib' -f $scrollSource, (Join-Path $output 'scroll-test.obj'), $scrollExecutable, (Join-Path $output 'window-frame.lib'))), [Text.Encoding]::Default)
     & $env:ComSpec /d /c $scrollScript
     if ($LASTEXITCODE -ne 0) { throw 'Installer scroll test compilation failed.' }
     if ($TestProgress) {

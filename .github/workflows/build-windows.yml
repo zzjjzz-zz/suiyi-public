@@ -120,7 +120,7 @@ jobs:
             $compile = Join-Path $output "compile-$name-test.cmd"
             $libraries = if ($name -eq 'scroll') { '"' + $library + '" user32.lib comctl32.lib' } else { 'ole32.lib advapi32.lib' }
             $lines = @('@echo off', ('call "{0}" >nul' -f $vcvars), 'if errorlevel 1 exit /b %errorlevel%',
-              ('cl /nologo /MT /W4 /WX /EHsc "{0}" /Fo"{1}" /Fe"{2}" /link {3}' -f $source, (Join-Path $output "$name-test.obj"), $executable, $libraries))
+              ('cl /nologo /MT /W4 /WX /EHsc "{0}" /Fo"{1}" /Fe"{2}" /link /MANIFEST:EMBED {3}' -f $source, (Join-Path $output "$name-test.obj"), $executable, $libraries))
             [IO.File]::WriteAllLines($compile, $lines, [Text.Encoding]::Default)
             & $env:ComSpec /d /c $compile
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
