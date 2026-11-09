@@ -93,6 +93,28 @@ jobs:
       - name: Build unsigned NSIS installer
         run: pnpm run package:desktop:win:x64:unsigned --build-version $env:SUIYI_TEST_VERSION
 
+      - name: Verify native completion layout without opening windows
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $output = [IO.Path]::GetFullPath('apps/desktop/.desktop-build/targets/win-x64/installer-ui')
+          $library = Join-Path $output 'window-frame.lib'
+          if (-not (Test-Path -LiteralPath $library)) { throw 'The built native installer library is missing.' }
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
+          $visualStudio = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (-not $visualStudio) { throw 'Visual Studio C++ Build Tools are missing.' }
+          $vcvars = Join-Path $visualStudio 'VC/Auxiliary/Build/vcvars32.bat'
+          $source = [IO.Path]::GetFullPath('apps/desktop/tests/windows-installer-render.cpp')
+          $executable = Join-Path $output 'render-layout-test.exe'
+          $compile = Join-Path $output 'compile-layout-test.cmd'
+          $lines = @('@echo off', ('call "{0}" >nul' -f $vcvars), 'if errorlevel 1 exit /b %errorlevel%',
+            ('cl /nologo /MT /W4 /WX /EHsc "{0}" /Fo"{1}" /Fe"{2}" /link "{3}" user32.lib gdi32.lib' -f $source, (Join-Path $output 'render-layout-test.obj'), $executable, $library))
+          [IO.File]::WriteAllLines($compile, $lines, [Text.Encoding]::Default)
+          & $env:ComSpec /d /c $compile
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $executable --layout-only
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Write-Host 'NATIVE_COMPLETION_LAYOUT_PASS: three sizes at 96 and 192 DPI; no GUI opened'
+
       - name: Verify installer and write SHA256SUMS
         run: |
           $ErrorActionPreference = 'Stop'

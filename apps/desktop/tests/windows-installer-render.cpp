@@ -71,8 +71,15 @@ struct InstallerLayoutMetrics {
     LONG failureHeadingX;
     LONG failureHeadingY;
     LONG failureDescY;
+    LONG factY;
+    LONG factValueY;
+    LONG actionY;
+    LONG launchY;
+    LONG launchHintY;
+    LONG factTopY;
+    LONG factBottomY;
 };
-extern "C" __declspec(dllimport) BOOL __cdecl InstallerQueryLayout(UINT width, UINT height, UINT dpi, InstallerLayoutMetrics* out);
+extern "C" __declspec(dllimport) BOOL __cdecl InstallerQueryLayout(UINT width, UINT height, UINT dpi, int phase, InstallerLayoutMetrics* out);
 extern "C" __declspec(dllimport) HBITMAP __cdecl InstallerCreateBackdrop(UINT width, UINT height, UINT dpi, BOOL dark, int phase,
     const WCHAR* brandPath, const WCHAR* railLabels);
 extern "C" __declspec(dllimport) BOOL __cdecl InstallerLoadFonts(LPCWSTR light, LPCWSTR regular, LPCWSTR medium);
@@ -89,7 +96,44 @@ static LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wparam, LPA
     return DefWindowProcW(window, message, wparam, lparam);
 }
 
+// Checks exported completion geometry without opening a window or installing a payload.
+static bool CompletionLayoutMatchesPrototype() {
+    struct Expected { UINT width; UINT height; LONG cardH; LONG iconX; LONG iconY; LONG headingY; LONG actionY; LONG contentW; };
+    const Expected cases[] = {
+        {1440, 1000, 562, 807, 256, 339, 564, 766},
+        {1280, 800, 562, 727, 256, 339, 564, 766},
+        {390, 844, 592, 157, 317, 400, 621, 316},
+    };
+    for (const auto& expected : cases) {
+        for (const UINT dpi : {96u, 192u}) {
+            const UINT width = expected.width * dpi / 96;
+            const UINT height = expected.height * dpi / 96;
+            InstallerLayoutMetrics finish{};
+            if (!InstallerQueryLayout(width, height, dpi, 1, &finish)) return false;
+            if (finish.version != 2 || finish.structSize != sizeof(finish) || finish.cardH != expected.cardH ||
+                finish.markX != expected.iconX || finish.markY != expected.iconY || finish.markSize != 76 ||
+                finish.headingY != expected.headingY || finish.actionY != expected.actionY || finish.labelW != expected.contentW) return false;
+            if (finish.factY < finish.descY + 44 || finish.factValueY < finish.factY + 24 ||
+                finish.factValueY + 23 > finish.actionY - 18 || finish.actionY + 54 != finish.launchY ||
+                finish.launchY + 22 != finish.launchHintY || finish.launchHintY + 16 > finish.footnoteY ||
+                finish.footnoteY + finish.footnoteH > finish.cardY + finish.cardH ||
+                finish.footnoteY + finish.footnoteH > static_cast<LONG>(expected.height)) return false;
+            // The new completion state must not move the previously aligned progress page.
+            InstallerLayoutMetrics progress{};
+            if (!InstallerQueryLayout(width, height, dpi, 2, &progress) || progress.markSize != 94 ||
+                progress.cardH != (expected.width > 640 ? 547 : 577) ||
+                progress.markY != (expected.width > 640 ? 358 : 417)) return false;
+        }
+    }
+    return true;
+}
+
 int wmain(int argc, wchar_t** argv) {
+    if (!CompletionLayoutMatchesPrototype()) {
+        std::fprintf(stderr, "Completion geometry mismatch\n");
+        return 3;
+    }
+    if (argc == 2 && wcscmp(argv[1], L"--layout-only") == 0) return 0;
     if (argc < 12 || (argc > 13 && argc != 19)) {
         std::fprintf(stderr, "Usage: render-test.exe <brand-image> <dpi> <light|dark> <hover-argb> <pressed-argb> <page-argb> <card-argb> <accent-argb> <light-font> <regular-font> <medium-font> [interactive-title [labels preparing extracting copying registering cleaning]]\n");
         return 1;
@@ -271,7 +315,7 @@ int wmain(int argc, wchar_t** argv) {
         return GetPixel(surfaceDc, MulDiv(x, dpi, 96), MulDiv(y, dpi, 96));
     };
     InstallerLayoutMetrics layout{};
-    if (!InstallerQueryLayout(MulDiv(clientWidth, dpi, 96), MulDiv(clientHeight, dpi, 96), static_cast<UINT>(dpi), &layout)) {
+    if (!InstallerQueryLayout(MulDiv(clientWidth, dpi, 96), MulDiv(clientHeight, dpi, 96), static_cast<UINT>(dpi), 2, &layout)) {
         DestroyWindow(progress); DestroyWindow(window); return 6;
     }
     struct SurfaceSample { int x; int y; int kind; };

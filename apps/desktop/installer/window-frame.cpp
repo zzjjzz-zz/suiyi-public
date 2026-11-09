@@ -210,9 +210,16 @@ struct InstallerLayout {
     REAL failureHeadingX;
     REAL failureHeadingY;
     REAL failureDescY;
+    REAL factY;
+    REAL factValueY;
+    REAL actionY;
+    REAL launchY;
+    REAL launchHintY;
+    REAL factTopY;
+    REAL factBottomY;
 };
 
-static InstallerLayout ComputeInstallerLayout(REAL width, REAL height) {
+static InstallerLayout ComputeInstallerLayout(REAL width, REAL height, int phase = 2) {
     InstallerLayout layout{};
     layout.width = std::max(320.0f, width);
     layout.height = std::max(480.0f, height);
@@ -313,6 +320,36 @@ static InstallerLayout ComputeInstallerLayout(REAL width, REAL height) {
         layout.failureHeadingY = 306.0f;
         layout.failureDescY = 344.0f;
     }
+    layout.factY = phase == 4 ? 440.0f : layout.desktop ? 570.0f : 580.0f;
+    layout.factValueY = layout.factY + 16.0f;
+    layout.actionY = layout.desktop ? 690.0f : 730.0f;
+    layout.launchY = layout.desktop ? 502.0f : 512.0f;
+    layout.launchHintY = layout.launchY + 22.0f;
+    if (phase == 1) {
+        // Completion follows the prototype state stack; progress retains its own geometry.
+        layout.cardY = layout.desktop ? 203.234375f : 216.1875f;
+        layout.cardH = layout.desktop ? 562.265625f : 591.859375f;
+        layout.railY = layout.cardY + (layout.desktop ? 1.0f : 0.0f);
+        layout.railH = layout.desktop ? layout.cardH - 2.0f : 0.0f;
+        layout.contentY = layout.cardY + (layout.desktop ? 1.0f : 60.0f);
+        layout.markSize = 76.0f;
+        layout.markX = layout.contentX + (layout.contentW - layout.markSize) / 2.0f;
+        layout.markY = layout.contentY + (layout.desktop ? 52.0f : 41.0f);
+        layout.headingY = layout.markY + layout.markSize + 7.0f;
+        layout.descY = layout.headingY + (layout.desktop ? 40.796875f : 39.09375f) + 12.0f;
+        layout.factTopY = layout.descY + 44.1875f + 23.0f;
+        layout.factY = layout.factTopY + 19.0f;
+        layout.factValueY = layout.factY + 24.390625f;
+        layout.factBottomY = layout.factValueY + (layout.desktop ? 22.09375f : 20.390625f) + 19.0f;
+        layout.actionY = layout.factBottomY + 20.0f;
+        layout.launchY = layout.actionY + 54.0f;
+        layout.launchHintY = layout.launchY + 22.0f;
+        // Real launch preferences replace the demo secondary actions; the uninstall note stays inside the card.
+        layout.footnoteX = layout.labelX;
+        layout.footnoteW = layout.labelW;
+        layout.footnoteY = layout.launchY + (layout.desktop ? 64.0f : 60.0f);
+        layout.footnoteH = 20.0f;
+    }
     return layout;
 }
 
@@ -370,15 +407,23 @@ struct InstallerLayoutMetrics {
     LONG failureHeadingX;
     LONG failureHeadingY;
     LONG failureDescY;
+    LONG factY;
+    LONG factValueY;
+    LONG actionY;
+    LONG launchY;
+    LONG launchHintY;
+    LONG factTopY;
+    LONG factBottomY;
 };
+static_assert(sizeof(InstallerLayoutMetrics) <= 256, "NSIS layout allocation is too small");
 
-extern "C" __declspec(dllexport) BOOL __cdecl InstallerQueryLayout(UINT width, UINT height, UINT dpi, InstallerLayoutMetrics* out) {
-    if (!out || width == 0 || height == 0 || dpi < 72 || dpi > 768) return FALSE;
+extern "C" __declspec(dllexport) BOOL __cdecl InstallerQueryLayout(UINT width, UINT height, UINT dpi, int phase, InstallerLayoutMetrics* out) {
+    if (!out || width == 0 || height == 0 || dpi < 72 || dpi > 768 || phase < 0 || phase > 4) return FALSE;
     const REAL logicalWidth = static_cast<REAL>(width) * 96.0f / static_cast<REAL>(dpi);
     const REAL logicalHeight = static_cast<REAL>(height) * 96.0f / static_cast<REAL>(dpi);
-    const InstallerLayout layout = ComputeInstallerLayout(logicalWidth, logicalHeight);
+    const InstallerLayout layout = ComputeInstallerLayout(logicalWidth, logicalHeight, phase);
     out->structSize = static_cast<UINT>(sizeof(InstallerLayoutMetrics));
-    out->version = 1;
+    out->version = 2;
     out->desktop = layout.desktop ? 1u : 0u;
     const auto px = [](REAL value) { return static_cast<LONG>(value + 0.5f); };
     out->width = px(layout.width);
@@ -430,6 +475,13 @@ extern "C" __declspec(dllexport) BOOL __cdecl InstallerQueryLayout(UINT width, U
     out->failureHeadingX = px(layout.failureHeadingX);
     out->failureHeadingY = px(layout.failureHeadingY);
     out->failureDescY = px(layout.failureDescY);
+    out->factY = px(layout.factY);
+    out->factValueY = px(layout.factValueY);
+    out->actionY = px(layout.actionY);
+    out->launchY = px(layout.launchY);
+    out->launchHintY = px(layout.launchHintY);
+    out->factTopY = px(layout.factTopY);
+    out->factBottomY = px(layout.factBottomY);
     return TRUE;
 }
 
@@ -880,15 +932,23 @@ static void PaintStepStrip(Graphics& graphics, const Palette& palette, const Ins
 }
 
 static void PaintSuccessTile(Graphics& graphics, const Palette& palette, const InstallerLayout& layout) {
-    const REAL x = layout.desktop ? layout.contentX + layout.contentW / 2.0f - 28.0f : (layout.width - 56.0f) / 2.0f;
-    const REAL y = layout.desktop ? 300.0f : 300.0f;
-    const REAL size = 56;
+    const REAL x = layout.markX;
+    const REAL y = layout.markY;
+    const REAL size = layout.markSize;
     SolidBrush fill(Color(palette.accentWash));
-    FillRounded(graphics, fill, x, y, size, size, 18);
-    Pen border(Color(palette.accentWash), 1.0f);
-    StrokeRounded(graphics, border, x, y, size, size, 18);
-    Pen check(Color(palette.successInk), 3.0f);
-    const PointF points[] = {{x + 14, y + 29}, {x + 24, y + 39}, {x + 42, y + 18}};
+    FillRounded(graphics, fill, x, y, size, size, 24.0f);
+    Pen border(Color(palette.border), 1.0f);
+    StrokeRounded(graphics, border, x, y, size, size, 24.0f);
+    // Reuse the prototype's 24-unit check path inside its centered 33px icon box.
+    const REAL unit = 33.0f / 24.0f;
+    const REAL inset = (size - 33.0f) / 2.0f;
+    Pen check(Color(palette.accentInk), 1.65f * unit);
+    check.SetStartCap(LineCapRound);
+    check.SetEndCap(LineCapRound);
+    check.SetLineJoin(LineJoinRound);
+    const PointF points[] = {{x + inset + 5.0f * unit, y + inset + 12.0f * unit},
+        {x + inset + 9.0f * unit, y + inset + 16.0f * unit},
+        {x + inset + 19.0f * unit, y + inset + 6.0f * unit}};
     graphics.DrawLines(&check, points, 3);
 }
 
@@ -1005,6 +1065,8 @@ static void PaintBackdrop(Graphics& graphics, const Palette& palette, const Inst
     }
     if (phase == 1) {
         PaintSuccessTile(graphics, palette, layout);
+        graphics.DrawLine(&divider, layout.labelX, layout.factTopY, layout.labelX + layout.labelW, layout.factTopY);
+        graphics.DrawLine(&divider, layout.labelX, layout.factBottomY, layout.labelX + layout.labelW, layout.factBottomY);
     } else if (phase == 3) {
         PaintFailureTile(graphics, palette, layout);
     }
@@ -1588,7 +1650,7 @@ extern "C" __declspec(dllexport) HBITMAP __cdecl InstallerCreateBackdrop(UINT wi
                 graphics.SetTextRenderingHint(TextRenderingHintAntiAlias);
                 const REAL logicalWidth = static_cast<REAL>(width) * 96.0f / static_cast<REAL>(dpi);
                 const REAL logicalHeight = static_cast<REAL>(height) * 96.0f / static_cast<REAL>(dpi);
-                const InstallerLayout layout = ComputeInstallerLayout(logicalWidth, logicalHeight);
+                const InstallerLayout layout = ComputeInstallerLayout(logicalWidth, logicalHeight, phase);
                 PaintBackdrop(graphics, palette, layout, phase, false);
                 painted = brand.GetLastStatus() == Ok && PaintRailDetails(graphics, palette, layout, brand, labels[4], labels, labels[5]);
             }
