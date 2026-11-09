@@ -24,8 +24,41 @@
 #include "extract-report.h"
 #include "directory-report.h"
 #include "uninstall-data.h"
+#include "startup-preferences.h"
+#include "page-scroll.h"
 
 using namespace Gdiplus;
+
+// The caller passes physical content height after laying out its page; caption controls remain fixed.
+extern "C" __declspec(dllexport) BOOL __cdecl InstallerConfigurePageScroll(
+    HWND page, int height, UINT dpi, HWND drag, HWND minimize, HWND close) {
+    try {
+        return installer_scroll::Configure(page, height, dpi, drag, minimize, close) ? TRUE : FALSE;
+    } catch (const std::bad_alloc&) {
+        return FALSE;
+    }
+}
+
+// Returns a Win32 status and the current user's registration state for this exact executable.
+extern "C" __declspec(dllexport) DWORD __cdecl InstallerReadStartup(LPCWSTR name, LPCWSTR executable, BOOL* enabled) {
+    if (!enabled) return ERROR_INVALID_PARAMETER;
+    *enabled = FALSE;
+    try {
+        return startup_preferences::ReadEnabled(name, executable, *enabled);
+    } catch (const std::bad_alloc&) {
+        return ERROR_OUTOFMEMORY;
+    }
+}
+
+// Updates only this application's current-user entry; unrelated commands are preserved on failure.
+extern "C" __declspec(dllexport) DWORD __cdecl InstallerSetStartup(
+    LPCWSTR name, LPCWSTR executable, LPCWSTR previousExecutable, BOOL enabled) {
+    try {
+        return startup_preferences::SetEnabled(name, executable, previousExecutable, enabled != FALSE);
+    } catch (const std::bad_alloc&) {
+        return ERROR_OUTOFMEMORY;
+    }
+}
 
 // Returns whether the UTF-8 report was saved; failure still presents the original error unless silent.
 extern "C" __declspec(dllexport) int __cdecl InstallerReportDirectoryFailure(
@@ -217,6 +250,10 @@ struct InstallerLayout {
     REAL launchHintY;
     REAL factTopY;
     REAL factBottomY;
+    REAL fieldY;
+    REAL fieldH;
+    REAL fieldLabelY;
+    REAL startupY;
 };
 
 static InstallerLayout ComputeInstallerLayout(REAL width, REAL height, int phase = 2) {
@@ -325,6 +362,30 @@ static InstallerLayout ComputeInstallerLayout(REAL width, REAL height, int phase
     layout.actionY = layout.desktop ? 690.0f : 730.0f;
     layout.launchY = layout.desktop ? 502.0f : 512.0f;
     layout.launchHintY = layout.launchY + 22.0f;
+    layout.fieldY = layout.desktop ? 408.0f : 418.0f;
+    layout.fieldH = 44.0f;
+    layout.fieldLabelY = layout.fieldY - 18.0f;
+    layout.startupY = layout.launchY + 64.0f;
+    if (phase == 0) {
+        layout.cardY = layout.desktop ? 203.234375f : 216.1875f;
+        layout.cardH = layout.desktop ? 611.140625f : 648.234375f;
+        layout.railY = layout.cardY + (layout.desktop ? 1.0f : 0.0f);
+        layout.railH = layout.desktop ? layout.cardH - 2.0f : 0.0f;
+        layout.contentY = layout.cardY + (layout.desktop ? 1.0f : 60.0f);
+        layout.headingY = layout.desktop ? 264.921875f : 325.875f;
+        layout.descY = layout.desktop ? 315.71875f : 374.96875f;
+        layout.fieldLabelY = layout.desktop ? 359.8125f : 419.0625f;
+        layout.fieldY = layout.desktop ? 388.203125f : 447.453125f;
+        layout.fieldH = layout.desktop ? 46.390625f : 53.1875f;
+        layout.launchY = layout.desktop ? 487.59375f : 553.640625f;
+        layout.launchHintY = layout.launchY + 21.59375f;
+        layout.startupY = layout.desktop ? 551.1875f : 617.234375f;
+        // Installation scope replaces the prototype's demo-only consent row.
+        layout.factY = layout.desktop ? 655.78125f : 721.828125f;
+        layout.factValueY = layout.factY + 22.0f;
+        layout.actionY = layout.desktop ? 736.375f : 797.421875f;
+        layout.footnoteY = layout.desktop ? 832.375f : 879.421875f;
+    }
     if (phase == 1) {
         // Completion follows the prototype state stack; progress retains its own geometry.
         layout.cardY = layout.desktop ? 203.234375f : 216.1875f;
@@ -414,6 +475,10 @@ struct InstallerLayoutMetrics {
     LONG launchHintY;
     LONG factTopY;
     LONG factBottomY;
+    LONG fieldY;
+    LONG fieldH;
+    LONG fieldLabelY;
+    LONG startupY;
 };
 static_assert(sizeof(InstallerLayoutMetrics) <= 256, "NSIS layout allocation is too small");
 
@@ -423,7 +488,7 @@ extern "C" __declspec(dllexport) BOOL __cdecl InstallerQueryLayout(UINT width, U
     const REAL logicalHeight = static_cast<REAL>(height) * 96.0f / static_cast<REAL>(dpi);
     const InstallerLayout layout = ComputeInstallerLayout(logicalWidth, logicalHeight, phase);
     out->structSize = static_cast<UINT>(sizeof(InstallerLayoutMetrics));
-    out->version = 2;
+    out->version = 3;
     out->desktop = layout.desktop ? 1u : 0u;
     const auto px = [](REAL value) { return static_cast<LONG>(value + 0.5f); };
     out->width = px(layout.width);
@@ -482,6 +547,10 @@ extern "C" __declspec(dllexport) BOOL __cdecl InstallerQueryLayout(UINT width, U
     out->launchHintY = px(layout.launchHintY);
     out->factTopY = px(layout.factTopY);
     out->factBottomY = px(layout.factBottomY);
+    out->fieldY = px(layout.fieldY);
+    out->fieldH = px(layout.fieldH);
+    out->fieldLabelY = px(layout.fieldLabelY);
+    out->startupY = px(layout.startupY);
     return TRUE;
 }
 
@@ -1067,6 +1136,9 @@ static void PaintBackdrop(Graphics& graphics, const Palette& palette, const Inst
         PaintSuccessTile(graphics, palette, layout);
         graphics.DrawLine(&divider, layout.labelX, layout.factTopY, layout.labelX + layout.labelW, layout.factTopY);
         graphics.DrawLine(&divider, layout.labelX, layout.factBottomY, layout.labelX + layout.labelW, layout.factBottomY);
+    } else if (phase == 0) {
+        const REAL actionBorderY = layout.actionY - (layout.desktop ? 29.0f : 24.0f);
+        graphics.DrawLine(&divider, layout.labelX, actionBorderY, layout.labelX + layout.labelW, actionBorderY);
     } else if (phase == 3) {
         PaintFailureTile(graphics, palette, layout);
     }

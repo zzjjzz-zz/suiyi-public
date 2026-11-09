@@ -103,12 +103,21 @@ Function InstallerPaintCheckbox
     Pop $R2
     System::Call 'user32::GetClientRect(p R0, p R2)'
     !insertmacro InstallerControlBackdrop $R4 $R0 $R2
-    System::Call 'kernel32::MulDiv(i 8, i $InstallerDpi, i 96) i.r2'
-    System::Call 'kernel32::MulDiv(i 7, i $InstallerDpi, i 96) i.r3'
+    StrCpy $R7 18
+    StrCpy $0 8
+    StrCpy $1 2
+    ${If} $R0 == $InstallerShortcut
+    ${OrIf} $R0 == $InstallerStartup
+        StrCpy $R7 16
+        StrCpy $0 0
+        StrCpy $1 3
+    ${EndIf}
+    System::Call 'kernel32::MulDiv(i r0, i $InstallerDpi, i 96) i.r2'
+    System::Call 'kernel32::MulDiv(i r1, i $InstallerDpi, i 96) i.r3'
     System::Call 'gdi32::SetViewportOrgEx(p R4, i r2, i r3, p 0)'
     System::Call 'gdiplus::GdipCreateFromHDC(p R4, *p .R5)'
     System::Call 'gdiplus::GdipSetSmoothingMode(p R5, i 4)'
-    System::Call 'kernel32::MulDiv(i 18, i $InstallerDpi, i 96) i.R7'
+    System::Call 'kernel32::MulDiv(i R7, i $InstallerDpi, i 96) i.R7'
     StrCpy $R8 $R7
     System::Call 'kernel32::MulDiv(i 4, i $InstallerDpi, i 96) i.R3'
     !insertmacro InstallerRoundPath $R6 $R7 $R8 $R3
@@ -144,12 +153,22 @@ Function InstallerPaintCheckbox
         System::Call 'gdi32::DeleteObject(p R1)'
     ${EndIf}
     System::Call 'gdi32::SetViewportOrgEx(p R4, i 0, i 0, p 0)'
-    System::Call 'kernel32::MulDiv(i 34, i $InstallerDpi, i 96) i.r0'
+    StrCpy $0 34
+    ${If} $R0 == $InstallerShortcut
+    ${OrIf} $R0 == $InstallerStartup
+        StrCpy $0 26
+    ${EndIf}
+    System::Call 'kernel32::MulDiv(i r0, i $InstallerDpi, i 96) i.r0'
     System::Call '*$R2(i r0)'
     System::Call 'gdi32::SetBkMode(p R4, i 1)'
     System::Call 'gdi32::SetTextColor(p R4, i $InstallerTextColorref)'
+    System::Call 'user32::IsWindowEnabled(p R0) i.r0'
+    ${If} $0 == 0
+        System::Call 'gdi32::SetTextColor(p R4, i $InstallerMutedColorref)'
+    ${EndIf}
     System::Call 'gdi32::SelectObject(p R4, p $InstallerSmallFont)'
-    System::Call 'user32::DrawTextW(p R4, w "$(INSTALLER_LAUNCH)", i -1, p R2, i 0x24)'
+    ${NSD_GetText} $R0 $R8
+    System::Call 'user32::DrawTextW(p R4, w R8, i -1, p R2, i 0x24)'
     IntOp $R9 $R9 & 16
     ${If} $R9 != 0
         System::Call 'user32::DrawFocusRect(p R4, p R2)'

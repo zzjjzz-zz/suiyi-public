@@ -19,7 +19,27 @@ $compileLines = @('@echo off', ('call "{0}" >nul' -f $vcvars), 'if errorlevel 1 
 & $env:ComSpec /d /c $compileScript
 if ($LASTEXITCODE -ne 0) { throw 'Native installer helper compilation failed.' }
 if ($TestProgress -or $CompileProgressOnly) {
+    $preferencesSource = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../tests/windows-installer-preferences.cpp'))
+    $preferencesExecutable = Join-Path $output 'preferences-test.exe'
+    $preferencesScript = Join-Path $output 'compile-preferences-test.cmd'
+    [IO.File]::WriteAllLines($preferencesScript, @('@echo off', ('call "{0}" >nul' -f $vcvars), 'if errorlevel 1 exit /b %errorlevel%', ('cl /nologo /MT /W4 /WX /EHsc "{0}" /Fo"{1}" /Fe"{2}" /link ole32.lib advapi32.lib' -f $preferencesSource, (Join-Path $output 'preferences-test.obj'), $preferencesExecutable)), [Text.Encoding]::Default)
+    & $env:ComSpec /d /c $preferencesScript
+    if ($LASTEXITCODE -ne 0) { throw 'Startup preference test compilation failed.' }
+    if ($TestProgress) {
+        & $preferencesExecutable
+        if ($LASTEXITCODE -ne 0) { throw 'Startup preference regression failed.' }
+    }
     $cleanupSource = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../tests/windows-uninstall-data.cpp'))
+    $scrollSource = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../tests/windows-installer-scroll.cpp'))
+    $scrollExecutable = Join-Path $output 'scroll-test.exe'
+    $scrollScript = Join-Path $output 'compile-scroll-test.cmd'
+    [IO.File]::WriteAllLines($scrollScript, @('@echo off', ('call "{0}" >nul' -f $vcvars), 'if errorlevel 1 exit /b %errorlevel%', ('cl /nologo /MT /W4 /WX /EHsc "{0}" /Fo"{1}" /Fe"{2}" /link "{3}" user32.lib comctl32.lib' -f $scrollSource, (Join-Path $output 'scroll-test.obj'), $scrollExecutable, (Join-Path $output 'window-frame.lib'))), [Text.Encoding]::Default)
+    & $env:ComSpec /d /c $scrollScript
+    if ($LASTEXITCODE -ne 0) { throw 'Installer scroll test compilation failed.' }
+    if ($TestProgress) {
+        & $scrollExecutable
+        if ($LASTEXITCODE -ne 0) { throw 'Installer scroll regression failed.' }
+    }
     # UAC installer detection demands elevation from unmanifested executables named after installation.
     $cleanupExecutable = Join-Path $output 'data-cleanup-test.exe'
     $cleanupScript = Join-Path $output 'compile-data-cleanup-test.cmd'

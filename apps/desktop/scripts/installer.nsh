@@ -67,6 +67,7 @@ ManifestDPIAware true
   File "/oname=$PLUGINSDIR\brand-dark-2x.bmp" "${INSTALLER_BUILD_DIR}\brand-dark-2x.bmp"
   File "/oname=$PLUGINSDIR\window-frame.dll" "${INSTALLER_BUILD_DIR}\window-frame.dll"
   Call InstallerCheckAppRunning
+  Call InstallerInitPreferences
   ${If} ${Silent}
     Call InstallerPreflight
     ${If} $InstallerError != ""
@@ -88,6 +89,7 @@ ManifestDPIAware true
 !macroend
 
 !macro customUnInstall
+  Call un.RemoveStartupPreference
   Call un.CleanData
 !macroend
 
@@ -237,6 +239,7 @@ ManifestDPIAware true
     StrCpy $0 1
   ${EndIf}
   !insertmacro InstallerPublishStage 4
+  Call InstallerCommitPreferences
   !insertmacro dshFinishDirectories
   ; Standard uninstall-entry metadata read by inventory tools; the upstream template records it only under its private key.
   WriteRegStr SHELL_CONTEXT "${UNINSTALL_REGISTRY_KEY}" InstallLocation "$INSTDIR"

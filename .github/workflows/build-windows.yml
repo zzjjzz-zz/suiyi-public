@@ -93,7 +93,7 @@ jobs:
       - name: Build unsigned NSIS installer
         run: pnpm run package:desktop:win:x64:unsigned --build-version $env:SUIYI_TEST_VERSION
 
-      - name: Verify native completion layout without opening windows
+      - name: Verify native installer behavior without showing windows
         run: |
           $ErrorActionPreference = 'Stop'
           $output = [IO.Path]::GetFullPath('apps/desktop/.desktop-build/targets/win-x64/installer-ui')
@@ -113,7 +113,20 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $executable --layout-only
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          Write-Host 'NATIVE_COMPLETION_LAYOUT_PASS: three sizes at 96 and 192 DPI; no GUI opened'
+          Write-Host 'NATIVE_INSTALLER_LAYOUT_PASS: setup and completion, three sizes at 96 and 192 DPI; no GUI opened'
+          foreach ($name in @('preferences', 'scroll')) {
+            $source = [IO.Path]::GetFullPath("apps/desktop/tests/windows-installer-$name.cpp")
+            $executable = Join-Path $output "$name-test.exe"
+            $compile = Join-Path $output "compile-$name-test.cmd"
+            $libraries = if ($name -eq 'scroll') { '"' + $library + '" user32.lib comctl32.lib' } else { 'ole32.lib advapi32.lib' }
+            $lines = @('@echo off', ('call "{0}" >nul' -f $vcvars), 'if errorlevel 1 exit /b %errorlevel%',
+              ('cl /nologo /MT /W4 /WX /EHsc "{0}" /Fo"{1}" /Fe"{2}" /link {3}' -f $source, (Join-Path $output "$name-test.obj"), $executable, $libraries))
+            [IO.File]::WriteAllLines($compile, $lines, [Text.Encoding]::Default)
+            & $env:ComSpec /d /c $compile
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            & $executable
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
 
       - name: Verify installer and write SHA256SUMS
         run: |

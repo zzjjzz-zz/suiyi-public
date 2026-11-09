@@ -78,6 +78,10 @@ struct InstallerLayoutMetrics {
     LONG launchHintY;
     LONG factTopY;
     LONG factBottomY;
+    LONG fieldY;
+    LONG fieldH;
+    LONG fieldLabelY;
+    LONG startupY;
 };
 extern "C" __declspec(dllimport) BOOL __cdecl InstallerQueryLayout(UINT width, UINT height, UINT dpi, int phase, InstallerLayoutMetrics* out);
 extern "C" __declspec(dllimport) HBITMAP __cdecl InstallerCreateBackdrop(UINT width, UINT height, UINT dpi, BOOL dark, int phase,
@@ -110,7 +114,7 @@ static bool CompletionLayoutMatchesPrototype() {
             const UINT height = expected.height * dpi / 96;
             InstallerLayoutMetrics finish{};
             if (!InstallerQueryLayout(width, height, dpi, 1, &finish)) return false;
-            if (finish.version != 2 || finish.structSize != sizeof(finish) || finish.cardH != expected.cardH ||
+            if (finish.version != 3 || finish.structSize != sizeof(finish) || finish.cardH != expected.cardH ||
                 finish.markX != expected.iconX || finish.markY != expected.iconY || finish.markSize != 76 ||
                 finish.headingY != expected.headingY || finish.actionY != expected.actionY || finish.labelW != expected.contentW) return false;
             if (finish.factY < finish.descY + 44 || finish.factValueY < finish.factY + 24 ||
@@ -128,9 +132,30 @@ static bool CompletionLayoutMatchesPrototype() {
     return true;
 }
 
+static bool SetupLayoutMatchesPrototype() {
+    for (const UINT width : {1440u, 1280u, 390u}) {
+        const bool desktop = width > 640;
+        for (const UINT dpi : {96u, 192u}) {
+            InstallerLayoutMetrics layout{};
+            const UINT height = width == 1440 ? 1000 : width == 1280 ? 800 : 844;
+            if (!InstallerQueryLayout(width * dpi / 96, height * dpi / 96, dpi, 0, &layout)) return false;
+            if (layout.cardY != (desktop ? 203 : 216) || layout.cardH != (desktop ? 611 : 648) ||
+                layout.fieldLabelY != (desktop ? 360 : 419) || layout.fieldY != (desktop ? 388 : 447) ||
+                layout.fieldH != (desktop ? 46 : 53) || layout.launchY != (desktop ? 488 : 554) ||
+                layout.launchHintY != (desktop ? 509 : 575) || layout.startupY != (desktop ? 551 : 617) ||
+                layout.factY != (desktop ? 656 : 722) || layout.actionY != (desktop ? 736 : 797) ||
+                layout.footnoteY != (desktop ? 832 : 879)) return false;
+            if (layout.fieldY + layout.fieldH + 41 > layout.launchY || layout.launchHintY + 32 > layout.startupY ||
+                layout.startupY + 54 > layout.factY || layout.factValueY + 18 > layout.actionY ||
+                layout.actionY + 42 > layout.cardY + layout.cardH) return false;
+        }
+    }
+    return true;
+}
+
 int wmain(int argc, wchar_t** argv) {
-    if (!CompletionLayoutMatchesPrototype()) {
-        std::fprintf(stderr, "Completion geometry mismatch\n");
+    if (!CompletionLayoutMatchesPrototype() || !SetupLayoutMatchesPrototype()) {
+        std::fprintf(stderr, "Installer geometry mismatch\n");
         return 3;
     }
     if (argc == 2 && wcscmp(argv[1], L"--layout-only") == 0) return 0;

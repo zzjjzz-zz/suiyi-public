@@ -35,12 +35,20 @@ Var InstallerStepFont
 Var InstallerCompletionHeadingFont
 Var InstallerCompletionBodyFont
 Var InstallerCompletionNoteFont
+Var InstallerFieldFont
+Var InstallerEditTextHeight
+Var InstallerCanvasHeight
+Var InstallerCanvasHeightPx
 Var InstallerSuccessHeadingH
 Var InstallerEdit
 Var InstallerEditFrame
 Var InstallerBrowse
 Var InstallerLaunch
 Var InstallerLaunchHint
+Var InstallerShortcut
+Var InstallerShortcutHint
+Var InstallerStartup
+Var InstallerStartupHint
 Var InstallerCancel
 Var InstallerMinimizeButton
 Var InstallerCloseButton
@@ -109,6 +117,8 @@ Var InstallerFieldX
 Var InstallerFieldY
 Var InstallerFieldW
 Var InstallerFieldH
+Var InstallerFieldLabelY
+Var InstallerStartupY
 Var InstallerBrowseX
 Var InstallerBrowseW
 Var InstallerActionY
@@ -121,7 +131,10 @@ Var InstallerFact2X
 Var InstallerFactW
 Var InstallerButtonX
 Var InstallerCancelX
+Var InstallerButtonW
+Var InstallerCancelW
 !include "${__FILEDIR__}\path.nsh"
+!include "${__FILEDIR__}\preferences.nsh"
 !include "${__FILEDIR__}\drawing.nsh"
 
 ; All layout values are 96-DPI logical pixels.
@@ -183,6 +196,10 @@ Var InstallerCancelX
 !define LAYOUT_ACTION_Y 216
 !define LAYOUT_LAUNCH_Y 220
 !define LAYOUT_LAUNCH_HINT_Y 224
+!define LAYOUT_FIELD_Y 236
+!define LAYOUT_FIELD_H 240
+!define LAYOUT_FIELD_LABEL_Y 244
+!define LAYOUT_STARTUP_Y 248
 
 !macro InstallerReadMetric PTR OFFSET OUT
     StrCpy $R8 ${PTR}
@@ -251,6 +268,10 @@ Function InstallerQueryMetrics
     !insertmacro InstallerReadMetric $InstallerLayoutPtr ${LAYOUT_ACTION_Y} $InstallerActionY
     !insertmacro InstallerReadMetric $InstallerLayoutPtr ${LAYOUT_LAUNCH_Y} $InstallerLaunchY
     !insertmacro InstallerReadMetric $InstallerLayoutPtr ${LAYOUT_LAUNCH_HINT_Y} $InstallerLaunchHintY
+    !insertmacro InstallerReadMetric $InstallerLayoutPtr ${LAYOUT_FIELD_Y} $InstallerFieldY
+    !insertmacro InstallerReadMetric $InstallerLayoutPtr ${LAYOUT_FIELD_H} $InstallerFieldH
+    !insertmacro InstallerReadMetric $InstallerLayoutPtr ${LAYOUT_FIELD_LABEL_Y} $InstallerFieldLabelY
+    !insertmacro InstallerReadMetric $InstallerLayoutPtr ${LAYOUT_STARTUP_Y} $InstallerStartupY
     System::Free $InstallerLayoutPtr
     StrCpy $InstallerLayoutPtr 0
     StrCpy $InstallerFieldX $InstallerLabelX
@@ -260,18 +281,26 @@ Function InstallerQueryMetrics
     IntOp $InstallerBrowseX $InstallerBrowseX + $InstallerFieldW
     IntOp $InstallerBrowseX $InstallerBrowseX + 8
     StrCpy $InstallerBrowseW 104
-    StrCpy $InstallerFieldH 44
     StrCpy $InstallerActionH 42
     ${If} $InstallerDesktop == 1
-        StrCpy $InstallerFieldY 408
         StrCpy $InstallerSuccessHeadingH 41
     ${Else}
-        StrCpy $InstallerFieldY 418
         StrCpy $InstallerSuccessHeadingH 39
+    ${EndIf}
+    StrCpy $InstallerButtonW 160
+    StrCpy $InstallerCancelW 96
+    ${If} $InstallerPhase == "welcome"
+        ${If} $InstallerDesktop == 1
+            StrCpy $InstallerButtonW 140
+            StrCpy $InstallerCancelW 75
+        ${Else}
+            StrCpy $InstallerButtonW 134
+            StrCpy $InstallerCancelW 72
+        ${EndIf}
     ${EndIf}
     StrCpy $InstallerButtonX $InstallerLabelX
     IntOp $InstallerButtonX $InstallerButtonX + $InstallerLabelW
-    IntOp $InstallerButtonX $InstallerButtonX - 160
+    IntOp $InstallerButtonX $InstallerButtonX - $InstallerButtonW
     StrCpy $InstallerCancelX $InstallerLabelX
     StrCpy $InstallerFactW $InstallerLabelW
     StrCpy $3 24
@@ -287,6 +316,13 @@ Function InstallerQueryMetrics
     StrCpy $InstallerFact2X $InstallerLabelX
     IntOp $InstallerFact2X $InstallerFact2X + $InstallerFactW
     IntOp $InstallerFact2X $InstallerFact2X + $3
+    IntOp $InstallerCanvasHeight $InstallerFootnoteY + $InstallerFootnoteH
+    IntOp $InstallerCanvasHeight $InstallerCanvasHeight + 24
+    ${If} $InstallerCanvasHeight < $InstallerLayoutHeight
+        StrCpy $InstallerCanvasHeight $InstallerLayoutHeight
+    ${EndIf}
+    System::Call 'kernel32::MulDiv(i $InstallerCanvasHeight, i $InstallerDpi, i 96) i.s'
+    Pop $InstallerCanvasHeightPx
 FunctionEnd
 
 Function InstallerMoveLogical
@@ -314,7 +350,7 @@ Function InstallerRefreshBackdrop
         StrCpy $InstallerBackdropBitmap 0
     ${EndIf}
     StrCpy $0 $InstallerWindowWidthPx
-    StrCpy $1 $InstallerWindowHeightPx
+    StrCpy $1 $InstallerCanvasHeightPx
     StrCpy $2 0
     ${If} $InstallerPhase == "platform"
         StrCpy $2 4
@@ -398,8 +434,10 @@ Function InstallerCreate
     !insertmacro InstallerPixelFont $InstallerStepFont ${INSTALLER_STEP_FONT_SIZE} 500
     ${If} $InstallerDesktop == 1
         !insertmacro InstallerPixelFont $InstallerCompletionHeadingFont 24 500
+        !insertmacro InstallerPixelFont $InstallerFieldFont 12 400
     ${Else}
         !insertmacro InstallerPixelFont $InstallerCompletionHeadingFont 23 500
+        !insertmacro InstallerPixelFont $InstallerFieldFont 16 400
     ${EndIf}
     !insertmacro InstallerPixelFont $InstallerCompletionBodyFont 13 400
     !insertmacro InstallerPixelFont $InstallerCompletionNoteFont 11 400
@@ -487,15 +525,17 @@ Function InstallerCreate
     System::Call 'user32::GetWindowLongW(p $InstallerEdit, i -20) i.r0'
     IntOp $0 $0 & 0xFFFFFDFF
     System::Call 'user32::SetWindowLongW(p $InstallerEdit, i -20, i r0)'
-    SendMessage $InstallerEdit ${WM_SETFONT} $InstallerSmallFont 1
+    SendMessage $InstallerEdit ${WM_SETFONT} $InstallerFieldFont 1
     !insertmacro InstallerFieldColors $InstallerEdit
     ; A borderless single-line edit sits inside a separate padded frame.
     System::Call 'user32::GetDC(p $InstallerEdit) p.r4'
-    System::Call 'gdi32::SelectObject(p r4, p $InstallerSmallFont) p.r5'
+    System::Call 'gdi32::SelectObject(p r4, p $InstallerFieldFont) p.r5'
     System::Alloc 60
     Pop $6
     System::Call 'gdi32::GetTextMetricsW(p r4, p r6)'
     System::Call '*$6(i .r7)'
+    System::Call 'kernel32::MulDiv(i r7, i 96, i $InstallerDpi) i.s'
+    Pop $InstallerEditTextHeight
     System::Free $6
     System::Call 'gdi32::SelectObject(p r4, p r5)'
     System::Call 'user32::ReleaseDC(p $InstallerEdit, p r4)'
@@ -534,6 +574,31 @@ Function InstallerCreate
     ${NSD_Check} $InstallerLaunch
     !insertmacro InstallerLabel $InstallerLaunchHint 51 534 512 16 $InstallerLabelFont "$(INSTALLER_LAUNCH_HINT)"
     !insertmacro InstallerCardMutedColors $InstallerLaunchHint
+
+    ${NSD_CreateCheckbox} 0 0 0 0 "$(INSTALLER_SHORTCUT)"
+    Pop $InstallerShortcut
+    SendMessage $InstallerShortcut ${WM_SETFONT} $InstallerSmallFont 1
+    !insertmacro InstallerCardColors $InstallerShortcut
+    ${NSD_OnNotify} $InstallerShortcut InstallerPaintCheckbox
+    ${NSD_SetState} $InstallerShortcut $InstallerShortcutEnabled
+    !insertmacro InstallerLabel $InstallerShortcutHint 0 0 0 0 $InstallerLabelFont "$(INSTALLER_SHORTCUT_HINT)"
+    !insertmacro InstallerCardMutedColors $InstallerShortcutHint
+    ${If} $InstallerShortcutAvailable == 0
+        EnableWindow $InstallerShortcut 0
+        ${NSD_SetText} $InstallerShortcutHint "$(INSTALLER_SHORTCUT_UNAVAILABLE)"
+    ${EndIf}
+    ${NSD_CreateCheckbox} 0 0 0 0 "$(INSTALLER_STARTUP)"
+    Pop $InstallerStartup
+    SendMessage $InstallerStartup ${WM_SETFONT} $InstallerSmallFont 1
+    !insertmacro InstallerCardColors $InstallerStartup
+    ${NSD_OnNotify} $InstallerStartup InstallerPaintCheckbox
+    ${NSD_SetState} $InstallerStartup $InstallerStartupEnabled
+    !insertmacro InstallerLabel $InstallerStartupHint 0 0 0 0 $InstallerLabelFont "$(INSTALLER_STARTUP_HINT)"
+    !insertmacro InstallerCardMutedColors $InstallerStartupHint
+    ${If} $InstallerStartupAvailable == 0
+        EnableWindow $InstallerStartup 0
+        ${NSD_SetText} $InstallerStartupHint "$(INSTALLER_STARTUP_UNAVAILABLE)"
+    ${EndIf}
 
     !insertmacro InstallerLabel $InstallerFact1Label 37 580 250 14 $InstallerLabelFont ""
     !insertmacro InstallerCardMutedColors $InstallerFact1Label
@@ -602,6 +667,7 @@ Function InstallerCreate
     System::Call 'gdi32::DeleteObject(p $InstallerCompletionHeadingFont)'
     System::Call 'gdi32::DeleteObject(p $InstallerCompletionBodyFont)'
     System::Call 'gdi32::DeleteObject(p $InstallerCompletionNoteFont)'
+    System::Call 'gdi32::DeleteObject(p $InstallerFieldFont)'
     ; Release the private faces only after every page-owned font handle is gone.
     ${If} $InstallerPhase == "success"
         Call InstallerUnloadFonts
@@ -610,7 +676,7 @@ FunctionEnd
 
 Function InstallerApplyLayout
     !insertmacro InstallerMove $InstallerDialog 0 0 $InstallerLayoutWidth $InstallerLayoutHeight
-    !insertmacro InstallerMove $InstallerBackdrop 0 0 $InstallerLayoutWidth $InstallerLayoutHeight
+    !insertmacro InstallerMove $InstallerBackdrop 0 0 $InstallerLayoutWidth $InstallerCanvasHeight
     StrCpy $1 $InstallerLayoutWidth
     IntOp $1 $1 - 96
     !insertmacro InstallerMove $InstallerDragSurface 0 0 $1 48
@@ -644,28 +710,38 @@ Function InstallerApplyLayout
         !insertmacro InstallerMove $InstallerStep4 $0 $1 $2 16
     ${EndIf}
     !insertmacro InstallerMove $InstallerKicker $InstallerLabelX $InstallerKickerY $InstallerLabelW 16
-    !insertmacro InstallerMove $InstallerHeading $InstallerLabelX $InstallerHeadingY $InstallerLabelW 39
+    !insertmacro InstallerMove $InstallerHeading $InstallerLabelX $InstallerHeadingY $InstallerLabelW $InstallerSuccessHeadingH
     !insertmacro InstallerMove $InstallerDescription $InstallerLabelX $InstallerDescY $InstallerLabelW 22
     !insertmacro InstallerMove $InstallerSuccessHeading $InstallerLabelX $InstallerHeadingY $InstallerLabelW $InstallerSuccessHeadingH
     !insertmacro InstallerMove $InstallerSuccessDescription $InstallerLabelX $InstallerDescY $InstallerLabelW 44
-    StrCpy $3 $InstallerFieldY
-    IntOp $3 $3 - 18
-    !insertmacro InstallerMove $InstallerLocationLabel $InstallerLabelX $3 $InstallerLabelW 16
+    !insertmacro InstallerMove $InstallerLocationLabel $InstallerLabelX $InstallerFieldLabelY $InstallerLabelW 21
     !insertmacro InstallerMove $InstallerEditFrame $InstallerFieldX $InstallerFieldY $InstallerFieldW $InstallerFieldH
     Call InstallerDrawEditFrame
     StrCpy $3 $InstallerFieldX
     IntOp $3 $3 + 14
-    StrCpy $5 $InstallerFieldY
-    IntOp $5 $5 + 10
+    IntOp $5 $InstallerFieldH - $InstallerEditTextHeight
+    IntOp $5 $5 / 2
+    IntOp $5 $5 + $InstallerFieldY
     StrCpy $6 $InstallerFieldW
     IntOp $6 $6 - 28
-    !insertmacro InstallerMove $InstallerEdit $3 $5 $6 24
+    !insertmacro InstallerMove $InstallerEdit $3 $5 $6 $InstallerEditTextHeight
     !insertmacro InstallerMove $InstallerBrowse $InstallerBrowseX $InstallerFieldY $InstallerBrowseW $InstallerFieldH
     StrCpy $3 $InstallerFieldY
-    IntOp $3 $3 + 48
-    !insertmacro InstallerMove $InstallerStatus $InstallerLabelX $3 $InstallerLabelW 40
+    IntOp $3 $3 + $InstallerFieldH
+    IntOp $3 $3 + 7
+    !insertmacro InstallerMove $InstallerStatus $InstallerLabelX $3 $InstallerLabelW 34
     !insertmacro InstallerMove $InstallerLaunch $InstallerLabelX $InstallerLaunchY $InstallerLabelW 22
     !insertmacro InstallerMove $InstallerLaunchHint $InstallerLabelX $InstallerLaunchHintY $InstallerLabelW 16
+    !insertmacro InstallerMove $InstallerShortcut $InstallerLabelX $InstallerLaunchY $InstallerLabelW 22
+    StrCpy $4 $InstallerLabelX
+    IntOp $4 $4 + 26
+    StrCpy $5 $InstallerLabelW
+    IntOp $5 $5 - 26
+    !insertmacro InstallerMove $InstallerShortcutHint $4 $InstallerLaunchHintY $5 32
+    StrCpy $3 $InstallerStartupY
+    !insertmacro InstallerMove $InstallerStartup $InstallerLabelX $3 $InstallerLabelW 22
+    IntOp $3 $3 + 22
+    !insertmacro InstallerMove $InstallerStartupHint $4 $3 $5 32
     StrCpy $7 14
     StrCpy $8 18
     ${If} $InstallerPhase == "success"
@@ -682,14 +758,24 @@ Function InstallerApplyLayout
     ${If} $InstallerPhase == "success"
         !insertmacro InstallerMove $InstallerButton $InstallerLabelX $InstallerActionY $InstallerLabelW $InstallerActionH
     ${Else}
-        !insertmacro InstallerMove $InstallerButton $InstallerButtonX $InstallerActionY 160 $InstallerActionH
+        !insertmacro InstallerMove $InstallerButton $InstallerButtonX $InstallerActionY $InstallerButtonW $InstallerActionH
     ${EndIf}
-    !insertmacro InstallerMove $InstallerCancel $InstallerCancelX $InstallerActionY 96 $InstallerActionH
+    !insertmacro InstallerMove $InstallerCancel $InstallerCancelX $InstallerActionY $InstallerCancelW $InstallerActionH
     !insertmacro InstallerMove $InstallerFootnote $InstallerFootnoteX $InstallerFootnoteY $InstallerFootnoteW $InstallerFootnoteH
+    System::Call '$PLUGINSDIR\window-frame.dll::InstallerConfigurePageScroll(p $InstallerDialog, i $InstallerCanvasHeightPx, i $InstallerDpi, p $InstallerDragSurface, p $InstallerMinimizeButton, p $InstallerCloseButton) i.r0 ?c'
+    ${If} $0 == 0
+        MessageBox MB_OK|MB_ICONSTOP "$(INSTALLER_UI_ERROR)"
+        SetErrorLevel 2
+        Quit
+    ${EndIf}
 FunctionEnd
 
 Function InstallerRender
     ShowWindow $InstallerStatus 0
+    ShowWindow $InstallerShortcut 0
+    ShowWindow $InstallerShortcutHint 0
+    ShowWindow $InstallerStartup 0
+    ShowWindow $InstallerStartupHint 0
     ShowWindow $InstallerKicker 5
     ShowWindow $InstallerHeading 5
     ShowWindow $InstallerDescription 5
@@ -703,6 +789,10 @@ Function InstallerRender
     ShowWindow $InstallerLaunchHint 5
     ShowWindow $InstallerFootnote 5
     ShowWindow $InstallerButton 5
+    SendMessage $InstallerHeading ${WM_SETFONT} $InstallerCompletionHeadingFont 1
+    SendMessage $InstallerDescription ${WM_SETFONT} $InstallerCompletionBodyFont 1
+    SendMessage $InstallerLocationLabel ${WM_SETFONT} $InstallerSmallFont 1
+    SendMessage $InstallerFootnote ${WM_SETFONT} $InstallerCompletionNoteFont 1
     ${If} $InstallerPhase == "success"
         ShowWindow $InstallerHeading 0
         ShowWindow $InstallerDescription 0
@@ -719,6 +809,9 @@ Function InstallerRender
         ${NSD_SetText} $InstallerKicker ""
         ${NSD_SetText} $InstallerSuccessHeading "$(INSTALLER_FINISH_HEADING)"
         ${NSD_SetText} $InstallerSuccessDescription "$(INSTALLER_FINISH_DESC)"
+        ${If} $InstallerPreferencesError == 1
+            ${NSD_SetText} $InstallerSuccessDescription "$(INSTALLER_PREFERENCES_FAILED)"
+        ${EndIf}
         ${NSD_SetText} $InstallerFact1Label "$(INSTALLER_LOCATION_LABEL)"
         ${NSD_SetText} $InstallerFact1Value "$INSTDIR"
         ${NSD_SetText} $InstallerFact2Label "$(INSTALLER_VERSION_LABEL)"
@@ -746,6 +839,7 @@ Function InstallerRender
         ${NSD_SetText} $InstallerFact2Value "$(INSTALLER_SCOPE_CURRENT_USER)"
         ${NSD_SetText} $InstallerFootnote "$(INSTALLER_PLATFORM_NOTE)"
         ${NSD_SetText} $InstallerButton "$(INSTALLER_CONTINUE)"
+        ${NSD_SetText} $InstallerCancel "$(INSTALLER_CANCEL)"
         ShowWindow $InstallerLocationLabel 0
         ShowWindow $InstallerEditFrame 0
         ShowWindow $InstallerEdit 0
@@ -772,12 +866,17 @@ Function InstallerRender
         ${NSD_SetText} $InstallerFact2Value "$(INSTALLER_PRIVILEGE_STANDARD)"
         ${NSD_SetText} $InstallerFootnote "$(INSTALLER_SETUP_NOTE)"
         ${NSD_SetText} $InstallerButton "$(INSTALLER_INSTALL)"
+        ${NSD_SetText} $InstallerCancel "$(INSTALLER_BACK)"
         ShowWindow $InstallerLocationLabel 5
         ShowWindow $InstallerEditFrame 5
         ShowWindow $InstallerEdit 5
         ShowWindow $InstallerBrowse 5
-        ShowWindow $InstallerLaunch 5
-        ShowWindow $InstallerLaunchHint 5
+        ShowWindow $InstallerLaunch 0
+        ShowWindow $InstallerLaunchHint 0
+        ShowWindow $InstallerShortcut 5
+        ShowWindow $InstallerShortcutHint 5
+        ShowWindow $InstallerStartup 5
+        ShowWindow $InstallerStartupHint 5
         ShowWindow $InstallerCancel 5
     ${EndIf}
     Call InstallerApplyLayout
@@ -794,6 +893,18 @@ FunctionEnd
 
 Function InstallerCancel
     Pop $0
+    ${If} $InstallerPhase == "welcome"
+        ${NSD_GetText} $InstallerEdit $InstallerPath
+        Call InstallerCapturePreferences
+        ${NSD_KillTimer} InstallerTrackFieldFocus
+        StrCpy $InstallerPhase "platform"
+        Call InstallerQueryMetrics
+        Call InstallerRefreshBackdrop
+        Call InstallerStyleSteps
+        Call InstallerRender
+        System::Call 'user32::SetFocus(p $InstallerButton)'
+        Return
+    ${EndIf}
     System::Call 'user32::PostMessageW(p $HWNDPARENT, i ${WM_CLOSE}, p 0, p 0)'
 FunctionEnd
 
@@ -814,6 +925,7 @@ Function InstallerWelcomeLeave
     Call InstallerDrawEditFrame
     ${NSD_SetText} $InstallerStatus ""
     ShowWindow $InstallerStatus 0
+    Call InstallerCapturePreferences
 FunctionEnd
 
 Function InstallerFinishLeave

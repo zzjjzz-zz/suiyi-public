@@ -3,6 +3,21 @@
 Var UnTarget
 Var UnHome
 
+; Upgrades preserve the preference until the replacing installer registers its final path.
+Function un.RemoveStartupPreference
+  ${If} ${isUpdated}
+    Return
+  ${EndIf}
+  Push $0
+  System::Call '$PLUGINSDIR\window-frame.dll::InstallerSetStartup(w "${APP_ID}", w "$INSTDIR\${APP_EXECUTABLE_FILENAME}", w "", i 0) i.r0 ?c'
+  ${If} $0 != 0
+  ${AndIf} $0 != 183
+    DetailPrint "Startup preference was not removed: Windows error $0"
+    MessageBox MB_OK|MB_ICONEXCLAMATION "$(INSTALLER_STARTUP_REMOVE_FAILED)" /SD IDOK
+  ${EndIf}
+  Pop $0
+FunctionEnd
+
 ; The helper refuses unsafe roots, the installation and the Harness home, and never descends into reparse points;
 ; a locked file leaves residue and never fails the uninstall. customCheckAppRunning extracts window-frame.dll first.
 Function un.RemoveData
