@@ -1,5 +1,6 @@
 /** Suiyi OIDC core: real RSA JWT verification and a real loopback login flow. */
 
+import { resolveDesktopLocale } from '../src/locale.ts'
 import { createHash } from 'node:crypto'
 import type { AddressInfo } from 'node:net'
 import type { ServerResponse } from 'node:http'
@@ -317,7 +318,7 @@ describe('loopback authorization-code login over real TCP', () => {
   })
 
   /** Start a login and return its authorize URL before the callback arrives. */
-  async function startLogin(signal?: AbortSignal): Promise<LoopbackRun> {
+  async function startLogin(signal?: AbortSignal, callbackReceivedMessage?: string): Promise<LoopbackRun> {
     let authorizeUrl: URL | undefined
     let resolveBrowser: (() => void) | undefined
     const browserGate = new Promise<void>((resolve) => { resolveBrowser = resolve })
@@ -325,6 +326,7 @@ describe('loopback authorization-code login over real TCP', () => {
       issuer: ISSUER,
       clientId: AUDIENCE,
       fetch: provider.fetch,
+      ...(callbackReceivedMessage === undefined ? {} : { callbackReceivedMessage }),
       timeoutMs: 1000,
       ...(signal === undefined ? {} : { signal }),
       openBrowser: async (url) => {
@@ -353,7 +355,8 @@ describe('loopback authorization-code login over real TCP', () => {
   }
 
   it('completes a login: one listener, matching port, PKCE S256, nonce, and verified identity', async () => {
-    const run = await startLogin()
+    const receipt = resolveDesktopLocale('zh-CN').messages.suiyiLoginCallbackReceived
+    const run = await startLogin(undefined, receipt)
     const redirectUri = run.authorizeUrl.searchParams.get('redirect_uri')
     expect(redirectUri).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/suiyi-desktop\/callback$/)
     const callbackPort = Number(new URL(redirectUri ?? '').port)
@@ -363,6 +366,7 @@ describe('loopback authorization-code login over real TCP', () => {
     const code = 'auth-code-1'
     const callback = await hitCallback(callbackPort, `${SUIYI_CALLBACK_PATH}?code=${code}&state=${encodeURIComponent(state)}`)
     expect(callback.status).toBe(200)
+    expect(callback.body).toBe(receipt)
     const result = await run.result
     expect(result).toMatchObject({ ok: true, identity: { issuer: ISSUER, sub: SUB } })
     // The token endpoint saw the exact same redirect_uri and a S256 challenge
@@ -510,6 +514,7 @@ describe('loopback authorization-code login over real TCP', () => {
       const state = run.authorizeUrl.searchParams.get('state') ?? ''
       const callback = await hitCallback(port, `${SUIYI_CALLBACK_PATH}?code=bad-token&state=${encodeURIComponent(state)}`)
       expect(callback.status).toBe(200)
+      expect(callback.body).toBe(resolveDesktopLocale('en').messages.suiyiLoginCallbackReceived)
       const result = await run.result
       expect(result).toMatchObject({ ok: false, failure: 'token-rejected' })
     } finally {

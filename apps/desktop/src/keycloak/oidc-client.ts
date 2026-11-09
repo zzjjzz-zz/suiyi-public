@@ -1,5 +1,6 @@
 /** OIDC Authorization Code + PKCE S256 client for the Suiyi identity center. */
 
+import { resolveDesktopLocale } from '../locale.ts'
 import { createHash, randomBytes } from 'node:crypto'
 import { createServer, type Server } from 'node:http'
 import { createLocalJWKSet, jwtVerify, type JWTPayload, errors as joseErrors } from 'jose'
@@ -94,6 +95,8 @@ export const SUIYI_CLOCK_SKEW_SECONDS = 30
 export type OidcFetch = (input: string, init?: RequestInit) => Promise<Response>
 
 export interface OidcClientOptions {
+  /** Localized callback receipt; token verification has not completed yet. */
+  readonly callbackReceivedMessage?: string
   /** Configured issuer; discovery must report it exactly. */
   readonly issuer: string
   /** Public client id; no secret is exchanged anywhere. */
@@ -620,7 +623,7 @@ export async function runAuthorizationCodeLogin(options: OidcClientOptions): Pro
     }
     redeemable = false
     settle({ code })
-    respond(200, 'Suiyi login complete. You can close this window.')
+    respond(200, options.callbackReceivedMessage ?? resolveDesktopLocale('en').messages.suiyiLoginCallbackReceived)
   }
   try {
     if (aborted()) return cancelled()

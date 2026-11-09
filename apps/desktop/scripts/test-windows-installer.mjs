@@ -1,4 +1,5 @@
 /** Builds an isolated native payload through the production NSIS configuration and exercises its UI. */
+import { resolveDesktopIdentity } from '../src/product-identity.ts'
 import { readInstallerLocales, renderInstallerStrings } from './installer-locales.mjs'
 import { execFile } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
@@ -23,6 +24,8 @@ const { getMakeNsisPath } = require('app-builder-lib/out/toolsets/windows.js')
 const guid = randomUUID()
 const id = guid.replaceAll('-', '')
 const productName = `Harness Installer Test ${id.slice(0, 8)}`
+const testAppId = `com.deepseek.harness.installertest.n${id}`
+const identity = resolveDesktopIdentity(process.env.DSH_DESKTOP_FLAVOR)
 // Scoped like the shipped package so Electron user data nests under a scope directory; the scope is unique per run.
 const packageName = `@harness-installer-test-${id.slice(0, 8)}/app-${id}`
 const uninstallOnly = process.argv.includes('--uninstall-only')
@@ -45,7 +48,7 @@ const sign = process.argv.includes('--signed') ? createWindowsTokenSigner({
 let succeeded = false
 try {
   Object.assign(process.env, {
-    DSH_DESKTOP_APP_ID: `com.deepseek.harness.installertest.n${id}`,
+    DSH_DESKTOP_APP_ID: testAppId,
     DSH_DESKTOP_TARGET_PLATFORM: 'win32', DSH_DESKTOP_TARGET_ARCH: 'x64',
     DSH_DESKTOP_UNSIGNED: '1', CSC_IDENTITY_AUTO_DISCOVERY: 'false', ELECTRON_BUILDER_7Z_FILTER: 'BCJ',
     DSH_DESKTOP_MANDATORY_UPDATE_TEST_ORIGIN: signingEnvironment.DSH_DESKTOP_MANDATORY_UPDATE_TEST_ORIGIN
@@ -54,7 +57,7 @@ try {
       ?? JSON.stringify({ allowedAuthOrigins: ['https://login.example.com'] }),
     ...signingRun ? { DSH_DESKTOP_PACKAGING_RUN_DIR: signingRun.directory } : {},
   })
-  const { createElectronBuilderConfig } = await import('../electron-builder.config.mjs')
+  const { createElectronBuilderConfig } = await import('./electron-builder-config.mjs')
   const childOptions = { env: scrubWindowsSigningEnvironment(process.env), windowsHide: true, maxBuffer: 8 * 1024 * 1024 }
   await execute('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File',
     join(appRoot, 'scripts', 'prepare-windows-installer.ps1'), '-OutputDirectory', join(output, 'ui'), '-CompileProgressOnly'], childOptions)
@@ -120,7 +123,10 @@ SectionEnd
   if (sign) await sign({ path: join(payload, `${productName}.exe`), hash: 'sha256', isNest: false })
   for (const locale of readInstallerLocales()) {
     const language = locale.id
-    const config = createElectronBuilderConfig()
+    const config = createElectronBuilderConfig({
+      ...process.env,
+      DSH_DESKTOP_APP_ID: identity.suiyi ? identity.appId : testAppId,
+    })
     if (sign) {
       config.win.forceCodeSigning = true
       config.win.signtoolOptions.sign = sign
@@ -132,7 +138,9 @@ SectionEnd
     const include = join(languageOutput, 'include.nsh')
     await writeFile(include, `!define INSTALLER_BUILD_DIR "${join(output, 'ui')}"\n!define INSTALLER_STRINGS_FILE "${strings}"\n!include "${join(appRoot, 'scripts', 'installer.nsh')}"\n`)
     await build({ projectDir: appRoot, prepackaged: payload, targets: Platform.WINDOWS.createTarget(['nsis'], Arch.x64), publish: 'never',
-      config: { ...config, productName, extraMetadata: { ...config.extraMetadata, name: packageName },
+      config: { ...config, appId: testAppId, productName,
+        protocols: [{ name: productName, schemes: [`harness-installer-test-${id}`] }],
+        extraMetadata: { ...config.extraMetadata, name: packageName, dshDesktopAppId: testAppId },
         artifactName: 'installer-test.exe', directories: { output: languageOutput },
         nsis: { ...config.nsis, guid, include, installerLanguages: [language] }, beforeBuild: undefined, afterPack: undefined, afterSign: undefined, artifactBuildCompleted: undefined },
     })

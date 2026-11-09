@@ -73,6 +73,19 @@ Function InstallerDrawEditFrame
     System::Call 'gdiplus::GdipDisposeImage(p R5)'
 FunctionEnd
 
+; Copy the underlying glass surface before drawing an interactive control.
+!macro InstallerControlBackdrop DC CONTROL RECT
+    System::Call '*${RECT}(i, i, i .r0, i .r1)'
+    System::Call 'user32::MapWindowPoints(p ${CONTROL}, p $InstallerBackdrop, p ${RECT}, i 2)'
+    System::Call '*${RECT}(i .r2, i .r3)'
+    System::Call 'gdi32::CreateCompatibleDC(p ${DC}) p.r4'
+    System::Call 'gdi32::SelectObject(p r4, p $InstallerBackdropBitmap) p.r5'
+    System::Call 'gdi32::BitBlt(p ${DC}, i 0, i 0, i r0, i r1, p r4, i r2, i r3, i 0x00CC0020)'
+    System::Call 'gdi32::SelectObject(p r4, p r5)'
+    System::Call 'gdi32::DeleteDC(p r4)'
+    System::Call 'user32::GetClientRect(p ${CONTROL}, p ${RECT})'
+!macroend
+
 ; BS_AUTOCHECKBOX retains its native state, text, keyboard and accessibility role.
 Function InstallerPaintCheckbox
     Pop $R0
@@ -89,9 +102,7 @@ Function InstallerPaintCheckbox
     System::Alloc 16
     Pop $R2
     System::Call 'user32::GetClientRect(p R0, p R2)'
-    System::Call 'gdi32::CreateSolidBrush(i $InstallerCardColorref) p.R3'
-    System::Call 'user32::FillRect(p R4, p R2, p R3)'
-    System::Call 'gdi32::DeleteObject(p R3)'
+    !insertmacro InstallerControlBackdrop $R4 $R0 $R2
     System::Call 'kernel32::MulDiv(i 8, i $InstallerDpi, i 96) i.r2'
     System::Call 'kernel32::MulDiv(i 7, i $InstallerDpi, i 96) i.r3'
     System::Call 'gdi32::SetViewportOrgEx(p R4, i r2, i r3, p 0)'

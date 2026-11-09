@@ -612,8 +612,12 @@ Function InstallerApplyLayout
     StrCpy $3 $InstallerFieldY
     IntOp $3 $3 + 48
     !insertmacro InstallerMove $InstallerStatus $InstallerLabelX $3 $InstallerLabelW 40
-    StrCpy $3 $InstallerFieldY
-    IntOp $3 $3 + 94
+    ${If} $InstallerPhase == "success"
+        StrCpy $3 560
+    ${Else}
+        StrCpy $3 $InstallerFieldY
+        IntOp $3 $3 + 94
+    ${EndIf}
     !insertmacro InstallerMove $InstallerLaunch $InstallerLabelX $3 $InstallerLabelW 22
     IntOp $3 $3 + 22
     !insertmacro InstallerMove $InstallerLaunchHint $InstallerLabelX $3 $InstallerLabelW 16

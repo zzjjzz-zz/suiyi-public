@@ -159,25 +159,25 @@ Var InstallerCardPressed
 
 !macro InstallerCardColors HANDLE
     ${If} $InstallerTheme == "dark"
-        SetCtlColors ${HANDLE} EDF0F7 16263A
+        SetCtlColors ${HANDLE} EDF0F7 transparent
     ${Else}
-        SetCtlColors ${HANDLE} 20242D FFFFFF
+        SetCtlColors ${HANDLE} 20242D transparent
     ${EndIf}
 !macroend
 
 !macro InstallerCardMutedColors HANDLE
     ${If} $InstallerTheme == "dark"
-        SetCtlColors ${HANDLE} A8BFD8 16263A
+        SetCtlColors ${HANDLE} A8BFD8 transparent
     ${Else}
-        SetCtlColors ${HANDLE} 53667D FFFFFF
+        SetCtlColors ${HANDLE} 53667D transparent
     ${EndIf}
 !macroend
 
 !macro InstallerCardAccentColors HANDLE
     ${If} $InstallerTheme == "dark"
-        SetCtlColors ${HANDLE} B8D6FF 16263A
+        SetCtlColors ${HANDLE} B8D6FF transparent
     ${Else}
-        SetCtlColors ${HANDLE} 1655B8 FFFFFF
+        SetCtlColors ${HANDLE} 1655B8 transparent
     ${EndIf}
 !macroend
 

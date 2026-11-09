@@ -61,6 +61,7 @@ const harness = await vi.hoisted(async () => {
   let policyBlocked = deferred()
   let embeddedPolicy: unknown
   let closeWindowsOnQuit = false
+  let closingForQuit = false
   // The flavor the appPath manifest declares; Suiyi tests set 'suiyi' before import.
   let desktopFlavor: 'official' | 'suiyi' = 'official'
   let updateState: DesktopUpdateState = { phase: 'idle' }
@@ -139,7 +140,12 @@ const harness = await vi.hoisted(async () => {
     getContentBounds() { return { x: 0, y: 0, width: 900, height: 650 } }
     setBounds() {}
     setTitle = vi.fn()
-    destroy() { this.destroyed = true; this.emit('closed') }
+    destroy() {
+      if (this.destroyed) return
+      this.destroyed = true
+      this.emit('closed')
+      if (windows.includes(this) && !closingForQuit && windows.every(window => window.destroyed) && !app.emit('window-all-closed')) app.quit()
+    }
     close() {
       const event = { preventDefault: vi.fn() }
       this.emit('close', event)
@@ -211,7 +217,13 @@ const harness = await vi.hoisted(async () => {
       const event = { preventDefault: vi.fn() }
       app.emit('before-quit', event)
       if (event.preventDefault.mock.calls.length === 0) {
-        if (closeWindowsOnQuit) for (const window of [...windows]) if (!window.isDestroyed()) window.close()
+        // Electron does not emit window-all-closed when app.quit owns the close.
+        closingForQuit = true
+        try {
+          if (closeWindowsOnQuit) for (const window of [...windows]) if (!window.isDestroyed()) window.close()
+        } finally {
+          closingForQuit = false
+        }
         if (!closeWindowsOnQuit || windows.every(window => window.isDestroyed())) quitCompleted.resolve()
       }
     }),
@@ -311,6 +323,7 @@ const harness = await vi.hoisted(async () => {
       windowFailure = undefined
       pluginsEnabled = false
       closeWindowsOnQuit = false
+      closingForQuit = false
       prepareUpdate = undefined
       publishUpdate = undefined
       updateState = { phase: 'idle' }
@@ -347,6 +360,7 @@ vi.mock('../src/policy-test-auth.ts', () => ({ DesktopPolicyTestAuth: class {
 } }))
 
 vi.mock('electron', () => ({
+  screen: { getPrimaryDisplay: () => ({ workAreaSize: { width: 1440, height: 1000 } }) },
   app: harness.app,
   BrowserWindow: harness.FakeWindow,
   WebContentsView: harness.FakeView,
@@ -1654,6 +1668,10 @@ describe('desktop main startup', () => {
       expect(window.show.mock.invocationCallOrder[0]).toBeLessThan(window.moveTop.mock.invocationCallOrder[0]!)
     }
     window.destroy()
+    if (platform !== 'darwin') {
+      expect(harness.app.quit).toHaveBeenCalledOnce()
+      return
+    }
     harness.app.emit('second-instance')
     const replacement = harness.windows[1]!
     await replacement.shown.promise
@@ -1939,7 +1957,7 @@ describe('desktop main startup', () => {
     harness.app.quit()
     await host.stopping.promise
     disposal.reject(failure)
-    await vi.waitFor(() => { expect(console.error).toHaveBeenCalledWith(failure) })
+    await vi.waitFor(() => { expect(console.error).toHaveBeenCalledWith('Desktop quit cleanup failed') })
     expect(harness.app.quit).toHaveBeenCalledOnce()
     host.exited.resolve()
     await harness.quitCompleted.promise
@@ -1952,7 +1970,7 @@ describe('desktop main startup', () => {
     fileDrag.dispose.mockRejectedValueOnce(failure)
     harness.app.quit()
     await host.stopping.promise
-    await vi.waitFor(() => { expect(console.error).toHaveBeenCalledWith(failure) })
+    await vi.waitFor(() => { expect(console.error).toHaveBeenCalledWith('Desktop quit cleanup failed') })
     expect(harness.app.quit).toHaveBeenCalledOnce()
     host.exited.resolve()
     await harness.quitCompleted.promise
@@ -2826,7 +2844,7 @@ describe('desktop main startup', () => {
       if (rejectCleanup) failPolicy(failure)
       else finishPolicy()
       await vi.advanceTimersByTimeAsync(0)
-      if (rejectCleanup) expect(console.error).toHaveBeenCalledWith(failure)
+      if (rejectCleanup) expect(console.error).toHaveBeenCalledWith('Desktop quit cleanup failed')
       expect(workerExited).toBe(false)
       expect(quitCompleted).toBe(false)
       if (stuck) {
@@ -3140,6 +3158,8 @@ describe('Suiyi main lifecycle', () => {
     expect(harness.hosts).toHaveLength(0)
     accept(login())
     await starting
+    await vi.waitFor(() => { expect(loginWindow.destroyed).toBe(true) })
+    expect(harness.app.quit).not.toHaveBeenCalled()
     harness.prepared.resolve()
     await vi.waitFor(() => { expect(harness.hosts).toHaveLength(1) })
     await harness.hostStarted.promise

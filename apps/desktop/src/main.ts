@@ -403,6 +403,11 @@ async function main(): Promise<void> {
   // settings read exists; the DeepSeek account login below stays untouched.
   let suiyiIdentity: SuiyiVerifiedIdentity | undefined
   let suiyiLocked = false
+  let startupWindowPending = desktopIdentity.suiyi
+  app.on('window-all-closed', () => {
+    // Startup hands the login window to the workspace; expiry removes protected windows.
+    if (process.platform !== 'darwin' && !startupWindowPending && !suiyiLocked) app.quit()
+  })
   let suiyiDeadline = 0
   // Verified bearer token kept only in the main process and the Host's private channel.
   let suiyiAccess: Pick<SuiyiLoginResult, 'accessToken' | 'expiresAt'> | undefined
@@ -428,6 +433,7 @@ async function main(): Promise<void> {
         locale: loginLocale,
         attempt: ({ signal, onAuthorizeUrl }) => runSuiyiLoginAttempt({
           appData: issuerSettingsRoot,
+          callbackReceivedMessage: loginLocale.messages.suiyiLoginCallbackReceived,
           openBrowser: async (url) => {
             onAuthorizeUrl(url)
             await shell.openExternal(url)
@@ -1874,10 +1880,6 @@ async function main(): Promise<void> {
   app.on('activate', (_event, hasVisibleWindows) => {
     if (!hasVisibleWindows) focusPrimaryWindow()
   })
-  app.on('window-all-closed', () => {
-    // Session expiry destroys all protected windows; it is not a user quit.
-    if (process.platform !== 'darwin' && !suiyiLocked) app.quit()
-  })
   if (process.platform !== 'win32') powerMonitor.on('shutdown', () => { sessionEnding = true })
   const finishQuit = (): void => {
     quitting = true
@@ -1927,6 +1929,7 @@ async function main(): Promise<void> {
   })
 
   mainWindow = createMainWindow()
+  startupWindowPending = false
   if (typeof manifest !== 'object' || manifest === null) throw new Error('desktop policy: invalid application manifest')
   const developmentPolicy = app.isPackaged ? undefined : process.env.DSH_DESKTOP_MANDATORY_UPDATE_CONFIG
   const policyInput: unknown = app.isPackaged

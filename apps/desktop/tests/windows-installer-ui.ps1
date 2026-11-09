@@ -171,6 +171,9 @@ public static class InstallerCapture {
     [DllImport("user32.dll")] static extern IntPtr GetAncestor(IntPtr window, uint flags);
 
     public static void Click(IntPtr control) {
+        var kind = new StringBuilder(64);
+        GetClassName(control, kind, kind.Capacity);
+        if (kind.ToString() != "Button") throw new InvalidOperationException("Click target is not a native button");
         AssertControlExposed(control);
         if (!PostMessage(control, 0xF5, IntPtr.Zero, IntPtr.Zero)) throw new InvalidOperationException("Could not click native button");
     }
@@ -186,6 +189,16 @@ public static class InstallerCapture {
         if (parent == IntPtr.Zero || !ScreenToClient(parent, ref center)
             || ChildWindowFromPointEx(parent, center, 1) != control)
             throw new InvalidOperationException("Native control is covered by a sibling");
+    }
+
+    public static void AssertControlsDisjoint(IntPtr first, IntPtr second) {
+        Rect a, b;
+        if (!IsWindowVisible(first) || !IsWindowVisible(second)
+            || !GetWindowRect(first, out a) || !GetWindowRect(second, out b))
+            throw new InvalidOperationException("Cannot measure visible native controls");
+        if (Math.Max(a.Left, b.Left) < Math.Min(a.Right, b.Right)
+            && Math.Max(a.Top, b.Top) < Math.Min(a.Bottom, b.Bottom))
+            throw new InvalidOperationException("Native controls overlap");
     }
 
     public static IntPtr Find(int process) {

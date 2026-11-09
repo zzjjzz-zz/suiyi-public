@@ -88,6 +88,8 @@ export type SuiyiLoginAttemptResult =
 
 /** Inputs of one attempt; the gate adds retry prompting around it. */
 export interface SuiyiLoginAttemptOptions {
+  /** Localized browser receipt directing the user back to the desktop result. */
+  readonly callbackReceivedMessage?: string
   /** Shared pre-login userData holding the optional issuer override. */
   readonly appData: string
   /** Browser opener for the identity center's authorization page. */
@@ -141,6 +143,7 @@ export async function runSuiyiLoginAttempt(options: SuiyiLoginAttemptOptions): P
   const login = await runAuthorizationCodeLogin({
     issuer: issuerResolution.issuer,
     clientId: 'suiyi-desktop',
+    ...(options.callbackReceivedMessage === undefined ? {} : { callbackReceivedMessage: options.callbackReceivedMessage }),
     openBrowser: options.openBrowser,
     ...(options.loginOptions?.timeoutMs === undefined ? {} : { timeoutMs: options.loginOptions.timeoutMs }),
     ...(options.signal === undefined ? {} : { signal: options.signal }),

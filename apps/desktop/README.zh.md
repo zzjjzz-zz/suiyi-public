@@ -252,6 +252,8 @@ Desktop 在 Host 启动后、打开工作区前检查模型 API Key 引用是否
 
 Windows 安装程序使用 600×844 逻辑客户区；遇到 DPI 或屏幕高度不足时按可用 Windows 工作区等比缩放；采用遂意原型在窄屏下的堆叠安装流程：页标题、四步进度条和卡片。第一步识别 Windows 与当前用户安装范围，不提供虚假的跨平台选择；第二步是包含可编辑安装目录的设置页。原生 NSIS 控件保留目录输入框、“选择”、启动复选框、“安装／取消”和“完成”操作；卡片、步骤方块、图标和带焦点状态的按钮由绘制层提供。装饰位图窗口始终位于交互控件下方，页面切换后也保持这一顺序，确保文字可见、按钮能够接收鼠标输入。亮暗配色、圆角和字体来自 `installer/theme.nsh`。遂意 flavor 的进度页使用原型蓝青飘带 mark（由 `mark.svg`/`mark-dark.svg` 转换为 `installer/assets/suiyi/mark*.png`，并以真实 alpha PNG 传入进度页；官方品牌仍使用 BMP），以 94×94 居中绘制，不再把横向品牌字标压缩到 120×39；官方 flavor 保留原有横向品牌。安装程序嵌入 `installer/fonts` 下的三个 Noto Sans SC 静态字重，使用 `AddFontResourceExW` 仅在本进程私有加载，不安装系统字体；`installer/fonts/native-fonts.json` 记录精确 family 名与 SHA-256，SIL Open Font License 文本位于同目录。完成页的“立即启动”复选框默认勾选。安装仅面向当前用户。点击安装或按 Enter 均校验当前路径；路径规范化后仍拒绝磁盘根目录，包括带重复末尾分隔符的写法。新安装位置必须为空，非空位置必须是已登记的安装目录。受影响安装路径中的程序运行时显示系统提示，并保持应用运行；其他目录中的同名应用不阻止安装。静默更新最多等待受影响应用退出十秒，若仍在运行则以退出码 2 结束。
 
+安装完成页的启动选项位于安装路径和版本下方，标签使用透明背景以显示底层绘制的表面。
+
 主题在启动时跟随 Windows；可用 `/THEME=light`、`/THEME=dark` 和 `/THEME=auto` 显式选择配色。窗口在品牌控件准备完成后显示。欢迎页首次出现时，安装窗口会一次性移到普通窗口前方；若焦点在其他窗口，任务栏按钮会闪烁提示，但安装窗口不会始终置顶。进度读取锁定版本的 7-Zip 解压器百分比；目录替换、注册和清理仍使用有界估算。加权百分比不代表剩余时间。NSIS 报告成功后，若 Windows 未禁用动画，进度条用 600 毫秒补满并短暂显示 100%，再显示完成页；切换目标时长为 750 毫秒。禁用动画时立即绘制 100% 画面。完成页保留窗口位置。点击完成后，安装程序先隐藏窗口，再启动已安装的可执行文件；启动失败会恢复页面以供重试。安装失败时先绘制失败状态，再显示模态报告；NSIS 无法重新进入安装区段，因此重试需要重新运行安装程序。目录替换和失败恢复遵循[安装检查](packaging/README.zh.md#runtime-file-selection)。首次启动的配置档案准备仍属于独立的 Desktop 操作。
 
 Windows 打包使用 Visual C++ Build Tools 和 Windows SDK 编译 x86 Win32/GDI+ 辅助库；签名构建通过已配置的 Windows 签名器对该库签名。进度页在其生命周期内保留一个不透明像素缓冲，并绘制一次静态背景；安装进入失败状态时会再绘制一次；欢迎页和完成页从同一配色获得匹配的背景位图。准备钩子在所有平台上均由 electron-builder 继续负责收集生产依赖。
@@ -403,6 +405,8 @@ node apps/desktop/node_modules/pnpm/bin/pnpm.mjs --dir apps/desktop run test:upd
 上线前 CDN 与容量决策见[桌面更新提案](../../.agents/notes/proposed/feature/2026-09-08-desktop-update-policy-and-installation.zh.md#cdn-and-capacity-qualification)。
 
 ## Suiyi 身份登录
+
+浏览器回调仅确认已收到授权响应，登录是否成功由桌面端完成校验后显示。成功登录窗口关闭后，进程保持运行，直到首个工作区窗口打开；取消登录仍明确退出。
 
 构建时选择的 `suiyi` flavor 要求在启动任何 Host 或工作区之前，通过系统浏览器完成 Keycloak 登录。默认 issuer 为 `https://sso.zzjjzz.top/realms/identity`，公共客户端为 `suiyi-desktop`，使用授权码流程、PKCE S256 和 `127.0.0.1` 随机端口上的 `/suiyi-desktop/callback` 回调。运维人员须注册客户端及其回环重定向策略；应用不携带客户端密钥。可选的 `suiyi-oidc-issuer.json` 文件位于登录前共享的 Electron userData 目录，内容为 `{"issuer":"https://your-host/realms/identity"}`。配置无效或无法读取时停止登录。
 
