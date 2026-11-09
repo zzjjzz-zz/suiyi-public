@@ -87,7 +87,7 @@ function Finish-Setup([Diagnostics.Process]$Process, [bool]$Launch, [string]$The
         Start-Sleep -Milliseconds 25
     }
     if ([InstallerCapture]::GetProp($window, 'HarnessInstaller.CompletedPercent').ToInt32() -ne 100) { throw 'Finish page replaced an incomplete progress bar' }
-    $checkbox = Wait-Control $Process $copy.INSTALLER_LAUNCH
+    $checkbox = Wait-Control $Process $copy.INSTALLER_LAUNCH -Button
     foreach ($text in @($copy.INSTALLER_LOCATION_LABEL, $installPath, $copy.INSTALLER_VERSION_LABEL)) {
         [InstallerCapture]::AssertControlsDisjoint($checkbox, (Wait-Control $Process $text))
     }

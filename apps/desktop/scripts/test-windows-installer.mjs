@@ -29,6 +29,13 @@ const identity = resolveDesktopIdentity(process.env.DSH_DESKTOP_FLAVOR)
 // Scoped like the shipped package so Electron user data nests under a scope directory; the scope is unique per run.
 const packageName = `@harness-installer-test-${id.slice(0, 8)}/app-${id}`
 const uninstallOnly = process.argv.includes('--uninstall-only')
+const requestedLanguages = process.argv.filter(value => value.startsWith('--language=')).map(value => value.slice('--language='.length))
+const installerLocales = readInstallerLocales()
+for (const language of requestedLanguages) {
+  if (!installerLocales.some(locale => locale.id === language)) throw new Error(`Unknown installer test language: ${language}`)
+}
+const selectedLocales = requestedLanguages.length === 0 ? installerLocales
+  : installerLocales.filter(locale => requestedLanguages.includes(locale.id))
 const outputRoot = join(appRoot, '.desktop-build', 'installer-tests')
 await mkdir(outputRoot, { recursive: true })
 const output = await mkdtemp(join(outputRoot, 'run-'))
@@ -121,7 +128,7 @@ SectionEnd
   const compiler = await getMakeNsisPath()
   await execute(compiler.path, ['/V2', payloadSource], { ...childOptions, env: { ...childOptions.env, ...compiler.env } })
   if (sign) await sign({ path: join(payload, `${productName}.exe`), hash: 'sha256', isNest: false })
-  for (const locale of readInstallerLocales()) {
+  for (const locale of selectedLocales) {
     const language = locale.id
     const config = createElectronBuilderConfig({
       ...process.env,
