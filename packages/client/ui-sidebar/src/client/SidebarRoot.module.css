@@ -1041,3 +1041,97 @@
 :global(body[data-dsh-brand='suiyi']) .root[role='dialog'] .scrollFade {
   display: none;
 }
+
+/* Suiyi's caption and global toolbar share one row. The frame removes the old
+   caption padding; these controls align with its 62px title and menu seats. */
+:global(html[data-windows-titlebar]) :global(body[data-dsh-brand='suiyi']) .root .toggle {
+  top: 14px;
+  left: calc(var(--dsh-windows-sidebar-width) + 24px);
+  width: 33px;
+  height: 33px;
+}
+
+:global(html[data-windows-titlebar]) :global(body[data-dsh-brand='suiyi']) .root.collapsed .newSession {
+  top: 14px;
+  left: 64px;
+}
+
+/* The fused toolbar no longer needs the legacy caption's compressed brand row
+   or its optical offsets; Suiyi keeps the prototype's ordinary brand geometry. */
+:global(html[data-windows-titlebar]) :global(body[data-dsh-brand='suiyi']) .root:not(.collapsed) .logoRow {
+  height: 82px;
+  padding: 22px 13px 18px;
+}
+
+:global(html[data-windows-titlebar]) :global(body[data-dsh-brand='suiyi']) .root:not(.collapsed) .brand {
+  padding-left: 0;
+}
+
+:global(html[data-windows-titlebar]) :global(body[data-dsh-brand='suiyi']) .brandIdentity,
+:global(html[data-windows-titlebar]) :global(body[data-dsh-brand='suiyi']) .brandMark {
+  transform: none;
+}
+
+:global(html[data-windows-titlebar]) :global(body[data-dsh-brand='suiyi']) .brandName {
+  font-weight: var(--dsw-brand-wordmark-weight, 500);
+}
+
+:global(html[data-windows-titlebar]) :global(body[data-dsh-brand='suiyi']) .root:not(.collapsed) .newSession {
+  margin-top: 0;
+}
+
+/* Suiyi's feature list uses the same centered glass dialog as the prototype. */
+:global([role='presentation']):has(> .moreDialog) {
+  padding: 16px;
+  --dsw-mask-blur: blur(7px);
+  --dsw-alias-bg-mask-1: var(--dsw-brand-dialog-mask);
+}
+.moreDialog {
+  width: min(590px, 100%);
+  font-size: 14px;
+  max-height: 85dvh;
+  gap: 0;
+  padding: 0;
+  overflow: auto;
+  border: 1px solid var(--dsw-brand-glass-edge);
+  border-radius: 23px;
+  background: var(--dsw-brand-glass-chrome);
+  box-shadow: var(--dsw-brand-dialog-shadow);
+  backdrop-filter: blur(32px) saturate(1.4);
+}
+.moreDialogHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: none;
+  min-height: 70px;
+  padding: 20px 24px 16px;
+  box-sizing: border-box;
+  border-bottom: 1px solid var(--dsw-brand-glass-edge);
+  background: var(--dsw-brand-glass-chrome);
+  backdrop-filter: blur(24px);
+}
+.moreDialogHeader h2 { margin: 0; font-size: 17px; font-weight: 550; line-height: normal; }
+.moreDialogHeader button {
+  display: grid; place-items: center; width: 32px; height: 32px; padding: 0;
+  border: 0; border-radius: 10px; background: transparent; color: var(--dsw-alias-label-secondary); cursor: pointer;
+}
+.moreDialogBody { padding: 23px 24px 25px; }
+.moreDialogBody button {
+  display: flex; align-items: center; gap: 12px; width: 100%; min-height: 44px;
+  padding: 13px 11px; margin: 0 0 3px; border: 0; border-radius: 10px;
+  background: transparent; color: var(--dsw-alias-label-primary); font: inherit; font-size: 12px;
+  line-height: normal; text-align: left; cursor: pointer;
+}
+.moreDialogBody button svg { flex: none; width: 18px; height: 18px; }
+.moreDialog button:focus-visible { outline: 2px solid var(--dsw-alias-state-business-primary); outline-offset: -2px; }
+.moreDialogBody [role='alert'] { font-size: 12px; color: var(--dsw-alias-state-error-primary); }
+@media (hover: hover) {
+  .moreDialog button:hover { background: var(--dsw-alias-interactive-bg-hover); }
+}
+@media (max-width: 640px) {
+  :global([role='presentation']):has(> .moreDialog) { padding: 17px; }
+  .moreDialogHeader { padding: 16px 19px; min-height: 66px; }
+  .moreDialogHeader h2 { font-size: 16px; }
+  .moreDialogBody { padding: 19px; }
+}

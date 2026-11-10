@@ -7,6 +7,7 @@ import react from '@vitejs/plugin-react'
 import { clientBuildEnvironmentDefines } from '../../scripts/client-build-environment.ts'
 import { productWebBundleIsolation } from './product-isolation.ts'
 import { katexWoff2Fonts } from './katex-fonts.ts'
+import { suiyiLaunchDocument } from './suiyi-launch-plugin.ts'
 
 const src = (rel: string): string => fileURLToPath(new URL(rel, import.meta.url))
 const STANDALONE_ERROR = 'apps/web is not a standalone application: bare Vite cannot inject window.__DSH_BOOT__. '
@@ -171,7 +172,7 @@ export default defineConfig({
   // directory, and the served index resolves identically from the site root.
   base: './',
   plugins: [
-    rejectStandaloneServe(), clientDocumentTitle(), brandFontLicense(), katexWoff2Fonts(), react(), emitPreviewPage(),
+    rejectStandaloneServe(), clientDocumentTitle(), suiyiLaunchDocument(), brandFontLicense(), katexWoff2Fonts(), react(), emitPreviewPage(),
     productWebBundleIsolation(src('../..'), src('.')),
   ],
   build: {
@@ -182,6 +183,8 @@ export default defineConfig({
     rollupOptions: {
       input: {
         index: src('./index.html'),
+        ...process.env.DSH_CLIENT_BUILD_PROFILE === 'suiyi'
+          ? { 'suiyi-launch': src('./src/suiyi-launch-entry.ts') } : {},
         // Standalone entry, not an index.html script tag: Vite folds every
         // module tag of one page into a single synthetic entry, and only a
         // separate input keeps the shared page chunks bootstrap-free.

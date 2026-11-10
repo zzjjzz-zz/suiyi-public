@@ -5,9 +5,9 @@ Windows x64 **未签名** NSIS 测试安装包。它不是私有开发仓库的�
 
 ## 基线
 
-- 来源私有源码提交：`237cbf1e42aa9ecce5b4d33de6e2816c79056b2c`
+- 来源私有源码提交：`ecfd90d3fc4eb01392447feedf3c4ba2570d0aa4`
 - 导出方式：在干净的私有工作树上执行 `git archive --format=tar HEAD`
-- 本仓库：`git init -b main` 后建立的**单个 root commit**，不包含私有 Git 历史
+- 本仓库从独立 root commit 开始，后续提交只更新经检查的公开快照，不包含私有 Git 历史
 - 公开快照仅保留 Windows 打包所需的 `apps/`、`packages/`、`plugins/`、`native/`、
   `vendor/`、`python/`、`scripts/`、`patches/` 及完整锁文件
 - 已排除 `.agents/`、`snapshots/`、`docs/`、`website/`、`benchmarks/`、私有 `.github/`

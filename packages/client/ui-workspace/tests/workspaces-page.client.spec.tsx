@@ -50,15 +50,17 @@ describe('WorkspacesPage', () => {
     expect(screen.getByRole('heading', { name: '工作空间' })).toBeTruthy()
     expect(screen.getByText('Alpha')).toBeTruthy()
     expect(screen.getByText('/home/user/beta')).toBeTruthy()
-    fireEvent.click(screen.getAllByRole('button', { name: '新会话' })[0]!)
+    fireEvent.click(screen.getAllByRole('button', { name: '进入空间' })[0]!)
     expect(startSession).toHaveBeenCalledWith('alpha')
   })
 
   it('raises the existing rename and delete dialogs', () => {
     const { requestWorkspaceAction } = mount()
-    fireEvent.click(screen.getAllByRole('button', { name: '重命名' })[1]!)
+    fireEvent.click(screen.getByRole('button', { name: '工作区“Beta”的操作' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: '重命名' }))
     expect(requestWorkspaceAction).toHaveBeenCalledWith('beta', 'Beta', 'rename')
-    fireEvent.click(screen.getAllByRole('button', { name: '删除工作区' })[0]!)
+    fireEvent.click(screen.getByRole('button', { name: '工作区“Alpha”的操作' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: '删除工作区' }))
     expect(requestWorkspaceAction).toHaveBeenCalledWith('alpha', 'Alpha', 'delete')
   })
 

@@ -165,6 +165,7 @@ const harness = await vi.hoisted(async () => {
     }
   }
   class FakeHost {
+    readonly refreshSuiyiAccess = vi.fn()
     readonly updateTasks = vi.fn(async (_action: 'inspect' | 'lock' | 'unlock') => false)
     readonly inspectQuit = vi.fn(async () => ({ activeTasks: false, scheduledTasks: false }))
     url = 'http://127.0.0.1:3080/?token=test'
@@ -248,7 +249,7 @@ const harness = await vi.hoisted(async () => {
   // Suiyi login transport: the Keycloak client is replaced so no network runs.
   type SuiyiLoginResult = {
     ok: true
-    identity: { issuer: string; sub: string; expiresAt: number; accessToken: string; name?: string }
+    identity: import('../src/keycloak/oidc-client.ts').OidcIdentity
   } | { ok: false; failure: string }
   const suiyiLoginResult = vi.fn<() => Promise<SuiyiLoginResult>>()
   let suiyiExpiryCallback: (() => void) | undefined
@@ -3131,8 +3132,34 @@ describe('Suiyi main lifecycle', () => {
     await harness.handlers.get(WELCOME_IPC.suiyiStart)!({
       sender: window.webContents, senderFrame: window.webContents.mainFrame,
     })
-    await vi.waitFor(() => { expect(window.destroyed).toBe(true) })
+    expect(window.webContents.send.mock.calls).toContainEqual([WELCOME_IPC.suiyiState, { phase: 'success' }])
   }
+
+  it('renews the same running Host through its private credential channel without reopening login', async () => {
+    selectSuiyi()
+    const renewed = { ...login().identity, accessToken: 'renewed-access', expiresAt: Date.now() + 600_000 }
+    const renew = vi.fn(async () => ({ ok: true as const, identity: renewed }))
+    harness.suiyiLoginResult.mockResolvedValueOnce({ ...login(), identity: { ...login().identity, renew } })
+    await import('../src/main.ts')
+    await completeLoginWindow()
+    harness.prepared.resolve()
+    await harness.hostStarted.promise
+    const host = harness.hosts[0]!
+    host.ready.resolve()
+    await harness.navigated.promise
+    const workspace = harness.windows.find(window => !window.destroyed && window.urls.includes('dsh-app://app/'))!
+    await harness.handlers.get(DESKTOP_IPC.boot)!({ sender: workspace.webContents, senderFrame: workspace.webContents.mainFrame })
+    await vi.waitFor(() => { expect(harness.windows.some(window => !window.destroyed && window.show.mock.calls.length > 0)).toBe(true) })
+    const initialWindows = harness.windows.length
+    expect(host.suiyiAccess?.()?.accessToken).toBe('access-token-alice')
+    harness.suiyiExpiryCallback!()
+    await vi.waitFor(() => { expect(host.refreshSuiyiAccess).toHaveBeenCalledOnce() })
+    expect(host.suiyiAccess?.()).toEqual({ accessToken: 'renewed-access', expiresAt: renewed.expiresAt })
+    expect(host.stop).not.toHaveBeenCalled()
+    expect(harness.suiyiLoginResult).toHaveBeenCalledOnce()
+    expect(harness.hosts).toHaveLength(1)
+    expect(harness.windows).toHaveLength(initialWindows)
+  })
 
   it('shows the login window and creates no Host before the identity center accepts login', async () => {
     selectSuiyi()
@@ -3178,6 +3205,49 @@ describe('Suiyi main lifecycle', () => {
     expect(host.suiyiAccess?.()).toMatchObject({ accessToken: 'access-token-alice' })
   })
 
+  it.each([true, false])('uses the Suiyi native icons when packaged=%s', async (packaged) => {
+    selectSuiyi()
+    harness.app.isPackaged = packaged
+    harness.suiyiLoginResult.mockResolvedValueOnce(login())
+    await import('../src/main.ts')
+    await completeLoginWindow()
+    harness.prepared.resolve()
+    await vi.waitFor(() => { expect(harness.hosts).toHaveLength(1) })
+    await harness.hostStarted.promise
+    expect(harness.trays[0]!.image).toEqual({ path: packaged ? join('desktop-test-resources', 'tray.ico')
+      : join(harness.appPath, 'resources', 'suiyi', 'tray-windows.ico') })
+    expect(harness.app.setAboutPanelOptions.mock.lastCall![0].iconPath).toBe(packaged
+      ? join('desktop-test-resources', 'icon.png') : join(harness.appPath, 'resources', 'suiyi', 'icon-windows.png'))
+    const workspace = harness.windows.find(window => !window.destroyed)!
+    expect(workspace.options).toMatchObject({ titleBarOverlay: { color: '#00000000', height: 62 } })
+  })
+
+  it('keeps application and editing commands in one Suiyi caption menu', async () => {
+    selectSuiyi()
+    harness.suiyiLoginResult.mockResolvedValueOnce(login())
+    await import('../src/main.ts')
+    await completeLoginWindow()
+    harness.prepared.resolve()
+    await vi.waitFor(() => { expect(harness.hosts).toHaveLength(1) })
+    await harness.hostStarted.promise
+    const workspace = harness.windows.find(window => !window.destroyed)!
+    const event = { sender: workspace.webContents, senderFrame: workspace.webContents.mainFrame }
+    harness.ipcOn.mock.calls.find(([channel]) => channel === DESKTOP_IPC.localeChanged)![1](event, 'zh')
+    const application = harness.handlers.get(DESKTOP_IPC.windowsMenu)!(event, 'application', 48, 34)
+    const template = harness.menu.buildFromTemplate.mock.lastCall![0]
+    const labels = template.map(item => item.label ?? item.type)
+    expect(labels[0]).toBe('关于 遂意 Suiyi')
+    expect(labels).not.toContain('管理 dsh 命令…')
+    expect(labels.indexOf('复制')).toBeGreaterThan(labels.indexOf('退出'))
+    expect(labels).toEqual(expect.arrayContaining(['撤销', '重做', '剪切', '复制', '粘贴', '删除', '全选']))
+    const copy = template.find(item => item.label === '复制')!
+    ;(copy.click as () => void)()
+    expect(workspace.webContents.sendInputEvent).toHaveBeenCalledWith({ type: 'keyDown', keyCode: 'C', modifiers: ['control'] })
+    expect(workspace.webContents.sendInputEvent).toHaveBeenCalledWith({ type: 'keyUp', keyCode: 'C', modifiers: ['control'] })
+    harness.popup.mock.lastCall![0].callback!()
+    await application
+  })
+
   it('exposes a safe identity view and signs out through the real login page', async () => {
     selectSuiyi()
     harness.suiyiLoginResult.mockResolvedValueOnce(login('alice', 'Alice'))
@@ -3208,8 +3278,11 @@ describe('Suiyi main lifecycle', () => {
     await restarted
     await vi.waitFor(() => { expect(harness.hosts).toHaveLength(2) })
     harness.hosts[1]!.ready.resolve()
-    await vi.waitFor(() => { expect(harness.windows.some(window => !window.destroyed)).toBe(true) })
-    const resumed = harness.windows.find(window => !window.destroyed)!
+    await vi.waitFor(() => {
+      const window = harness.windows.find(window => !window.destroyed && window.urls.includes('dsh-app://app/'))
+      expect(window?.show).toHaveBeenCalled()
+    })
+    const resumed = harness.windows.find(window => !window.destroyed && window.urls.includes('dsh-app://app/'))!
     const resumedEvent = { sender: resumed.webContents, senderFrame: resumed.webContents.mainFrame }
     expect(harness.handlers.get(DESKTOP_IPC.suiyiIdentityView)!(resumedEvent)).toEqual({
       state: 'signed-in', displayName: 'Alice',
@@ -3268,7 +3341,7 @@ describe('Suiyi main lifecycle', () => {
     await vi.waitFor(() => { expect(harness.app.quit).toHaveBeenCalled() })
   }, 30_000)
 
-  it('stops Host despite pending Platform cleanup, stays locked after cancel and foreign login, then resumes Alice', async () => {
+  it('stops Host before the branded login, rejects another identity and resumes the original account', async () => {
     selectSuiyi()
     harness.suiyiLoginResult.mockResolvedValueOnce(login())
     await import('../src/main.ts')
@@ -3294,19 +3367,19 @@ describe('Suiyi main lifecycle', () => {
     expect(harness.dialog.showMessageBox).not.toHaveBeenCalled()
     host.exited.resolve()
     cleanup.resolve()
-    await vi.waitFor(() => { expect(harness.dialog.showMessageBox).toHaveBeenCalledTimes(1) })
+    await vi.waitFor(() => {
+      expect(harness.windows.some(window => !window.destroyed && window.urls.some(url => url.includes('welcome.html')))).toBe(true)
+    })
+    expect(harness.dialog.showMessageBox).not.toHaveBeenCalled()
     expect(harness.hosts).toHaveLength(1)
-    // Cancel retains the lock; a verified foreign subject also cannot open Alice's home.
-    harness.dialog.showMessageBox.mockResolvedValueOnce({ response: 0 }).mockResolvedValue({ response: 1 })
+    // A different verified account cannot open the original account's home.
     harness.suiyiLoginResult.mockResolvedValueOnce(login('bob'))
     harness.app.emit('activate')
     await completeLoginWindow()
-    await vi.waitFor(() => { expect(harness.dialog.showMessageBox).toHaveBeenCalledTimes(3) })
+    await vi.waitFor(() => {
+      expect(harness.windows.filter(window => !window.destroyed && window.urls.some(url => url.includes('welcome.html')))).toHaveLength(1)
+    })
     expect(harness.hosts).toHaveLength(1)
-    expect(harness.windows.every(window => window.destroyed)).toBe(true)
-    // Let the watcher finish its prompt turn before the next activation asks again.
-    await new Promise(resolve => setTimeout(resolve, 10))
-    harness.dialog.showMessageBox.mockResolvedValueOnce({ response: 0 }).mockResolvedValue({ response: 1 })
     harness.suiyiLoginResult.mockResolvedValueOnce(login())
     const resumed = harness.nextHostStart()
     harness.app.emit('activate')

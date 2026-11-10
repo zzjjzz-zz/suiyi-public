@@ -11,6 +11,8 @@ Desktop product events use the optional [product analytics service](../product-a
 
 ## Summary
 
+In the Suiyi sidebar feature dialog, this package renders only available unpinned panel navigation. Internal plugin creation, duplicate plugin browsing and pin controls stay out of this product surface; other regions and the official profile retain their existing menus.
+
 Browse plugins and prepare a reviewable Creator draft from the More menus of the left sidebar, Conversation View tabs, and right-sidebar guide. The Web app loads this package by default. Each region draws its own More button; this package stores nothing.
 
 ## Table of Contents

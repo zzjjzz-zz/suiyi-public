@@ -71,6 +71,8 @@ export interface SuiyiLoginResult extends SuiyiVerifiedIdentity {
   readonly accessToken: string
   /** Safe display name from the verified ID token; absent when the provider supplies none. */
   readonly displayName?: string
+  /** Silent renewal of this identity, with refresh credentials retained only by the OIDC client. */
+  readonly renew?: (signal: AbortSignal) => Promise<SuiyiLoginAttemptResult>
 }
 
 /** One login attempt as the pre-workspace window reports it. */
@@ -128,7 +130,7 @@ export function classifySuiyiLoginFailure(failure: OidcFailure): SuiyiLoginFailu
 /**
  * Run one full PKCE authorization-code login without retrying. A failed attempt leaves no state
  * behind. The verified access token is returned for the Host's private channel and stays in
- * memory only; the refresh token is not retained.
+ * memory only. Raw refresh tokens stay private to the OIDC renewal operation.
  * @param options - issuer setting location, browser opener, cancellation, and test hooks.
  * @returns the verified login, or a classified failure with human-safe copy.
  */
@@ -148,19 +150,22 @@ export async function runSuiyiLoginAttempt(options: SuiyiLoginAttemptOptions): P
     ...(options.loginOptions?.timeoutMs === undefined ? {} : { timeoutMs: options.loginOptions.timeoutMs }),
     ...(options.signal === undefined ? {} : { signal: options.signal }),
   })
-  if (login.ok) {
-    return {
-      ok: true,
-      login: {
-        issuer: login.identity.issuer,
-        sub: login.identity.sub,
-        expiresAt: login.identity.expiresAt,
-        accessToken: login.identity.accessToken,
-        ...(login.identity.name === undefined ? {} : { displayName: login.identity.name }),
-      },
-    }
-  }
+  if (login.ok) return { ok: true, login: loginFromIdentity(login.identity) }
   return { ok: false, failure: classifySuiyiLoginFailure(login.failure), message: loginFailureText(login.failure), issuer: false }
+}
+
+/** Project verified claims while keeping token renewal inside the main process. */
+function loginFromIdentity(identity: OidcIdentity): SuiyiLoginResult {
+  const renew = identity.renew
+  return {
+    issuer: identity.issuer, sub: identity.sub, expiresAt: identity.expiresAt, accessToken: identity.accessToken,
+    ...(identity.name === undefined ? {} : { displayName: identity.name }),
+    ...(renew === undefined ? {} : { renew: async (signal: AbortSignal): Promise<SuiyiLoginAttemptResult> => {
+      const result = await renew(signal)
+      return result.ok ? { ok: true, login: loginFromIdentity(result.identity) }
+        : { ok: false, failure: classifySuiyiLoginFailure(result.failure), message: loginFailureText(result.failure), issuer: false }
+    } }),
+  }
 }
 
 /**
@@ -193,10 +198,10 @@ export interface SuiyiSessionDeadline {
 }
 
 /**
- * Compute the re-login deadline at token expiry, capped at 24 hours.
+ * Compute the current access deadline at token expiry, capped at 24 hours.
  * Signature verification's clock tolerance must not extend Host access.
  * @param session - expiry facts of the verified login.
- * @returns epoch milliseconds when the application must ask for re-login.
+ * @returns epoch milliseconds when access must stop unless renewal already succeeded.
  */
 export function suiyiSessionDeadline(session: SuiyiSessionDeadline): number {
   // Clock tolerance applies only when checking the signed ID token, never when
@@ -227,21 +232,26 @@ export interface SuiyiLoginSession {
   readonly accessToken: string
   /** Safe display name carried from the verified ID token; never an email or username. */
   readonly displayName?: string
+  /** Main-process-only renewal; never part of the Host credential channel. */
+  readonly renew?: SuiyiLoginResult['renew']
 }
 
 /**
- * Shape the gate's raw login outcome into the main-process session record. The refresh token is
- * dropped; the access token is retained for the Host's private channel and must not be logged,
- * persisted, or passed to a renderer.
+ * Keep verified access and private renewal in the main-process session record. Raw refresh tokens
+ * are excluded; the access token reaches only the Host's private channel.
  * @param identity - verified identity from the completed login.
  * @param now - current clock reading in epoch milliseconds.
+ * @param renew - private renewal operation from the verified login, retained only in memory.
+ * @returns the identity, current access deadline, and private credential operations.
  */
-export function suiyiLoginSession(identity: OidcIdentity | SuiyiLoginResult, now: number): SuiyiLoginSession {
+export function suiyiLoginSession(identity: OidcIdentity | SuiyiLoginResult, now: number,
+  renew?: SuiyiLoginResult['renew']): SuiyiLoginSession {
   const displayName = ('name' in identity ? identity.name : undefined)
     ?? ('displayName' in identity ? identity.displayName : undefined)
   return { identity: { issuer: identity.issuer, sub: identity.sub },
     deadline: suiyiSessionDeadline({ expiresAt: identity.expiresAt, now }),
     accessToken: identity.accessToken,
+    ...(renew === undefined ? {} : { renew }),
     ...(displayName === undefined ? {} : { displayName }) }
 }
 
@@ -309,18 +319,21 @@ export interface SuiyiSessionWatchOptions {
   readonly login: () => Promise<SuiyiLoginResult | undefined>
   /** Notified once a re-login verified the same identity again. */
   readonly onRelogin?: (session: SuiyiLoginSession) => Promise<void> | void
+  /** Publish renewed credentials without stopping or recreating the current Host. */
+  readonly onRenewed?: (session: SuiyiLoginSession) => void
   /** Clock reading, epoch milliseconds; defaults to the real clock. */
   readonly now?: () => number
 }
 
 /**
- * Own one verified session's expiry. The first expiry locks the application —
+ * Renew one verified session before expiry without replacing its Host. An expired or rejected login locks the application —
  * windows gone, Host stopped, browser storage cleared — and starts a re-login
  * loop that never quits the process: every outcome leaves the application
  * locked until the same identity signs in again. A different identity is
  * rejected with the lock held, because resetting per-user storage in place
  * cannot be made safe without a process restart. Repeated expiry callbacks
- * are idempotent; one lock at a time exists.
+ * are idempotent; one lock at a time exists. A suspended client first revokes expired access,
+ * then tries silent renewal before requiring interactive sign-in.
  * @param options - session facts, effects, timer, and re-login transport.
  * @returns watcher controlling this session; `refresh` starts a new session.
  */
@@ -339,19 +352,40 @@ export function watchSuiyiSession(options: SuiyiSessionWatchOptions): {
   const isCancelled = (): boolean => cancelled
   let cleanupComplete = false
   let prompting: Promise<void> | undefined
+  let renewing: AbortController | undefined
+  let recoverSilently = false
+  const inactive = (): boolean => locked || cancelled
+  const currentRenewal = (controller: AbortController): boolean =>
+    !inactive() && renewing === controller && !controller.signal.aborted
+  const cancelRenewal = (): void => { renewing?.abort(); renewing = undefined }
   const promptLogin = async (): Promise<void> => {
     let message: string = SESSION_LOCK_COPY.expired
     while (locked && !isCancelled()) {
-      const choice = await options.effects.showLock({ message })
-      if (isCancelled() || choice !== 0) return
-      const login = await options.login()
+      let login: SuiyiLoginResult | undefined
+      const renew = session.renew
+      if (recoverSilently && renew !== undefined) {
+        recoverSilently = false
+        const controller = new AbortController()
+        renewing = controller
+        let result: SuiyiLoginAttemptResult | undefined
+        try { result = await renew(controller.signal) }
+        catch { console.error('Suiyi silent session recovery failed') }
+        if (isCancelled() || controller.signal.aborted) return
+        renewing = undefined
+        if (result?.ok) login = result.login
+      }
+      if (login === undefined) {
+        const choice = await options.effects.showLock({ message })
+        if (isCancelled() || choice !== 0) return
+        login = await options.login()
+      }
       if (isCancelled()) return
       message = SESSION_LOCK_COPY.locked
       if (login === undefined || login.issuer !== session.identity.issuer || login.sub !== session.identity.sub) {
         // No account switch while this process owns another account's storage.
         continue
       }
-      const next = suiyiLoginSession(login, now())
+      const next = suiyiLoginSession(login, now(), login.renew)
       if (next.deadline <= now()) continue
       try {
         await options.onRelogin?.(next)
@@ -373,9 +407,11 @@ export function watchSuiyiSession(options: SuiyiSessionWatchOptions): {
     }).finally(() => { if (prompting === current) prompting = undefined })
     prompting = current
   }
-  const onExpiry = (): void => {
+  const onExpiry = (silentRecovery = true): void => {
     if (locked || cancelled) return
     locked = true
+    recoverSilently = silentRecovery && session.renew !== undefined
+    cancelRenewal()
     options.timer.cancel()
     void (async () => {
       // Window revocation starts synchronously; pending UI cleanup cannot delay Host stop.
@@ -401,15 +437,66 @@ export function watchSuiyiSession(options: SuiyiSessionWatchOptions): {
       requestLogin()
     })()
   }
-  const schedule = (): void => { options.timer.schedule(Math.max(session.deadline - now(), 0), onExpiry) }
+  const renewSession = async (): Promise<void> => {
+    if (locked || cancelled || renewing !== undefined) return
+    const renew = session.renew
+    if (renew === undefined || now() >= session.deadline) { onExpiry(); return }
+    const controller = new AbortController()
+    renewing = controller
+    // A slow renewal cannot extend the old bearer token's authority.
+    options.timer.schedule(Math.max(session.deadline - now(), 0), onExpiry)
+    let result: SuiyiLoginAttemptResult
+    try { result = await renew(controller.signal) }
+    catch {
+      console.error('Suiyi session renewal failed')
+      if (currentRenewal(controller)) onExpiry(false)
+      return
+    }
+    if (!currentRenewal(controller)) return
+    renewing = undefined
+    if (!result.ok) {
+      if (result.failure === 'unreachable' && now() < session.deadline) {
+        options.timer.schedule(Math.min(5000, session.deadline - now()), () => { void renewSession() })
+      } else onExpiry(false)
+      return
+    }
+    const next = suiyiLoginSession(result.login, now(), result.login.renew)
+    if (next.identity.issuer !== session.identity.issuer || next.identity.sub !== session.identity.sub || next.deadline <= now()) {
+      onExpiry(false)
+      return
+    }
+    try { options.onRenewed?.(next) }
+    catch {
+      console.error('Suiyi renewed session could not be installed')
+      onExpiry(false)
+      return
+    }
+    if (inactive()) return
+    session = next
+    schedule()
+  }
+  const schedule = (): void => {
+    const remaining = Math.max(session.deadline - now(), 0)
+    const lead = session.renew === undefined ? 0 : Math.min(30_000, Math.max(1, remaining / 10))
+    options.timer.schedule(Math.max(remaining - lead, 0), () => {
+      if (session.renew === undefined) onExpiry()
+      else void renewSession()
+    })
+  }
   schedule()
   return {
     refresh(next: SuiyiLoginSession) {
       if (locked || cancelled) return
+      cancelRenewal()
       session = next
       schedule()
     },
-    cancel() { cancelled = true; options.timer.cancel() },
+    cancel() {
+      cancelled = true
+      cancelRenewal()
+      options.timer.cancel()
+      session = { identity: session.identity, deadline: 0, accessToken: '' }
+    },
     expire: onExpiry,
     promptWhileLocked() { requestLogin() },
   }

@@ -6,7 +6,7 @@ import type { DesktopChannelState, DesktopChannelChangeResult } from '@deepseek-
 import { DesktopUpdateSettings } from './update-settings.ts'
 import { isDesktopUpdateChannel } from './settings-file.ts'
 import type { ProductEventMap, ProductEvent } from '@deepseek-ai/dsh-client-product-analytics/types'
-import { WINDOWS_TITLEBAR_HEIGHT } from './windows-layout.ts'
+import { SUIYI_WINDOWS_TITLEBAR_HEIGHT, WINDOWS_TITLEBAR_HEIGHT } from './windows-layout.ts'
 import { desktopIdentity, isDesktopOpenUrl } from './product-identity.ts'
 import { readFileSync } from 'node:fs'
 import { access, readFile, writeFile } from 'node:fs/promises'
@@ -57,7 +57,7 @@ import { DesktopFatalRecovery } from './fatal-recovery.ts'
 import { pruneCrashReports, RendererConsoleTail, writeCrashReport, type CrashReportSource } from './crash-report.ts'
 import { OperationJournal } from './operation-journal.ts'
 import { runOperationReportJob, type OperationReportJobResult } from './operation-report-job.ts'
-import { openSuiyiLoginWindow, openSuiyiWelcomeWindow } from './suiyi-login-window.ts'
+import { openSuiyiLoginWindow, openSuiyiWelcomeWindow, type SuiyiLoginWindow } from './suiyi-login-window.ts'
 import { openWelcomeWindow } from './welcome-window.ts'
 import { WELCOME_IPC, needsWelcome, type WelcomeNotice } from './welcome-api.ts'
 import { connectDesktopWelcome, type DesktopWelcomeBackend } from './welcome-backend.ts'
@@ -297,7 +297,8 @@ function createWindow(preload: string, show = false, primary = false): BrowserWi
     show,
     ...(process.platform === 'win32' && primary ? {
       titleBarStyle: 'hidden' as const,
-      titleBarOverlay: { height: WINDOWS_TITLEBAR_HEIGHT, color: chromeFallbackFill(),
+      titleBarOverlay: { height: desktopIdentity.suiyi ? SUIYI_WINDOWS_TITLEBAR_HEIGHT : WINDOWS_TITLEBAR_HEIGHT,
+        color: desktopIdentity.suiyi ? '#00000000' : chromeFallbackFill(),
         symbolColor: nativeTheme.shouldUseDarkColors ? '#f9fafb' : '#0f1115' },
     } : {}),
     // hiddenInset places traffic lights inside the sidebar; sidebar vibrancy
@@ -411,6 +412,8 @@ async function main(): Promise<void> {
   let suiyiDeadline = 0
   // Verified bearer token kept only in the main process and the Host's private channel.
   let suiyiAccess: Pick<SuiyiLoginResult, 'accessToken' | 'expiresAt'> | undefined
+  let suiyiRenew: SuiyiLoginResult['renew']
+  let suiyiLoginHandoff: SuiyiLoginWindow | undefined
   // Safe display name from the verified ID token; never an email, username, or issuer value.
   let suiyiDisplayName: string | undefined
   let suiyiExpiryWatch: { promptWhileLocked(): void; expire(): void; cancel(): void } | undefined
@@ -429,6 +432,8 @@ async function main(): Promise<void> {
       readDesktopLocaleCache(app.getPath('userData')) ?? null, app.getPreferredSystemLanguages()))
     // One verified login page drives first login, failed retries, and expiry re-login.
     promptSuiyiLogin = async (): Promise<SuiyiLoginResult | undefined> => {
+      suiyiLoginHandoff?.close()
+      suiyiLoginHandoff = undefined
       const prompt = await openSuiyiLoginWindow({
         locale: loginLocale,
         attempt: ({ signal, onAuthorizeUrl }) => runSuiyiLoginAttempt({
@@ -443,7 +448,8 @@ async function main(): Promise<void> {
         onCancel: quitWithoutConfirmation,
       })
       const verified = await prompt.result
-      prompt.close()
+      if (verified === undefined) prompt.close()
+      else suiyiLoginHandoff = prompt
       return verified
     }
     let login: SuiyiLoginResult | undefined
@@ -456,10 +462,10 @@ async function main(): Promise<void> {
       login = verified
     }
     suiyiAccess = { accessToken: login.accessToken, expiresAt: login.expiresAt }
+    suiyiRenew = login.renew
     suiyiDisplayName = login.displayName
     // Verified issuer+sub now own every data root and the Host environment. The
-    // refresh token is dropped; the access token stays in this process and the
-    // Host's private channel memory only.
+    // renewal closure stays in this process; only the bearer reaches the Host's private channel.
     const appData = app.getPath('appData')
     const userPaths = applySuiyiUserElectronStorage(app, appData, login)
     suiyiBrowserPartition = `persist:suiyi-${suiyiUserDirectory(login)}`
@@ -471,7 +477,7 @@ async function main(): Promise<void> {
     await browserSession.clearStorageData()
     await browserSession.clearCache()
     windowsLanguage = readDesktopLocaleCache(app.getPath('userData'))
-    suiyiIdentity = login
+    suiyiIdentity = { issuer: login.issuer, sub: login.sub }
     suiyiDeadline = suiyiSessionDeadline({ expiresAt: login.expiresAt, now: Date.now() })
     process.env.DSH_HOME = userPaths.home
     process.env.DSH_AGENTS_HOME = userPaths.agents
@@ -487,7 +493,7 @@ async function main(): Promise<void> {
         expiresAt: suiyiDeadline,
         accessToken: suiyiAccess.accessToken,
         ...(suiyiDisplayName === undefined ? {} : { name: suiyiDisplayName }),
-      }, Date.now())
+      }, Date.now(), suiyiRenew)
       const expiry = watchSuiyiSession({
         session: currentSession,
         timer: suiyiSessionTimer(),
@@ -499,11 +505,7 @@ async function main(): Promise<void> {
             await dialog.showMessageBox({ type: 'error', title: SESSION_LOCK_COPY.title,
               message: SESSION_LOCK_COPY.cleanupFailed, buttons: ['OK'] })
           },
-          showLock: async ({ message }) => {
-            const result = await dialog.showMessageBox({ type: 'warning', title: SESSION_LOCK_COPY.title, message,
-              buttons: [SESSION_LOCK_COPY.signIn, 'Cancel'], defaultId: 0, cancelId: 1 })
-            return result.response
-          },
+          showLock: () => Promise.resolve(0),
           openBrowser: url => shell.openExternal(url),
         },
         login: () => promptSuiyiLogin().catch(() => {
@@ -512,6 +514,14 @@ async function main(): Promise<void> {
           return undefined
         }),
         onRelogin: session => suiyiResume(session),
+        onRenewed: (renewed) => {
+          suiyiDeadline = renewed.deadline
+          suiyiAccess = { accessToken: renewed.accessToken, expiresAt: renewed.deadline }
+          suiyiRenew = renewed.renew
+          suiyiDisplayName = renewed.displayName
+          backend.host?.refreshSuiyiAccess()
+          publishSuiyiIdentity()
+        },
       })
       suiyiExpiryWatch = expiry
       if (!expiryQuitBound) {
@@ -519,6 +529,7 @@ async function main(): Promise<void> {
         app.on('will-quit', () => { suiyiExpiryWatch?.cancel() })
       }
     }
+    login = undefined
   }
   // The Host profile remains bound to the first verified account even if its
   // token expires during asynchronous initialization. Host startup itself is
@@ -641,6 +652,9 @@ async function main(): Promise<void> {
     suiyiIdentity = undefined
     suiyiDeadline = 0
     suiyiAccess = undefined
+    suiyiRenew = undefined
+    suiyiLoginHandoff?.close()
+    suiyiLoginHandoff = undefined
     suiyiDisplayName = undefined
     hostUrl = undefined
     hostCookie = undefined
@@ -664,6 +678,7 @@ async function main(): Promise<void> {
       suiyiIdentity = relogin.identity
       suiyiDeadline = relogin.deadline
       suiyiAccess = { accessToken: relogin.accessToken, expiresAt: relogin.deadline }
+      suiyiRenew = relogin.renew
       suiyiDisplayName = relogin.displayName
       try {
         // Backend startup may run while the screen remains locked, but only
@@ -695,7 +710,7 @@ async function main(): Promise<void> {
           && (verified.issuer !== verifiedHostOwner.issuer || verified.sub !== verifiedHostOwner.sub)) {
           return 'failed'
         }
-        const session = suiyiLoginSession(verified, Date.now())
+        const session = suiyiLoginSession(verified, Date.now(), verified.renew)
         if (session.deadline <= Date.now()) return 'failed'
         await suiyiResume(session)
         suiyiExpiryWatch?.cancel()
@@ -945,6 +960,7 @@ async function main(): Promise<void> {
         }
       },
       updateTasks: (action: 'inspect' | 'lock' | 'unlock') => host.updateTasks(action),
+      refreshSuiyiAccess: () => { host.refreshSuiyiAccess() },
       inspectQuit: () => host.inspectQuit(),
       resolveDragResource: (address: string, signal?: AbortSignal) => host.resolveDragResource(address, signal),
     }
@@ -1531,7 +1547,7 @@ async function main(): Promise<void> {
     updates.dispose()
   })
 
-  const applicationIconPath = development ? join(app.getAppPath(), 'resources', 'icon-windows.png')
+  const applicationIconPath = development ? join(app.getAppPath(), 'resources', desktopIdentity.suiyi ? 'suiyi' : '', 'icon-windows.png')
     : join(process.resourcesPath, 'icon.png')
   app.setAboutPanelOptions({
     applicationName: desktopIdentity.displayName,
@@ -1616,7 +1632,8 @@ async function main(): Promise<void> {
     tray?.relabel()
   }
   refreshApplicationMenu()
-  const trayIconPath = development ? join(app.getAppPath(), 'resources', 'tray-windows.ico') : join(process.resourcesPath, 'tray.ico')
+  const trayIconPath = development ? join(app.getAppPath(), 'resources', desktopIdentity.suiyi ? 'suiyi' : '', 'tray-windows.ico')
+    : join(process.resourcesPath, 'tray.ico')
   if (process.platform === 'win32') {
     // The tray is the way back to a hidden window; without it, relaunching the application still focuses it.
     try {
@@ -1658,7 +1675,7 @@ async function main(): Promise<void> {
           shortcuts.sendEditingKey(keyCode, modifiers)
         },
       })
-      const items: MenuItemConstructorOptions[] = name === 'application' ? applicationItems() : [
+      const editItems: MenuItemConstructorOptions[] = [
         editItem(currentDesktopLocale().messages.undo, 'Z', ['control'], 'Ctrl+Z'),
         editItem(currentDesktopLocale().messages.redo, 'Y', ['control'], 'Ctrl+Y'),
         { type: 'separator' },
@@ -1669,6 +1686,11 @@ async function main(): Promise<void> {
         { type: 'separator' },
         editItem(currentDesktopLocale().messages.selectAll, 'A', ['control'], 'Ctrl+A'),
       ]
+      // Suiyi has one toolbar menu button; its application popup also carries
+      // the complete editing commands instead of losing the old Edit menu.
+      const items: MenuItemConstructorOptions[] = name === 'application'
+        ? [...applicationItems(), ...desktopIdentity.suiyi ? [{ type: 'separator' } as MenuItemConstructorOptions, ...editItems] : []]
+        : editItems
       const zoom = mainWindow.webContents.getZoomFactor()
       return new Promise<void>((resolve) => {
         Menu.buildFromTemplate(items).popup({ window, x: Math.round(x * zoom), y: Math.round(y * zoom), callback: resolve })
@@ -1750,6 +1772,8 @@ async function main(): Promise<void> {
     if (isQuitting() || recovery.active || window.isDestroyed()) return
     if (activate) window.show()
     else window.showInactive()
+    suiyiLoginHandoff?.close()
+    suiyiLoginHandoff = undefined
     enteredWorkspace = true
     publishSuiyiIdentity()
     if (welcomeWindow !== undefined) {
@@ -1978,6 +2002,7 @@ async function main(): Promise<void> {
   // exist. Arm expiry before any Host startup; an expired startup login locks
   // the existing hidden window without launching a Host.
   armSuiyiExpiry?.()
+  if (desktopIdentity.suiyi && suiyiAccessAllowed()) await enterWorkspace()
   if (!desktopIdentity.suiyi || suiyiAccessAllowed()) {
     automaticCheck()
     await reconcileBackend().catch(() => undefined)

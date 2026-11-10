@@ -74,11 +74,13 @@ Queue 预览启用空白折叠和文档边缘 trim，保留 emoji，并使用 CS
 <a id="shell-and-standard-props"></a>
 ## Shell 与标准 props
 
+遂意的左上角工作空间按钮打开共享下拉菜单，提供切换、添加目录和管理功能，不增加一级侧栏入口，也不改变既有按钮尺寸。
+
 root 作用域的 hoc Slot `conversation.hero.frame` 在所有阶段都包裹滚动区，因此首页结束时各层不会让输入框重新挂载。它的所有者 props 提供 `hero`，仅在独立 Conversation 的空白首页时为 true。各层需让滚动区仍是 body 的直接 flex 子项，例如使用 `display: contents`。首页阶段，绘制背景的 Conversation 根元素隔离层叠上下文：层中负 `z-index` 的装饰画在该背景之上、所有 Conversation 内容之下，包括输入区的接管面板。其他阶段根元素不参与层叠隔离，未经 portal 的 Conversation 浮层仍能盖住悬浮在中栏上方的 AppFrame 元素。各层自行处理输入。没有占用者时，body 保持原样。
 
 宽度小于 768px 时，Web 的 View 标签与页头的 20px 左内边距对齐。桌面客户端和较宽的 Web 窗口保留标签额外的 8px 左内边距。
 
-空白首页在 root 作用域的 `conversation.hero.brand.mark` 占用者下方渲染冻结原型标题 `hero.headline`，不再显示预览徽标。三个 `hero.quick.*` 快捷操作只出现在 `hero` variant 的输入卡片下方。点击其中一项会通过 `inputActions.setDraft` 写入本地化提示词，并把焦点交回编辑器；它不提交、不添加附件、也不模拟模型回复，因此普通发送、停止与恢复路径仍是唯一执行路径。
+空白首页在 root 作用域的 `conversation.hero.brand.mark` 占用者下方渲染冻结原型标题 `hero.headline`，不再显示预览徽标。在 Suiyi profile 下，装饰标识与标题不会触发文字选择，首页输入框只在用户操作后获得焦点。三个 `hero.quick.*` 快捷操作只出现在 `hero` variant 的输入卡片下方。点击其中一项会通过 `inputActions.setDraft` 写入本地化提示词，并把焦点交回编辑器；它不提交、不添加附件、也不模拟模型回复，因此普通发送、停止与恢复路径仍是唯一执行路径。
 
 共享图片插槽属性将展示选择与持久化引用分开：`thumbnail` 请求完整缩放的附件列表缩略图，`compact` 请求裁剪的图片方块。每张图片可通过可选的 `label` 提供无障碍展示名称；加载和缓存标识仍使用原始附件引用。`MessageImagesContentInput` 为 root 作用域的 `conversation.images.content` Factory 增加可选的完整 `MessageImageLabels`。消息、工具及 Factory 输入显式携带视图提供的授权 `loadImage` 回调；读取和 URL 缓存仍由资源所有者负责。[ui-attachment](../ui-attachment/README.zh.md) 提供该 Factory，负责渲染与灯箱。
 
@@ -114,9 +116,9 @@ root 作用域的 `conversation.session.header.views.actions` list 有注册项�
 
 工作区选择使用 `uiWorkspace.openWorkspace` 准备目标并提交导航。草稿内容（包括结构化引用）和附件仅在该请求仍为当前请求、且没有在途提交时，通过它的同步准备回调搬移；后续导航、所有者释放或在途提交都会把原草稿留在它的 Session 中。
 
-本包占据 root 作用域 `main` 中的 `conversation` key。其 `main.conversation` 外壳将常驻的 `conversation.header` 放在可选 Session 的 `conversation.content` Component Factory 外。该 header 是 52px chat-top：包含工作区入口，以及拥有 View 标签、Session 操作、More 启动器和 navigation-owned corner 的严格 Session 子组件。全局 shell topbar 负责标题、主题和插件中心，chat-top 不再重复它们。Factory 拥有共享正文与 Composer，通过其标准 Hook 读取当前 Session，并公开 strict-Session `views` 与 root-scoped `widthControls` 两个局部位置。默认 adapter 渲染现有 `conversation.session` entry，主 occurrence 选择宽度拖拽条；嵌入式 occurrence 可以替换 `views`、省略拖拽条，且不渲染主 Header。共享正文与 Composer 注册 queue dock 和 Todo dock。Todo dock 在 composer 上方使用共享面板 elevation；其中的行分别以共享 idle、ongoing 与 done 标记表示待处理、进行中与已完成。`ctx.uiSession.provide()` 从同一个 Session binding 物化 Conversation 与 input source，并将 `inputActions` 作为稳定标准 prop 提供。
+本包占据 root 作用域 `main` 中的 `conversation` key。其 `main.conversation` 外壳将常驻的 `conversation.header` 放在可选 Session 的 `conversation.content` Component Factory 外。遂意空白首页 header 为 56px，包含 20px 顶部留白和 36px 工作区控件；其他状态保留 52px chat-top：包含工作区入口，以及拥有 View 标签、Session 操作、More 启动器和 navigation-owned corner 的严格 Session 子组件。全局 shell topbar 负责标题、主题和插件中心，chat-top 不再重复它们。Factory 拥有共享正文与 Composer，通过其标准 Hook 读取当前 Session，并公开 strict-Session `views` 与 root-scoped `widthControls` 两个局部位置。默认 adapter 渲染现有 `conversation.session` entry，主 occurrence 选择宽度拖拽条；嵌入式 occurrence 可以替换 `views`、省略拖拽条，且不渲染主 Header。共享正文与 Composer 注册 queue dock 和 Todo dock。Todo dock 在 composer 上方使用共享面板 elevation；其中的行分别以共享 idle、ongoing 与 done 标记表示待处理、进行中与已完成。`ctx.uiSession.provide()` 从同一个 Session binding 物化 Conversation 与 input source，并将 `inputActions` 作为稳定标准 prop 提供。
 
-本包提供全局 `shell.header` 与 `shell.bottom` 占用者，因此 62px 顶栏（当前标题、主题、插件中心）和含边框的 30px 底栏（手机为 27px；真实连接与任务状态、构建版本）在插件、设置和对话主面板之间切换时都不会卸载。对话自身的 chat-top 在首页与活动会话中都会显示。首页这一行为 52px，640px 以下为 49px。遂意活动会话使用 53px 行，保留工作区入口与一个末尾会话菜单；所有宽度的 View 导航均位于该菜单内。其他主面板不渲染 chat-top，因此设置与插件页不会出现工作区 chip。工作区入口打开已注册的 Workspaces 主视图；首页 composer 的工作区触发也执行同一导航。标题、主题、插件中心和状态因此各有一位所有者，chat-top 不再重复 chrome。选择 Workspace 会创建这些控件所需的 Session，无需先发送消息；在 macOS 桌面上，chat-top 行同时是窗口拖拽行。侧栏各入口仍遵循自身的数据与执行环境要求。已开始的 Session 在可用 View 少于两个时使用单行 chat-top，仅在渲染标签行时保留其高度。actions 与 utilities seat 中的浮层通过 portal 渲染，不受该行裁剪影响。
+本包提供全局 `shell.header` 与 `shell.bottom` 占用者，因此 62px 顶栏（当前标题、主题、插件中心）和含边框的 30px 底栏（手机为 27px；真实连接与任务状态、构建版本）在插件、设置和对话主面板之间切换时都不会卸载。遂意 Windows 的顶栏同时承担原生 caption：AppFrame 不再增加第二条窗口条；该顶栏提供拖拽区域、内嵌 Desktop 菜单座和 150px 原生按钮避让，左侧预留通常为 70px，收起侧栏时为 104px。对话自身的 chat-top 在首页与活动会话中都会显示。遂意首页这一行在所有视口宽度下均为 56px。遂意活动会话使用 53px 行，保留工作区入口与一个末尾会话菜单；所有宽度的 View 导航均位于该菜单内。其他主面板不渲染 chat-top，因此设置与插件页不会出现工作区 chip。遂意工作区入口打开共享下拉菜单，其管理操作打开已注册的 Workspaces 主视图。其他构建和首页 composer 的工作区触发直接打开该视图。标题、主题、插件中心和状态因此各有一位所有者，chat-top 不再重复 chrome。选择 Workspace 会创建这些控件所需的 Session，无需先发送消息；在 macOS 桌面上，chat-top 行同时是窗口拖拽行。侧栏各入口仍遵循自身的数据与执行环境要求。已开始的 Session 在可用 View 少于两个时使用单行 chat-top，仅在渲染标签行时保留其高度。actions 与 utilities seat 中的浮层通过 portal 渲染，不受该行裁剪影响。
 
 Session Header 持有末尾的更多按钮，在 utility 贡献之后渲染共享 `contextMenu.button` factory。本包声明 `sessionHeader` 右键菜单目标 `{ sessionId }`，独立于会话行右键操作；Header 菜单提供者导入本包的 client 类型。只要仍注册有其他 Header 菜单提供者，未挂载导出插件时按钮也可用；没有任何提供者时隐藏。各提供者在菜单打开时决定自己的条目及可用性。遂意在所有视口尺寸使用这一个末尾菜单，View 切换与固定操作加入原有会话操作。弹窗保留被点击会话的引用直到关闭，因此切换当前会话不会改变菜单操作的目标。手机上的次要头部操作和 View 标签继续收起。[右键菜单](../ui-context-menu/README.zh.md)负责按钮开关与可访问性；[会话日志导出](../../session-query/session-log-export/README.zh.md)负责导出操作与全局下载弹窗。
 
@@ -202,7 +204,7 @@ selector 必须是 owner currency 的纯函数。非 null 返回值作为 `match
 
 `conversation.input.activity` 在模型选择器与发送按钮之间承载一个控件。其 `onActiveChange` 回调将控件展开至整条工具栏并隐藏普通辅助控件和上下文用量按钮，同时保留编辑器与提交按钮。关闭活动后恢复这些控件，上下文详情保持关闭。首页输入框下方没有内容时，该区域保持收起。占用者在卸载时释放展开状态，并拥有活动专属反馈。
 
-可复用图片库从其 Factory 注入的 `useContextMenu` hook 获取 `getTriggerProps`。工作区入口导航到 Workspaces 主视图，而不是打开重复的 picker 菜单。
+可复用图片库从其 Factory 注入的 `useContextMenu` hook 获取 `getTriggerProps`。
 
 <a id="model-experience"></a>
 ## 模型体验

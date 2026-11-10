@@ -23,6 +23,8 @@ interface RibbonMarkProps {
   assistant?: boolean | undefined
   /** Accessible name of the artwork. */
   label: string
+  /** Pointer-interactive position; Assistant replies deliberately omit it. */
+  motion?: 'hero' | 'sidebar' | undefined
 }
 
 /**
@@ -35,7 +37,7 @@ interface RibbonMarkProps {
  * streaming, then settles through the 0.5 s answer transition. The
  * reduced-motion preference holds every position still and hides the orbit.
  */
-function RibbonMark({ size, className, running, assistant, label }: RibbonMarkProps) {
+function RibbonMark({ size, className, running, assistant, label, motion }: RibbonMarkProps) {
   // useId returns colons, which url(#id) references cannot carry in a selector.
   const scope = useId().replace(/[^\w-]/g, '')
   const wing = `dsh-suiyi-wing-${scope}`
@@ -43,7 +45,7 @@ function RibbonMark({ size, className, running, assistant, label }: RibbonMarkPr
   const glass = `dsh-suiyi-glass-${scope}`
   const side = `dsh-suiyi-side-${scope}`
   const orbit = `dsh-suiyi-orbit-${scope}`
-  return (
+  const artwork = (
     <svg
       className={className === undefined ? 'dsh-suiyi-mark' : `dsh-suiyi-mark ${className}`}
       width={size}
@@ -125,6 +127,12 @@ function RibbonMark({ size, className, running, assistant, label }: RibbonMarkPr
       </g>
     </svg>
   )
+  if (motion === undefined) return artwork
+  return (
+    <span className="dsh-suiyi-motion-shell" data-motion-mark={motion}>
+      <span className="dsh-suiyi-motion-inner">{artwork}</span>
+    </span>
+  )
 }
 
 /**
@@ -133,7 +141,7 @@ function RibbonMark({ size, className, running, assistant, label }: RibbonMarkPr
  * @returns the Suiyi ribbon mark at the requested size.
  */
 export function SuiyiBrandMark({ size, t }: SidebarBrandMarkOwnerProps & { t: SuiyiBrandT }) {
-  return <RibbonMark size={size} label={t('mark.label')} />
+  return <RibbonMark size={size} label={t('mark.label')} motion="sidebar" />
 }
 
 /**
@@ -144,7 +152,7 @@ export function SuiyiBrandMark({ size, t }: SidebarBrandMarkOwnerProps & { t: Su
  * @returns the Suiyi ribbon mark at the hero size.
  */
 export function SuiyiHeroMark({ size, className, t }: HeroBrandMarkOwnerProps & { t: SuiyiBrandT }) {
-  return <RibbonMark size={size} className={className} label={t('mark.label')} />
+  return <RibbonMark size={size} className={className} label={t('mark.label')} motion="hero" />
 }
 
 /**

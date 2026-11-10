@@ -484,7 +484,7 @@ describe('ui-agent-preset apply', () => {
     }
   })
 
-  it('registers no Add-plugin entry under the Suiyi build profile, keeping every other surface', async () => {
+  it('keeps preset management and selection out of the Suiyi interface', async () => {
     vi.stubEnv('DSH_CLIENT_BUILD_PROFILE', 'suiyi')
     const { ctx, slots } = await bench()
     try {
@@ -504,10 +504,9 @@ describe('ui-agent-preset apply', () => {
       await feature.await()
 
       expect(slots.entries('plugins.add.actions')).toHaveLength(0)
-      // The chip, the header label, and the settings section all stay.
-      expect(slots.entries('conversation.hero.agentPreset')).toHaveLength(1)
-      expect(slots.entries('conversation.session.header.actions')).toHaveLength(1)
-      expect(slots.entries('settings.section')).toHaveLength(1)
+      expect(slots.entries('conversation.hero.agentPreset')).toHaveLength(0)
+      expect(slots.entries('conversation.session.header.actions')).toHaveLength(0)
+      expect(slots.entries('settings.section')).toHaveLength(0)
 
       await feature.dispose()
     } finally {

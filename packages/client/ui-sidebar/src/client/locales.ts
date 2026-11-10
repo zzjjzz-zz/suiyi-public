@@ -12,6 +12,11 @@ export const zh = {
   'conversation.label': '对话',
   'navigation.label': '导航',
   'panels.more': '更多功能',
+  'panels.all': '全部功能',
+  'panels.close': '关闭',
+  'panels.history': '全部对话',
+  'panels.settings': '设置与偏好',
+  'panels.unavailable': '此功能暂不可用，请关闭其他弹窗后重试。',
   'version.copied': '版本号复制成功',
 } satisfies Record<string, string>
 
@@ -30,6 +35,11 @@ export const en = {
   'conversation.label': 'Conversation',
   'navigation.label': 'Navigation',
   'panels.more': 'More features',
+  'panels.all': 'All features',
+  'panels.close': 'Close',
+  'panels.history': 'All conversations',
+  'panels.settings': 'Settings and preferences',
+  'panels.unavailable': 'This feature is unavailable. Close other dialogs and try again.',
   'version.copied': 'Version copied',
 } satisfies Record<SidebarKey, string>
 
@@ -45,6 +55,11 @@ export const ja = {
   'conversation.label': '会話',
   'navigation.label': 'ナビゲーション',
   'panels.more': 'その他',
+  'panels.all': 'すべての機能',
+  'panels.close': '閉じる',
+  'panels.history': 'すべての会話',
+  'panels.settings': '設定',
+  'panels.unavailable': 'この機能は現在利用できません。',
   'version.copied': 'バージョンをコピーしました',
 } satisfies Record<keyof typeof en, string>
 
@@ -60,6 +75,11 @@ export const es = {
   'conversation.label': 'Conversación',
   'navigation.label': 'Navegación',
   'panels.more': 'Más',
+  'panels.all': 'Todas las funciones',
+  'panels.close': 'Cerrar',
+  'panels.history': 'Todas las conversaciones',
+  'panels.settings': 'Configuración',
+  'panels.unavailable': 'Esta función no está disponible.',
   'version.copied': 'Versión copiada',
 } satisfies Record<keyof typeof en, string>
 
@@ -75,6 +95,11 @@ export const fr = {
   'conversation.label': 'Conversation',
   'navigation.label': 'Navigation',
   'panels.more': 'Plus',
+  'panels.all': 'Toutes les fonctionnalités',
+  'panels.close': 'Fermer',
+  'panels.history': 'Toutes les conversations',
+  'panels.settings': 'Paramètres',
+  'panels.unavailable': 'Cette fonction est indisponible.',
   'version.copied': 'Version copiée',
 } satisfies Record<keyof typeof en, string>
 
@@ -90,6 +115,11 @@ export const de = {
   'conversation.label': 'Unterhaltung',
   'navigation.label': 'Navigation',
   'panels.more': 'Mehr',
+  'panels.all': 'Alle Funktionen',
+  'panels.close': 'Schließen',
+  'panels.history': 'Alle Unterhaltungen',
+  'panels.settings': 'Einstellungen',
+  'panels.unavailable': 'Diese Funktion ist nicht verfügbar.',
   'version.copied': 'Version kopiert',
 } satisfies Record<keyof typeof en, string>
 
@@ -105,6 +135,11 @@ export const ru = {
   'conversation.label': 'Диалог',
   'navigation.label': 'Навигация',
   'panels.more': 'Ещё',
+  'panels.all': 'Все функции',
+  'panels.close': 'Закрыть',
+  'panels.history': 'Все разговоры',
+  'panels.settings': 'Настройки',
+  'panels.unavailable': 'Эта функция недоступна.',
   'version.copied': 'Версия скопирована',
 } satisfies Record<keyof typeof en, string>
 
@@ -120,5 +155,10 @@ export const pt = {
   'conversation.label': 'Conversa',
   'navigation.label': 'Navegação',
   'panels.more': 'Mais',
+  'panels.all': 'Todos os recursos',
+  'panels.close': 'Fechar',
+  'panels.history': 'Todas as conversas',
+  'panels.settings': 'Configurações',
+  'panels.unavailable': 'Este recurso está indisponível.',
   'version.copied': 'Versão copiada',
 } satisfies Record<keyof typeof en, string>

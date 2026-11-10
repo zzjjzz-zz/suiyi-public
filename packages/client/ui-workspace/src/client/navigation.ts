@@ -233,6 +233,7 @@ class UiWorkspaceService extends Service implements UiWorkspace {
 
   /** Name the first reusable member blank; a requested preset also skips blanks listing another preset. */
   private createInWorkspace(workspace: WorkspaceView, options: Pick<StartSessionOptions, 'agentPreset'>): Promise<SessionId> {
+    const agentPreset = options.agentPreset ?? (process.env.DSH_CLIENT_BUILD_PROFILE === 'suiyi' ? 'standard' : undefined)
     const archived = this.workspaces.list.getSnapshot().archivedSessionIds
     const sessions = this.sessions.list.getSnapshot()
     const blank = sessions.ids.find((id) => {
@@ -240,12 +241,12 @@ class UiWorkspaceService extends Service implements UiWorkspace {
       const listed = summary?.projectionValues?.agentPreset
       return summary !== undefined && summary.blank && summary.cwd === workspace.path
         && workspace.sessionIds.includes(id) && !archived.includes(id)
-        && (options.agentPreset === undefined || typeof listed !== 'string' || listed === options.agentPreset)
+        && (agentPreset === undefined || typeof listed !== 'string' || listed === agentPreset)
     })
     return this.createNamed({
       workspaceId: workspace.workspaceId,
       ...(blank === undefined ? {} : { sessionId: blank }),
-      ...(options.agentPreset === undefined ? {} : { agentPreset: options.agentPreset }),
+      ...(agentPreset === undefined ? {} : { agentPreset }),
     })
   }
 

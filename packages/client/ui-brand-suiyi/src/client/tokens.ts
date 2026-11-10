@@ -23,6 +23,7 @@ export const SUIYI_TOKENS: ThemeTokenOverrides = {
   '--dsw-alias-border-l1': { light: '#e4eaf3', dark: '#2a3d53' },
   '--dsw-alias-border-l2': { light: '#e4eaf3', dark: '#2a3d53' },
   '--dsw-alias-switch-thumb': { light: '#ffffff', dark: '#ffffff' },
+  '--dsw-brand-action-fill': { light: '#3478eb', dark: '#3478eb' },
   '--dsw-brand-switch-on': { light: '#4285f4', dark: '#4285f4' },
   '--dsw-alias-brand-primary': { light: '#2678ed', dark: '#7bb5ff' },
   '--dsw-alias-label-primary': { light: '#1f2937', dark: '#e8f1ff' },
@@ -54,6 +55,12 @@ export const SUIYI_TOKENS: ThemeTokenOverrides = {
   '--dsw-brand-glass-toolbar': { light: 'rgba(255, 255, 255, 0.63)', dark: 'rgba(43, 74, 111, 0.54)' },
   '--dsw-brand-glass-edge': { light: 'rgba(255, 255, 255, 0.90)', dark: 'rgba(174, 220, 255, 0.24)' },
   '--dsw-brand-glass-shadow': { light: 'rgba(27, 79, 148, 0.13)', dark: 'rgba(0, 7, 22, 0.30)' },
+  '--dsw-brand-dialog-shadow': {
+    light: 'inset 0 1px rgba(255, 255, 255, 0.92), 0 30px 90px rgba(15, 42, 86, 0.24)',
+    dark: 'inset 0 1px rgba(202, 226, 255, 0.15), 0 30px 90px rgba(15, 42, 86, 0.24)',
+  },
+  '--dsw-brand-dialog-mask': { light: 'rgba(17, 24, 39, 0.219608)', dark: 'rgba(17, 24, 39, 0.219608)' },
+  '--dsw-brand-workspace-border': { light: 'rgba(124, 156, 194, 0.25)', dark: 'rgba(141, 184, 234, 0.22)' },
   '--dsw-brand-accent-ink': { light: '#185abc', dark: '#a7d0ff' },
   '--dsw-brand-accent-soft': { light: '#e8f1ff', dark: '#213c60' },
   '--dsw-app-frame-fill': { light: 'transparent', dark: 'transparent' },
@@ -118,4 +125,6 @@ export const SUIYI_TOKENS: ThemeTokenOverrides = {
   '--dsw-brand-mark-wake-3': { light: '#3268da', dark: '#3391f2' },
   '--dsw-brand-mark-wake-4': { light: '#79def0', dark: '#9cebf2' },
   '--dsw-brand-mark-glow': { light: 'rgba(12, 82, 157, 0.10)', dark: 'rgba(94, 196, 255, 0.22)' },
+  '--dsw-brand-mark-hover-glow': { light: 'rgba(21, 151, 223, 0.16)', dark: 'rgba(21, 151, 223, 0.16)' },
+  '--dsw-brand-mark-burst-border': { light: 'rgba(42, 159, 233, 0.48)', dark: 'rgba(42, 159, 233, 0.48)' },
 }

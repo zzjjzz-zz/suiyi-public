@@ -16,6 +16,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-theme/client'
 import { SuiyiAssistantMark, SuiyiBrandMark, SuiyiBrandName, SuiyiHeroMark } from './Brand.tsx'
 import { installBrandScope } from './scope.ts'
 import { installBrandScene } from './scene.ts'
+import { installLogoMotion } from './logo-motion.ts'
 import { SUIYI_TOKENS } from './tokens.ts'
 import { en, ja, es, fr, de, ru, pt, zh, NS, type SuiyiKey } from './locales.ts'
 
@@ -53,4 +54,5 @@ export function apply(ctx: ClientContext): void {
   ctx.effect(() => ctx.theme.overrideTokens('suiyi-brand', SUIYI_TOKENS), 'ui-brand-suiyi: token layer')
   installBrandScope(ctx)
   installBrandScene(ctx)
+  installLogoMotion(ctx)
 }

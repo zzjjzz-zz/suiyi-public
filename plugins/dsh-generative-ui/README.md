@@ -18,6 +18,10 @@ The `ui4a` in that fence is the harness this implements — **UI for Agent**, fr
 
 Host requests and the isolated frame use URLs relative to the client document, preserving a deployment path prefix.
 
+The Host publishes the actual Loader entry id with runtime readiness, so the settings toggle reads and writes the mounted entry even when its id differs from the package name. Older runtimes retain the package-name namespace.
+
+The settings capability retries an unavailable isolation configuration when the authenticated connection changes or its settings form recovers. A late response from an older connection cannot overwrite the current result. Readiness requires both the opaque-frame runtime and current authorization; retrying never enables execution or data access.
+
 ## Install
 
 ```sh

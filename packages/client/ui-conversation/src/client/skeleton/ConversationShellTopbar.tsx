@@ -33,14 +33,15 @@ export function ConversationShellTopbar({
   })
   const panelTitle = panelId === 'settings'
     ? t('topbar.settings')
-    : panelId === 'plugin-hub' ? t('topbar.pluginCenter') : undefined
-  const title = panelId !== null && panelId !== undefined ? panelTitle ?? sessionTitle : sessionTitle
+    : panelId === 'plugin-hub' ? t('topbar.pluginCenter') : panelId === 'workspaces' ? t('topbar.workspaces') : undefined
+  const title = panelId !== null ? panelTitle ?? sessionTitle : sessionTitle
   return (
     <header className={css.shellTopbar} data-conversation-topbar="" data-shell-global-chrome="">
       <div className={css.shellTopbarLeft}>
         <span className={css.shellTitle} title={title ?? t('session.new')}>{title ?? t('session.new')}</span>
       </div>
       <div className={css.shellTopbarRight}>
+        <div className={css.windowsMenuSeat} data-windows-suiyi-menu />
         <ConversationAccountAction t={t} />
         <ConversationInstallAction t={t} />
         <ConversationTopbarActions

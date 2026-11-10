@@ -1,4 +1,4 @@
-import { WINDOWS_TITLEBAR_HEIGHT } from './windows-layout.ts'
+import { SUIYI_WINDOWS_TITLEBAR_HEIGHT, WINDOWS_TITLEBAR_HEIGHT } from './windows-layout.ts'
 /** Synchronizes Windows context menus and caption colors with the application document. */
 import { ipcRenderer } from 'electron'
 import { DESKTOP_IPC } from './ipc.ts'
@@ -19,7 +19,7 @@ export function syncWindowsAppearance(): void {
     const root = document.documentElement
     const menu = installWindowsMenu()
     const probe = document.createElement('span')
-    probe.style.cssText = 'position:fixed;visibility:hidden;pointer-events:none;background-color:var(--dsw-specific-sidebar-fill);color:var(--dsw-alias-label-primary)'
+    probe.style.cssText = 'position:fixed;visibility:hidden;pointer-events:none;color:var(--dsw-alias-label-primary)'
     document.body.append(probe)
     const canvas = document.createElement('canvas')
     canvas.width = canvas.height = 1
@@ -34,6 +34,11 @@ export function syncWindowsAppearance(): void {
     }
     let previous = ''
     const send = (): void => {
+      const suiyi = document.body.dataset.dshBrand === 'suiyi'
+      root.style.setProperty('--dsh-windows-titlebar-height', `${suiyi ? SUIYI_WINDOWS_TITLEBAR_HEIGHT : WINDOWS_TITLEBAR_HEIGHT}px`)
+      probe.style.backgroundColor = suiyi
+        ? 'transparent'
+        : 'var(--dsw-specific-sidebar-fill)'
       const style = getComputedStyle(probe)
       const color = nativeColor(style.backgroundColor)
       const symbolColor = nativeColor(style.color)
@@ -46,7 +51,7 @@ export function syncWindowsAppearance(): void {
     }
     const observer = new MutationObserver(send)
     observer.observe(root, { attributes: true, attributeFilter: ['lang'] })
-    observer.observe(document.body, { attributes: true, attributeFilter: ['data-ds-dark-theme', 'style'] })
+    observer.observe(document.body, { attributes: true, attributeFilter: ['data-ds-dark-theme', 'data-dsh-brand', 'style'] })
     observer.observe(document.head, { childList: true, subtree: true, characterData: true })
     document.head.addEventListener('load', send, true)
     window.addEventListener('pagehide', () => {

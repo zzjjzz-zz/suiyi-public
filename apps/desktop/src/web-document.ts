@@ -84,11 +84,18 @@ const WITHHELD_RESPONSE_HEADERS = [
 /** Host routes whose responses carry immutable cache headers keyed by a per-process revision. */
 const PLUGIN_BUNDLE_PATH = /^\/plugins\//u
 
+function isResetConnection(error: unknown): boolean {
+  if (!(error instanceof TypeError) || !(error.cause instanceof Error) || !('code' in error.cause)) return false
+  return error.cause.code === 'ECONNRESET' || error.cause.code === 'UND_ERR_SOCKET'
+}
+
 /**
  * Forward local application requests to its authenticated Host, preserving streaming and cancellation.
  * Plugin bundle responses lose their `cache-control` for `no-store`: the Host marks them immutable
  * under a revision that changes every launch, so Chromium's disk cache would only accumulate bundles
  * no later launch can reuse.
+ * A plugin-resource GET or HEAD retries once if its connection resets before response headers.
+ * Cancellation, HTTP errors, other routes and writes never retry; a second failure propagates.
  * @param request - Request from the application origin.
  * @param host - Owned Host URL.
  * @param cookie - Host-issued authentication cookie.
@@ -105,7 +112,14 @@ export async function forwardWebRequest(request: Request, host: string, cookie: 
   for (const name of ['host', 'origin', 'cookie', 'sec-fetch-site']) headers.delete(name)
   headers.set('cookie', cookie)
   const init = { method: request.method, headers, body: request.body, signal: request.signal, duplex: 'half', redirect: 'manual' as const }
-  const response = await fetch(target, init)
+  let response: Response
+  try {
+    response = await fetch(target, init)
+  } catch (error) {
+    if (request.signal.aborted || !PLUGIN_BUNDLE_PATH.test(source.pathname)
+      || !['GET', 'HEAD'].includes(request.method) || !isResetConnection(error)) throw error
+    response = await fetch(target, init)
+  }
   const outgoing = new Headers(response.headers)
   for (const name of WITHHELD_RESPONSE_HEADERS) outgoing.delete(name)
   if (PLUGIN_BUNDLE_PATH.test(source.pathname)) outgoing.set('cache-control', 'no-store')

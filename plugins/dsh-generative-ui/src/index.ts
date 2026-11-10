@@ -10,6 +10,7 @@
  */
 
 import { existsSync } from "node:fs";
+import type {} from "@deepseek-ai/cordis-plugin-loader";
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import type { IncomingMessage, ServerResponse } from "node:http";
@@ -61,7 +62,7 @@ declare module "@deepseek-ai/cordis" {
 export const name = "dsh-generative-ui";
 export const inject = ["systemPrompt"];
 
-/** The settings section this plugin owns; the key under `dsh-generative-ui:` in settings.yaml. */
+/** Legacy settings namespace; Loader profiles use their actual entry id. */
 export const SETTINGS_NAMESPACE = name;
 
 /**
@@ -183,7 +184,7 @@ const sandboxRuntime = (): string => fileURLToPath(new URL("../lib/sandbox/runti
 /** Host authorities a CSP may name. A Host header is not identity, but it is also never trusted into a header unvalidated. */
 const authority = (req: IncomingMessage): string | null => {
   const host = req.headers.host;
-  return host !== undefined && /^[A-Za-z0-9.\-\[\]:]+$/.test(host) ? host : null;
+  return host !== undefined && /^[A-Za-z0-9.\-[\]:]+$/.test(host) ? host : null;
 };
 
 /**
@@ -287,11 +288,17 @@ export async function serveSandbox(req: IncomingMessage, res: ServerResponse): P
  * What the browser half may mount. `isolation` names the actual mechanism rather than a
  * boolean so a stale client cannot mistake a same-realm runtime for the sandbox.
  * `allowExec` is the profile's existing opt-in and stays false by default.
+ * @param allowExec - whether the Host permits generated execution requests.
+ * @param allowData - whether the Host permits generated data requests.
+ * @param req - authenticated runtime configuration request.
+ * @param res - response receiving the public runtime metadata.
+ * @param settingsNamespace - actual Loader entry id owning the visual-output preference.
  */
-export function serveVisualOutput(allowExec: boolean, allowData: boolean, req: IncomingMessage, res: ServerResponse): void {
+export function serveVisualOutput(allowExec: boolean, allowData: boolean, req: IncomingMessage, res: ServerResponse,
+  settingsNamespace = SETTINGS_NAMESPACE): void {
   if (req.method !== "GET") return void res.writeHead(405).end();
   res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
-  res.end(JSON.stringify({ version: 1, isolation: "iframe-opaque", allowExec, allowData, ai: false }));
+  res.end(JSON.stringify({ version: 1, isolation: "iframe-opaque", allowExec, allowData, ai: false, settingsNamespace }));
 }
 
 /**
@@ -786,6 +793,7 @@ export const trustFenceOf = (ctx: Context): ((req: IncomingMessage, res: ServerR
 // on this branch. A host that calls `apply(ctx)` is not a hypothetical — the existing profile
 // tests do.
 export function apply(ctx: Context, config: Config = Config({})): void {
+  const settingsNamespace = ctx.fiber.entry?.options.id ?? SETTINGS_NAMESPACE;
   // `current()` rather than a captured boolean: the section is live, and a user who turns
   // commands off in the settings UI means it now, not at the next restart.
   let current = () => config;
@@ -809,7 +817,7 @@ export function apply(ctx: Context, config: Config = Config({})): void {
     // nothing — visible to a reader as a card losing its host mid-conversation.
     if (configured?.allowExec === allowExec && configured?.allowData === allowData && configured?.visualOutput === visualOutput) return;
     void configured?.fiber.dispose();
-    configured = { allowExec, allowData, visualOutput, fiber: ctx.plugin({ name: "dsh-generative-ui:configured", apply: (scoped: Context) => applyWith(scoped, allowExec, allowData, visualOutput) }) };
+    configured = { allowExec, allowData, visualOutput, fiber: ctx.plugin({ name: "dsh-generative-ui:configured", apply: (scoped: Context) => applyWith(scoped, allowExec, allowData, visualOutput, settingsNamespace) }) };
   };
   // 无 settings 服务时下面的 inject 不执行，必须先用 entry 配置挂载；rebuild 内的值比较避免重复挂载。
   rebuild();
@@ -824,7 +832,7 @@ export function apply(ctx: Context, config: Config = Config({})): void {
 }
 
 /** Everything whose shape depends on `allowExec`; rebuilt when the setting changes. */
-function applyWith(ctx: Context, allowExec: boolean, allowData: boolean, visualOutput: boolean): void {
+function applyWith(ctx: Context, allowExec: boolean, allowData: boolean, visualOutput: boolean, settingsNamespace: string): void {
   /**
    * The guidance is built from what this host actually mounted, not from what it might have.
    *
@@ -837,7 +845,10 @@ function applyWith(ctx: Context, allowExec: boolean, allowData: boolean, visualO
   const capabilities: Capabilities = { fs: false, ai: false, exec: false, web: false, chat: false };
   // `ctx.effect` and `ctx.inject` hand back a fiber, not a plain disposer, so normalise both.
   const stop = (handle: unknown): void => {
-    if (typeof handle === "function") return void (handle as () => void)();
+    if (typeof handle === "function") {
+      (handle as () => void)();
+      return;
+    }
     void (handle as { dispose?: () => unknown } | undefined)?.dispose?.();
   };
   let stopGuidance: unknown[] = [];
@@ -964,7 +975,7 @@ function applyWith(ctx: Context, allowExec: boolean, allowData: boolean, visualO
           path: VISUAL_OUTPUT_PATH,
           handler: (req, res) => {
             if (rejected(req, res)) return;
-            return serveVisualOutput(allowExec, allowData, req, res);
+            return serveVisualOutput(allowExec, allowData, req, res, settingsNamespace);
           },
         }),
       "dsh-generative-ui: visual output readiness",

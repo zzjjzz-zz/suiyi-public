@@ -48,6 +48,7 @@ describe('BootPage', () => {
     const { el, page } = mount()
     const report = 'web boot: 1 entry did not activate\nx: pending (waiting for service: y)'
     page.fail(report)
+    expect(el.querySelector('[data-dsh-boot="failed"]')).not.toBeNull()
     page.setState('a', 'active')
     expect(el.textContent).toContain(report)
     expect(el.textContent).not.toContain('Loading plugins…')

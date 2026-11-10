@@ -1,10 +1,11 @@
-/* The workspace main view: the same directory cards and management verbs the
-   sidebar surfaces already own, sized for the main column. Tokens only. */
+/* The workspace main view: real directory cards and management verbs, with the
+   prototype's page heading, icon block, path, and entry footer. Tokens only. */
 .page {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 28px 32px 48px;
+  padding: 36px 36px 45px;
+  font-size: 14px;
   box-sizing: border-box;
 }
 
@@ -13,115 +14,157 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 20px;
-  max-width: 1080px;
-  margin: 0 auto 24px;
+  max-width: 1240px;
+  margin: 0 auto 29px;
 }
 
 .heading h1 {
   margin: 0;
   font-size: 26px;
-  font-weight: 500;
-  letter-spacing: -0.02em;
+  font-weight: 550;
+  line-height: normal;
+  letter-spacing: -0.035em;
   color: var(--dsw-alias-label-primary);
 }
 
 .intro {
-  margin: 8px 0 0;
-  font-size: 13px;
-  line-height: 1.7;
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.8;
   color: var(--dsw-alias-label-secondary);
 }
 
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 14px;
-  max-width: 1080px;
+  gap: 16px;
+  max-width: 1240px;
   margin: 0 auto;
 }
 
 .card {
-  display: flex;
-  flex-direction: column;
   min-width: 0;
-  min-height: 168px;
-  padding: 18px;
+  padding: 21px;
   box-sizing: border-box;
-  border: 1px solid var(--dsw-alias-border-l3);
-  border-radius: var(--dsw-radius-xl);
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 14px;
   background: var(--dsw-alias-bg-layer-1);
   color: var(--dsw-alias-label-primary);
   text-align: left;
 }
 
-.cardTitle {
+.cardTop {
   display: flex;
   align-items: center;
-  gap: 9px;
-  min-width: 0;
-  font-size: 15px;
-  font-weight: 500;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 22px;
 }
 
-.cardTitle span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.cardIcon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--dsw-brand-switch-on) 7%, transparent);
+  color: var(--dsw-alias-brand-primary);
 }
 
-.path {
-  margin: 8px 0 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 11px;
-  color: var(--dsw-alias-label-tertiary);
+.cardIcon svg {
+  width: 22px;
+  height: 22px;
 }
 
-.meta {
-  margin: 10px 0 16px;
-  font-size: 12px;
-  color: var(--dsw-alias-label-secondary);
-}
-
-.actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  margin-top: auto;
-}
-
-.action {
+.manage {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  min-height: 30px;
-  padding: 5px 9px;
-  border: 1px solid var(--dsw-alias-border-l3);
+  justify-content: center;
+  flex: none;
+  width: 33px;
+  height: 33px;
+  padding: 0;
+  border: 0;
   border-radius: var(--dsw-radius-sm);
   background: transparent;
   color: var(--dsw-alias-label-secondary);
-  font: inherit;
-  font-size: 12px;
   cursor: pointer;
 }
 
-.action:hover {
-  background: var(--dsw-alias-interactive-bg-hover);
-  color: var(--dsw-alias-label-primary);
+@media (hover: hover) {
+  .manage:hover {
+    background: var(--dsw-alias-interactive-bg-hover);
+    color: var(--dsw-alias-label-primary);
+  }
 }
 
-.action:focus-visible,
+.cardName {
+  margin: 0 0 7px;
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.description {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.85;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.path {
+  margin: 9px 0 17px;
+  overflow: hidden;
+  font-family: var(--ds-font-family-code);
+  font-size: 10px;
+  line-height: normal;
+  color: var(--dsw-alias-label-tertiary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cardFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 7px;
+  margin-top: 19px;
+  padding-top: 14px;
+  border-top: 1px solid var(--dsw-alias-border-l1);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 10px;
+  line-height: normal;
+}
+
+.enter {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 5px;
+  padding: 1px 6px;
+  border: 0;
+  background: transparent;
+  color: var(--dsw-brand-accent-ink);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .enter:hover {
+    color: var(--dsw-alias-label-primary);
+  }
+}
+
+.enter:focus-visible,
+.manage:focus-visible,
 .add:focus-visible {
   outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
   outline-offset: 2px;
-}
-
-.actionPrimary {
-  color: var(--dsw-alias-state-business-primary);
-  border-color: color-mix(in srgb, var(--dsw-alias-state-business-primary) 35%, var(--dsw-alias-border-l3));
 }
 
 .add {
@@ -129,15 +172,17 @@
   flex: none;
   align-items: center;
   gap: 6px;
-  min-height: 36px;
-  padding: 8px 13px;
-  border: none;
-  border-radius: var(--dsw-radius-md);
-  background: var(--dsw-alias-button-primary-fill);
-  color: var(--dsw-alias-label-primary-foreground);
+  min-height: 34px;
+  margin-top: 3px;
+  padding: 8px 14px;
+  border: 1px solid var(--dsw-brand-action-fill);
+  border-radius: 10px;
+  background: var(--dsw-brand-action-fill);
+  box-shadow: 0 3px 10px color-mix(in srgb, var(--dsw-brand-switch-on) 11%, transparent);
+  color: var(--dsw-static-neutral-bluish-00);
   font: inherit;
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 11px;
+  font-weight: 400;
   cursor: pointer;
   white-space: nowrap;
 }
@@ -148,10 +193,10 @@
 }
 
 .empty {
-  max-width: 1080px;
+  max-width: 1240px;
   margin: 60px auto 0;
   padding: 40px 24px;
-  border: 1px dashed var(--dsw-alias-border-l3);
+  border: 1px dashed var(--dsw-alias-border-l1);
   border-radius: var(--dsw-radius-xl);
   color: var(--dsw-alias-label-secondary);
   font-size: 13px;
@@ -159,7 +204,7 @@
 }
 
 .error {
-  max-width: 1080px;
+  max-width: 1240px;
   margin: 0 auto 16px;
   padding: 10px 12px;
   border-radius: var(--dsw-radius-md);
@@ -170,22 +215,29 @@
 
 @media (max-width: 640px) {
   .page {
-    padding: 20px 16px 40px;
+    padding: 24px 19px;
   }
 
   .heading {
-    flex-direction: column;
-    gap: 12px;
+    gap: 10px;
+    margin-bottom: 23px;
   }
 
+  .heading > div { min-width: 0; }
+  .intro { font-size: 11px; }
+  .add { padding: 8px 10px; }
+  .card { padding: 19px; }
+  .cardTop { margin-bottom: 15px; }
   .grid {
+    gap: 12px;
     grid-template-columns: 1fr;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .card,
-  .action,
+  .manage,
+  .enter,
   .add {
     transition: none;
   }

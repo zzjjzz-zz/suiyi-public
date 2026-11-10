@@ -56,6 +56,24 @@
   border-right: none;
 }
 
+/* Suiyi's global toolbar is the caption itself: no second window strip or
+   opaque sidebar-colored band above it. */
+:global(html[data-windows-titlebar]) :global(body[data-dsh-brand='suiyi']) .frame {
+  padding-top: 0;
+}
+
+:global(html[data-windows-titlebar]) :global(body[data-dsh-brand='suiyi']) .frame::before {
+  display: none;
+}
+
+:global(html[data-windows-titlebar]) :global(body[data-dsh-brand='suiyi']) .headerRow {
+  -webkit-app-region: drag;
+}
+
+:global(html[data-windows-titlebar]) :global(body[data-dsh-brand='suiyi']) .headerRow :global(:is(button, input, select, textarea, a)) {
+  -webkit-app-region: no-drag;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .frame[data-animating] {
     transition: none;

@@ -511,3 +511,21 @@ describe('sidebar entry click analytics', () => {
     expect(layout.selectPanel).not.toHaveBeenCalled()
   })
 })
+
+
+it('opens the Suiyi feature list as a dialog and returns keyboard focus on close', async () => {
+  vi.stubEnv('DSH_CLIENT_BUILD_PROFILE', 'suiyi')
+  try {
+    const { runtime, view } = await bench()
+    await mountPanel(runtime, { id: ALPHA, heading: 'Alpha' })
+    await mountProbeActions(runtime)
+    const trigger = await view.findByRole('button', { name: 'More features' })
+    act(() => { trigger.focus() })
+    fireEvent.click(trigger)
+    const dialog = await view.findByRole('dialog', { name: 'All features' })
+    expect(trigger.getAttribute('aria-haspopup')).toBe('dialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }))
+    await waitFor(() => { expect(document.activeElement).toBe(trigger) })
+    expect(view.queryByRole('dialog')).toBeNull()
+  } finally { vi.unstubAllEnvs() }
+})

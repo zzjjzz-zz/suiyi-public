@@ -694,6 +694,18 @@
   z-index: 1;
 }
 
+/* The prototype's 20px top inset and 36px workspace control precede the
+   fractional home rows at every viewport size. */
+:global(body[data-dsh-brand='suiyi']) .root[data-phase='hero'] .header,
+:global(body[data-dsh-brand='suiyi']) .root[data-phase='hero'] .headerLeading {
+  height: 56px;
+  min-height: 56px;
+}
+
+:global(body[data-dsh-brand='suiyi']) .root[data-phase='hero'] .shellWorkspace {
+  height: 36px;
+}
+
 .composerHero > :first-child {
   grid-row: 2;
 }
@@ -1277,4 +1289,30 @@
   .root[data-phase='active'] .scrollBody {
     overflow-x: hidden;
   }
+}
+
+/* Windows Suiyi: the shell toolbar itself is the caption. AppFrame removes the
+   legacy strip; this row supplies the drag geometry and clears native buttons. */
+.windowsMenuSeat {
+  display: none;
+}
+
+:global(html[data-windows-titlebar]) :global(body[data-dsh-brand='suiyi']) .shellTopbar {
+  padding-right: 150px;
+  -webkit-app-region: drag;
+}
+
+:global(html[data-windows-titlebar]) :global(body[data-dsh-brand='suiyi']) .shellTopbar :global(:is(button, input, select, textarea, a)) {
+  -webkit-app-region: no-drag;
+}
+
+:global(html[data-windows-titlebar]) :global(body[data-dsh-brand='suiyi']) .windowsMenuSeat {
+  display: flex;
+  flex: none;
+  align-items: center;
+  -webkit-app-region: no-drag;
+}
+
+:global(html[data-windows-titlebar]:has([data-sidebar-collapsed='true'])) :global(body[data-dsh-brand='suiyi']) .shellTopbar {
+  padding-left: 104px;
 }

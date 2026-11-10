@@ -70,6 +70,21 @@ function declare(slots: SlotRegistry): () => void {
 }
 
 describe('ui-settings-models apply', () => {
+  it('keeps Suiyi model setup in settings without automatically opening the DeepSeek login', async () => {
+    const { ctx, slots } = await bench()
+    declare(slots)
+    vi.stubEnv('DSH_CLIENT_BUILD_PROFILE', 'suiyi')
+    try {
+      await ctx.plugin({ inject: [...inject], apply }).await()
+      const onboarding = slots.entries('settings.onboarding').find(entry => entry.options.id === 'deepseek-official')!
+      expect((onboarding.inject as () => { automatic: boolean })().automatic).toBe(false)
+      expect(slots.entries('settings.section').map(entry => entry.options.id)).toEqual(['models'])
+    } finally {
+      vi.unstubAllEnvs()
+      await ctx.fiber.dispose()
+    }
+  })
+
   it('keeps manual credential onboarding available when the native shell owns automatic onboarding', async () => {
     const { ctx, slots } = await bench()
     declare(slots)

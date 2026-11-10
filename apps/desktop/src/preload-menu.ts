@@ -16,6 +16,7 @@ export function installWindowsMenu(): { update(): void; dispose(): void } {
     :host { position: fixed; top: 0; left: var(--dsh-windows-menu-start, 48px); z-index: 1100;
       height: var(--dsh-windows-titlebar-height); display: flex; align-items: center;
       font-family: var(--dsw-font-family); -webkit-app-region: no-drag; }
+    :host([data-brand='suiyi']) { position: static; height: 28px; }
     [role=menubar] { display: flex; gap: 2px; }
     button { height: 28px; padding: 0 10px; border: 0; border-radius: 6px;
       background: transparent; color: var(--dsw-alias-label-secondary);
@@ -24,6 +25,9 @@ export function installWindowsMenu(): { update(): void; dispose(): void } {
       color: var(--dsw-alias-label-primary); }
     button:focus-visible { outline: 2px solid var(--dsw-alias-state-business-primary); outline-offset: -2px; }
     :host-context(html[data-input-modality='pointer']) button:focus-visible { outline-color: transparent; }
+    :host([data-brand='suiyi']) button { width: 32px; padding: 0; font-size: 16px; }
+    :host([data-brand='suiyi']) button svg { width: 16px; height: 16px; }
+    :host([data-brand='suiyi']) button[hidden] { display: none; }
   `
   const bar = document.createElement('div')
   bar.setAttribute('role', 'menubar')
@@ -72,7 +76,12 @@ export function installWindowsMenu(): { update(): void; dispose(): void } {
     button.addEventListener('keydown', (event) => {
       if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
         event.preventDefault()
-        const next = buttons[index === 0 ? 1 : 0]
+        const visible = buttons.filter(candidate => !candidate.hidden)
+        if (visible.length < 2) return
+        const current = visible.indexOf(button)
+        const offset = event.key === 'ArrowRight' ? 1 : -1
+        const next = visible[(current + offset + visible.length) % visible.length]
+        if (next === undefined) return
         button.tabIndex = -1
         next.tabIndex = 0
         next.focus()
@@ -86,26 +95,56 @@ export function installWindowsMenu(): { update(): void; dispose(): void } {
   }
   const buttons = [createButton('application', 0), createButton('edit', 1)] as const
   shadow.append(style, bar)
+  const update = (): void => {
+    const suiyi = document.body.dataset.dshBrand === 'suiyi'
+    host.dataset.brand = suiyi ? 'suiyi' : 'official'
+    const { messages } = resolveDesktopLocale(document.documentElement.lang)
+    bar.setAttribute('aria-label', messages.menuBar)
+    // Same three-dot geometry as ui-primitives' ellipsis-outline icon.
+    if (suiyi) {
+      buttons[0].innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 9C3.55228 9 4 8.55228 4 8C4 7.44772 3.55228 7 3 7C2.44772 7 2 7.44772 2 8C2 8.55228 2.44772 9 3 9Z" fill="currentColor"></path><path d="M8 9C8.55228 9 9 8.55228 9 8C9 7.44772 8.55228 7 8 7C7.44772 7 7 7.44772 7 8C7 8.55228 7.44772 9 8 9Z" fill="currentColor"></path><path d="M13 9C13.5523 9 14 8.55228 14 8C14 7.44772 13.5523 7 13 7C12.4477 7 12 7.44772 12 8C12 8.55228 12.4477 9 13 9Z" fill="currentColor"></path></svg>'
+      buttons[0].setAttribute('aria-label', messages.menuBar)
+      buttons[0].title = messages.menuBar
+    } else {
+      buttons[0].textContent = messages.application
+      buttons[0].removeAttribute('aria-label')
+      buttons[0].removeAttribute('title')
+    }
+    buttons[1].textContent = messages.edit
+    if (suiyi) {
+      buttons[0].tabIndex = 0
+      buttons[1].tabIndex = -1
+      if (shadow.activeElement === buttons[1]) buttons[0].focus()
+    }
+    buttons[1].hidden = suiyi
+  }
   const mount = (): void => {
-    // AppFrame owns this seat; boot readiness alone precedes the rendered application.
+    // AppFrame owns the overlay marker; the Suiyi topbar supplies the inline menu seat.
     if (document.querySelector('[data-shell-overlay]') === null) return
-    document.body.append(host)
+    const suiyi = document.body.dataset.dshBrand === 'suiyi'
+    const seat = suiyi ? document.querySelector('[data-windows-suiyi-menu]') : null
+    if (suiyi && seat === null) {
+      // A brand can land after the first official mount. Rearm the child-list
+      // observer until the topbar's real seat exists, then stop it below.
+      observer.observe(document.body, { childList: true, subtree: true })
+      return
+    }
+    const focusedButton = buttons.find(button => button === shadow.activeElement)
+    ;(seat ?? document.body).append(host)
+    update()
+    if (focusedButton !== undefined) (focusedButton.hidden ? buttons[0] : focusedButton).focus()
     observer.disconnect()
   }
   const observer = new MutationObserver(mount)
+  const brandObserver = new MutationObserver(mount)
   observer.observe(document.body, { childList: true, subtree: true })
+  brandObserver.observe(document.body, { attributes: true, attributeFilter: ['data-dsh-brand'] })
   mount()
-  const update = (): void => {
-    const { messages } = resolveDesktopLocale(document.documentElement.lang)
-    bar.setAttribute('aria-label', messages.menuBar)
-    buttons[0].textContent = messages.application
-    buttons[1].textContent = messages.edit
-  }
-  update()
   return {
     update,
     dispose: () => {
       observer.disconnect()
+      brandObserver.disconnect()
       document.removeEventListener('focusout', rememberEditor, true)
       host.remove()
     },

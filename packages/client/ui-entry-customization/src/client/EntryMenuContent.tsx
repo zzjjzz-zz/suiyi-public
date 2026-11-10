@@ -37,6 +37,15 @@ export function EntryMenuContent({
 }: EntryMenuContentProps) {
   const moreEntries = region === 'sidebar' ? entries.filter(entry => !entry.pinned) : region === 'conversation' ? entries : []
   const browsable = usePluginNavigation(present => present)
+  if (process.env.DSH_CLIENT_BUILD_PROFILE === 'suiyi' && region === 'sidebar') {
+    return <div className={css.suiyiEntries}>
+      {moreEntries.map(entry => <button key={entry.id} type="button" aria-current={entry.active ? 'page' : undefined}
+        onClick={() => { onDismiss(); onOpen(entry.id) }}>
+        <span className={css.entryIcon} aria-hidden="true">{renderFactorySlot('sidebar.panel.icon', { id: entry.id, size: 16, active: entry.active === true })}</span>
+        <span>{entry.label}</span>
+      </button>)}
+    </div>
+  }
   return <>
     {moreEntries.map(entry => <div key={entry.id} className={region === 'sidebar' ? css.sidebarEntry : undefined}>
       <MenuItemButton current={entry.active === true} icon={region === 'sidebar' ? (

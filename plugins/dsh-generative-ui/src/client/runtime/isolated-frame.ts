@@ -14,7 +14,7 @@ import { SANDBOX_WRAPPER_PATH, VISUAL_OUTPUT_PATH } from "../../contract-assets.
 import { registerVisualInstance } from "./instances.ts";
 
 /** What the provider advertises. `isolation` is deliberately not a boolean. */
-export type VisualRuntimeConfig = { isolation: "iframe-opaque"; allowExec: boolean; allowData: boolean; ai: false };
+export type VisualRuntimeConfig = { isolation: "iframe-opaque"; allowExec: boolean; allowData: boolean; ai: false; settingsNamespace?: string };
 
 let configPromise: Promise<VisualRuntimeConfig> | null = null;
 
@@ -23,20 +23,24 @@ let configPromise: Promise<VisualRuntimeConfig> | null = null;
  * permissive fallback: without a verified isolation claim no generated code runs.
  */
 export function visualRuntimeConfig(): Promise<VisualRuntimeConfig> {
-  configPromise ??= (typeof document === "undefined"
+  if (configPromise !== null) return configPromise;
+  const request = (typeof document === "undefined"
     ? Promise.reject(new Error("visual output needs a browser document"))
     : fetch(VISUAL_OUTPUT_PATH.slice(1), { credentials: "same-origin" }))
     .then(async (response) => {
       if (!response.ok) throw new Error(`visual output runtime: ${response.status}`);
       const body = (await response.json()) as VisualRuntimeConfig;
       if (body?.isolation !== "iframe-opaque" || body.ai !== false || typeof body.allowData !== "boolean") throw new Error("visual output runtime is not isolated");
+      if (body.settingsNamespace !== undefined && (typeof body.settingsNamespace !== "string"
+        || body.settingsNamespace.trim() === "")) throw new Error("visual output settings namespace is invalid");
       return body;
     })
     .catch((error: unknown) => {
-      configPromise = null;
+      if (configPromise === request) configPromise = null;
       throw error;
     });
-  return configPromise;
+  configPromise = request;
+  return request;
 }
 
 /** Test-only reset so a spec can exercise both a refused and an admitted runtime. */
@@ -325,7 +329,7 @@ export function createIsolatedRenderer(
       if (ready) send({ type: "clear" });
     },
     setImportMap(map) {
-      lastImports = { ...lastImports, ...(map.imports ?? {}) };
+      lastImports = { ...lastImports, ...map.imports };
       // Import maps are delivered on the ready handshake; sending before the
       // child has the port would race the init transfer.
       if (ready) send({ type: "imports", imports: lastImports, capabilities });

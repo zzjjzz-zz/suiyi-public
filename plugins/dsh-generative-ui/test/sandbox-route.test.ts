@@ -62,3 +62,9 @@ test("readiness names the isolation and never enables exec by default", () => {
   expect(res.status).toBe(200);
   expect(JSON.parse(res.body)).toMatchObject({ isolation: "iframe-opaque", allowExec: false, allowData: false, ai: false });
 });
+
+test("readiness identifies the mounted profile entry for settings writes", () => {
+  const res = response();
+  serveVisualOutput(false, false, request("/dsh-generative-ui/visual-output"), res as never, "generative-ui");
+  expect(JSON.parse(res.body)).toMatchObject({ settingsNamespace: "generative-ui", allowExec: false, allowData: false });
+});

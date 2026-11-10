@@ -3,8 +3,8 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write plugins/dsh-generative-ui/README.md
 /dsh-generative-ui:
-  en: 8fb756d3acf5bf23
-  zh: df402bb50df99d12
+  en: 972ca503548399f5
+  zh: ad8f5aa76e237baf
 /dsh-generative-ui/install:
   en: 36993e2bb56e5499
   zh: b7b4f6e839eaf740

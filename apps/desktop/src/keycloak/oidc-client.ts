@@ -3,7 +3,7 @@
 import { resolveDesktopLocale } from '../locale.ts'
 import { createHash, randomBytes } from 'node:crypto'
 import { createServer, type Server } from 'node:http'
-import { createLocalJWKSet, jwtVerify, type JWTPayload, errors as joseErrors } from 'jose'
+import { createLocalJWKSet, decodeJwt, jwtVerify, type JWTPayload, errors as joseErrors } from 'jose'
 
 /** Endpoints of one OIDC provider resolved from its discovery document. */
 export interface OidcEndpoints {
@@ -52,7 +52,13 @@ export interface OidcIdentity {
   readonly accessToken: string
   /** Refresh token when the provider issued one. */
   readonly refreshToken?: string
+  /** Renew this verified identity without opening a browser; credentials remain in the closure. */
+  readonly renew?: (signal: AbortSignal) => Promise<OidcLoginResult>
 }
+
+/** Verified login or renewal, with provider details excluded from diagnostic messages. */
+export type OidcLoginResult = { readonly ok: true; readonly identity: OidcIdentity }
+  | { readonly ok: false; readonly failure: OidcFailure; readonly message: string }
 
 /** Classified failure of one login attempt; reasons stay safe for UI copy. */
 export type OidcFailure =
@@ -325,7 +331,7 @@ export async function fetchJwks(jwksUri: string, issuer: string, fetch: OidcFetc
  * @param leewaySeconds - accepted clock skew.
  * @returns verified claims, or a typed failure.
  */
-export async function validateIdToken(
+async function validateOidcIdToken(
   idToken: string,
   issuer: string,
   clientId: string,
@@ -333,6 +339,7 @@ export async function validateIdToken(
   jwks: Jwks,
   now: number,
   leewaySeconds = SUIYI_CLOCK_SKEW_SECONDS,
+  previous?: JWTPayload,
 ): Promise<{
   readonly ok: true
   readonly claims: { readonly sub: string
@@ -358,7 +365,7 @@ export async function validateIdToken(
       algorithms: ['RS256'],
       currentDate: new Date(now),
       clockTolerance: Math.max(leewaySeconds, 0),
-      requiredClaims: ['iss', 'aud', 'exp', 'iat', 'nonce', 'sub'],
+      requiredClaims: previous === undefined ? ['iss', 'aud', 'exp', 'iat', 'nonce', 'sub'] : ['iss', 'aud', 'exp', 'iat', 'sub'],
     }))
   } catch (error) {
     if (error instanceof joseErrors.JOSEError) {
@@ -366,7 +373,7 @@ export async function validateIdToken(
     }
     return { ok: false, failure: 'token-rejected', message: 'ID token could not be verified' }
   }
-  if (payload.nonce !== nonce) {
+  if (payload.nonce !== nonce && (previous === undefined || payload.nonce !== undefined)) {
     return { ok: false, failure: 'token-rejected', message: 'ID token nonce does not match this login attempt' }
   }
   if (typeof payload.sub !== 'string' || payload.sub.trim() === '') {
@@ -375,6 +382,11 @@ export async function validateIdToken(
   if (typeof payload.exp !== 'number') {
     return { ok: false, failure: 'token-rejected', message: 'ID token has no expiry' }
   }
+  const audiences = (value: JWTPayload['aud']): string => JSON.stringify(typeof value === 'string' ? [value] : value?.toSorted() ?? [])
+  if (previous !== undefined && (payload.sub !== previous.sub || audiences(payload.aud) !== audiences(previous.aud)
+    || (payload.auth_time !== undefined && previous.auth_time !== undefined && payload.auth_time !== previous.auth_time))) {
+    return { ok: false, failure: 'token-rejected', message: 'renewed identity differs from the original login' }
+  }
   const displayName = typeof payload.name === 'string'
     ? payload.name.replace(/[\u0000-\u001f\u007f]/gu, '').trim().slice(0, 80)
     : ''
@@ -382,10 +394,55 @@ export async function validateIdToken(
     ok: true,
     claims: {
       sub: payload.sub,
-      nonce: payload.nonce,
+      nonce,
       exp: payload.exp,
       ...(displayName === '' ? {} : { name: displayName }),
     },
+  }
+}
+
+/**
+ * Verify the signed identity from a PKCE login, including its required nonce.
+ * @param idToken - token returned by the provider.
+ * @param issuer - exact trusted issuer.
+ * @param clientId - public client audience.
+ * @param nonce - original authorization nonce.
+ * @param jwks - provider signing keys.
+ * @param now - current epoch milliseconds.
+ * @param leewaySeconds - permitted signing-clock skew.
+ * @returns verified claims or a classified failure.
+ */
+export async function validateIdToken(idToken: string, issuer: string, clientId: string, nonce: string,
+  jwks: Jwks, now: number, leewaySeconds = SUIYI_CLOCK_SKEW_SECONDS) {
+  return validateOidcIdToken(idToken, issuer, clientId, nonce, jwks, now, leewaySeconds)
+}
+
+/** Keep rotating refresh credentials private to the already verified login. */
+function renewableIdentity(options: OidcClientOptions, endpoints: OidcEndpoints, tokens: OidcTokenResponse,
+  nonce: string, claims: { readonly sub: string; readonly exp: number; readonly name?: string },
+  fetch: OidcFetch, refreshToken = tokens.refresh_token): OidcIdentity {
+  const now = options.now ?? Date.now
+  return {
+    issuer: options.issuer, sub: claims.sub,
+    expiresAt: Math.min(now() + (tokens.expires_in ?? 0) * 1000, claims.exp * 1000),
+    accessToken: tokens.access_token,
+    ...(claims.name === undefined ? {} : { name: claims.name }),
+    ...(refreshToken === undefined ? {} : { renew: async (signal: AbortSignal): Promise<OidcLoginResult> => {
+      const cancelled = (): boolean => signal.aborted
+      const requestSignal = AbortSignal.any([signal, AbortSignal.timeout(10_000)])
+      const transport: OidcFetch = (input, init) => fetch(input, { ...init, signal: requestSignal })
+      const exchanged = await refreshAccessToken(endpoints.tokenEndpoint, options.clientId, refreshToken, transport)
+      if (cancelled()) return { ok: false, failure: 'callback-aborted', message: 'session renewal cancelled' }
+      if (!exchanged.ok) return { ...exchanged, failure: exchanged.failure === 'refresh-invalid' ? 'token-rejected' : exchanged.failure }
+      const keys = await fetchJwks(endpoints.jwksUri, options.issuer, transport)
+      if (!keys.ok) return keys
+      const verified = await validateOidcIdToken(exchanged.tokens.id_token, options.issuer, options.clientId,
+        nonce, keys.jwks, now(), SUIYI_CLOCK_SKEW_SECONDS, decodeJwt(tokens.id_token))
+      if (!verified.ok) return verified
+      if (cancelled()) return { ok: false, failure: 'callback-aborted', message: 'session renewal cancelled' }
+      return { ok: true, identity: renewableIdentity(options, endpoints, exchanged.tokens, nonce, verified.claims,
+        fetch, exchanged.tokens.refresh_token ?? refreshToken) }
+    } }),
   }
 }
 
@@ -535,13 +592,7 @@ type CallbackOutcome = { readonly code: string } | { readonly error: string }
  * @param options - issuer, client, transport, and clock hooks.
  * @returns verified identity on success, or a typed failure safe for UI copy.
  */
-export async function runAuthorizationCodeLogin(options: OidcClientOptions): Promise<{
-  readonly ok: true
-  readonly identity: OidcIdentity
-} | {
-  readonly ok: false
-  readonly failure: OidcFailure
-  readonly message: string }> {
+export async function runAuthorizationCodeLogin(options: OidcClientOptions): Promise<OidcLoginResult> {
   const fetch = options.fetch ?? ((input: string, init?: RequestInit) => globalThis.fetch(input, init))
   const now = options.now ?? Date.now
   const timeoutMs = options.timeoutMs ?? SUIYI_LOGIN_TIMEOUT_MS
@@ -673,16 +724,9 @@ export async function runAuthorizationCodeLogin(options: OidcClientOptions): Pro
     if (!jwks.ok) return jwks
     const validated = await validateIdToken(exchanged.tokens.id_token, options.issuer, options.clientId, attempt.nonce, jwks.jwks, now())
     if (!validated.ok) return validated
-    const expiresInMs = (exchanged.tokens.expires_in ?? 0) * 1000
     return {
       ok: true,
-      identity: {
-        issuer: options.issuer,
-        sub: validated.claims.sub,
-        expiresAt: Math.min(now() + expiresInMs, validated.claims.exp * 1000),
-        accessToken: exchanged.tokens.access_token,
-        ...(validated.claims.name === undefined ? {} : { name: validated.claims.name }),
-      },
+      identity: renewableIdentity(options, endpoints, exchanged.tokens, attempt.nonce, validated.claims, fetch),
     }
   } finally {
     clearTimeout(timer)

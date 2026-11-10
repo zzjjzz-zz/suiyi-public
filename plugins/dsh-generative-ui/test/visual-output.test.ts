@@ -22,13 +22,13 @@ const browserDocument = (): void => {
   });
 };
 
-const stubRuntime = (isolation: "iframe-opaque" | "same-realm", allowExec = false, allowData = false) => {
+const stubRuntime = (isolation: "iframe-opaque" | "same-realm", allowExec = false, allowData = false, settingsNamespace?: string) => {
   const real = globalThis.fetch;
   restore.push(() => {
     globalThis.fetch = real;
   });
   globalThis.fetch = (async () =>
-    new Response(JSON.stringify({ version: 1, isolation, allowExec, allowData, ai: false }), {
+    new Response(JSON.stringify({ version: 1, isolation, allowExec, allowData, ai: false, settingsNamespace }), {
       status: 200,
       headers: { "content-type": "application/json" },
     })) as typeof fetch;
@@ -39,6 +39,7 @@ const form = (initial: boolean) => {
   let value: boolean | undefined = initial;
   const listeners = new Set<() => void>();
   const notify = () => {
+    // eslint-disable-next-line unicorn/no-useless-spread -- Match the production observable's publication snapshot.
     for (const listener of [...listeners]) listener();
   };
   return {
@@ -63,6 +64,30 @@ const context = (options: { connection?: unknown; form?: ReturnType<typeof form>
   if (options.form) ctx.provide("configForms", { get: () => options.form } as never);
   return ctx;
 };
+
+test("reads and writes the actual profile entry namespace published by the Host", async () => {
+  resetVisualRuntimeConfig();
+  browserDocument();
+  stubRuntime("iframe-opaque", false, false, "generative-ui");
+  const connection = { generation: { getSnapshot: () => ({ id: "account-a" }), subscribe: () => () => {} } };
+  const hostForm = form(false);
+  const missingForm = { ...form(false), getSnapshot: () => ({ status: "unavailable", value: undefined }) };
+  const namespaces: string[] = [];
+  const ctx = context({ connection });
+  ctx.provide("configForms", { get: (namespace: string) => {
+    namespaces.push(namespace);
+    return namespace === "generative-ui" ? hostForm : missingForm;
+  } } as never);
+  let reachedReady!: () => void;
+  const ready = new Promise<void>((resolve) => { reachedReady = resolve; });
+  const { capability, dispose } = createVisualOutput(ctx, (_enabled, isReady) => { if (isReady) reachedReady(); });
+  restore.push(dispose);
+  await ready;
+  expect(namespaces).toEqual(["dsh-generative-ui", "generative-ui"]);
+  expect(capability.readiness.getSnapshot()).toEqual({ ready: true });
+  expect(await capability.setEnabled(true)).toBe(true);
+  expect(hostForm.getSnapshot().value.visualOutput).toBe(true);
+});
 test("a same-realm runtime is never ready", async () => {
   resetVisualRuntimeConfig();
   browserDocument();
@@ -180,4 +205,34 @@ test("an account generation change tears down every live instance", async () => 
   notify();
   expect(capability.readiness.getSnapshot()).toEqual({ ready: false, reason: "permission" });
   unregister();
+});
+
+test("rechecks isolation after a failed startup fetch when the authenticated connection changes", async () => {
+  resetVisualRuntimeConfig();
+  browserDocument();
+  const real = globalThis.fetch;
+  restore.push(() => { globalThis.fetch = real; });
+  let calls = 0;
+  let available = false;
+  globalThis.fetch = async () => {
+    calls += 1;
+    if (!available) throw new TypeError("connection reset");
+    return new Response(JSON.stringify({ isolation: "iframe-opaque", allowExec: false, allowData: false, ai: false }));
+  };
+  let changed = () => {};
+  const connection = { generation: {
+    getSnapshot: () => ({ id: "same-user-reconnected" }),
+    subscribe: (listener: () => void) => { changed = listener; return () => {}; },
+  } };
+  const { capability, dispose } = createVisualOutput(context({ connection, form: form(true) }), () => {});
+  restore.push(dispose);
+  await Bun.sleep(10);
+  expect(capability.readiness.getSnapshot()).toEqual({ ready: false, reason: "isolation" });
+  const failedCalls = calls;
+  available = true;
+  changed();
+  await Bun.sleep(10);
+  expect(capability.readiness.getSnapshot()).toEqual({ ready: true });
+  expect(capability.enabled.getSnapshot()).toBe(true);
+  expect(calls).toBe(failedCalls + 1);
 });

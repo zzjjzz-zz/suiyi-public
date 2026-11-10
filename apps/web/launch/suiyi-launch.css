@@ -1,0 +1,84 @@
+/* 品牌过场：规整细宋体、原始字形比例，以及不透出底层的加载背景。 */
+@font-face{font-family:'Suiyi Slogan Serif';src:url('./assets/suiyi-launch/noto-serif-sc-slogan-light.woff2') format('woff2');font-style:normal;font-weight:300;font-display:block;unicode-range:U+4E8B,U+610F,U+6210,U+7531,U+800C,U+884C,U+9042}
+#suiyi-login-transition{position:fixed;inset:0;z-index:10000;isolation:isolate}
+.sy-launch{--launch-base:#f3f9ff;--launch-ink:#183554;--launch-muted:#6b849c;--launch-blue:#246bd9;--launch-cyan:#169db2;--launch-line:rgba(72,133,190,.17);position:absolute;inset:0;display:grid;grid-template-rows:minmax(0,1fr);overflow:hidden;color:var(--launch-ink);background:var(--launch-base);font-family:var(--sy-font-ui,'Noto Sans SC'),'PingFang SC','Microsoft YaHei',sans-serif;opacity:1;perspective:1100px}
+body[data-ds-dark-theme] .sy-launch{--launch-base:#081626;--launch-ink:#e5f4ff;--launch-muted:#8ca8c1;--launch-blue:#7fb7ff;--launch-cyan:#5ed8df;--launch-line:rgba(145,207,255,.18)}
+.sy-launch:after{content:"";position:absolute;inset:0;pointer-events:none;z-index:0;background:radial-gradient(ellipse at center,transparent 30%,color-mix(in srgb,var(--launch-base) 68%,transparent) 100%)}
+.sy-launch-footer{display:flex;align-items:center;justify-content:flex-end;position:absolute;right:0;bottom:0;z-index:3;padding:20px 44px 28px;font-size:11px;color:var(--launch-muted);letter-spacing:.04em}
+.sy-launch-skip{border:1px solid var(--launch-line);background:color-mix(in srgb,var(--launch-base) 78%,transparent);color:var(--launch-muted);display:inline-flex;align-items:center;justify-content:center;gap:14px;padding:10px 15px;min-height:42px;border-radius:999px;font-size:11px;letter-spacing:.05em;cursor:pointer;transition:background .2s,color .2s,border-color .2s}
+.sy-launch-skip:hover{color:var(--launch-blue);background:color-mix(in srgb,var(--launch-blue) 7%,var(--launch-base));border-color:var(--launch-blue)}
+.sy-launch-skip:focus-visible{outline:2px solid var(--launch-blue);outline-offset:5px}
+.sy-launch-skip svg{width:17px;height:17px;stroke:currentColor;stroke-width:1.5;fill:none}
+.sy-launch-controls{display:flex;gap:16px;align-items:center}
+.sy-launch-replay{font-size:11px;color:var(--launch-muted);background:transparent;border:0;border-radius:8px;min-height:42px;padding:9px 10px;cursor:pointer}
+.sy-launch-replay:hover{color:var(--launch-blue)}
+.sy-launch-replay:focus-visible{outline:2px solid var(--launch-blue);outline-offset:3px}
+.sy-launch-atmosphere{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0}
+.sy-launch-cloud{position:absolute;display:block;width:65vw;height:55vw;max-height:760px;max-width:1100px;border-radius:50%;filter:blur(55px);will-change:transform;opacity:.55}
+.cloud-one{top:-28%;left:-16%;background:radial-gradient(ellipse at center,#94ceff,transparent 65%);animation:sy-launch-cloud-one 9s ease-in-out infinite alternate}
+.cloud-two{right:-24%;bottom:-27%;background:radial-gradient(ellipse at center,#6bdfdf,transparent 66%);animation:sy-launch-cloud-two 10s ease-in-out infinite alternate}
+.cloud-three{width:40vw;height:30vw;left:28%;top:21%;background:radial-gradient(ellipse at center,#d0eaff,transparent 70%);opacity:.6;animation:sy-launch-breathe 4s ease-in-out infinite}
+body[data-ds-dark-theme] .sy-launch-cloud{opacity:.17}
+body[data-ds-dark-theme] .cloud-three{opacity:.09}
+.sy-launch-horizon{position:absolute;top:50%;left:-30%;width:160%;height:48%;transform:rotate(-17deg);background:linear-gradient(180deg,transparent,rgba(98,194,250,.035) 46%,rgba(80,177,228,.10) 50%,rgba(123,226,233,.04) 52%,transparent 60%);animation:sy-launch-horizon 6.2s ease-in-out both}
+.sy-launch-beam{display:none}
+.beam-two{display:none}
+body[data-ds-dark-theme] .sy-launch-beam{background:linear-gradient(90deg,transparent,rgba(126,214,253,.1),transparent)}
+.sy-launch-silk{position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none;overflow:visible;opacity:.48}
+.silk-line{fill:none;stroke:url(#sy-silk-gradient);stroke-width:1;stroke-dasharray:260 740;stroke-dashoffset:1000;animation:sy-launch-silk 6.2s cubic-bezier(.4,0,.15,1) both}
+.silk-two{stroke-width:2;animation-delay:.3s;opacity:.65}
+.silk-three{stroke-width:.7;animation-delay:.65s;opacity:.55}
+.sy-launch-stage{z-index:2;position:relative;display:flex;align-items:center;justify-content:center;flex-direction:column;margin:0;padding:64px 24px 84px;min-height:0;transition:opacity .4s ease,transform .4s ease}
+.sy-launch-emblem{position:relative;width:180px;height:132px;display:grid;place-items:center;margin-bottom:30px;opacity:0;animation:sy-launch-emblem-in 1.25s .1s cubic-bezier(.18,.75,.2,1) forwards}
+.sy-launch-emblem img{position:relative;z-index:2;width:82px;height:82px;filter:drop-shadow(0 12px 24px rgba(23,143,191,.19));animation:sy-launch-ribbon 5s 1s cubic-bezier(.4,0,.4,1) infinite}
+.sy-launch-logo-glow{position:absolute;inset:15px 30px;border-radius:50%;background:radial-gradient(circle,rgba(67,191,231,.17),transparent 67%);filter:blur(12px);animation:sy-launch-breathe 3s ease-in-out infinite}
+.sy-launch-orbit{position:absolute;left:50%;top:50%;width:176px;height:176px;margin-left:-88px;margin-top:-88px;border-radius:50%;border:1px solid var(--launch-line);transform:rotateX(65deg) rotateY(8deg) rotateZ(-32deg);animation:sy-launch-orbit-one 7s linear infinite}
+.orbit-one:before{content:"";position:absolute;inset:-1px;border-radius:inherit;border:1px solid transparent;border-top-color:var(--launch-cyan);border-left-color:color-mix(in srgb,var(--launch-cyan) 35%,transparent)}
+.orbit-two{width:148px;height:148px;margin-left:-74px;margin-top:-74px;border-color:color-mix(in srgb,var(--launch-blue) 14%,transparent);animation:sy-launch-orbit-two 8s linear infinite}
+.orbit-three{width:209px;height:209px;margin-left:-104.5px;margin-top:-104.5px;border-color:color-mix(in srgb,var(--launch-cyan) 12%,transparent);animation:sy-launch-orbit-one 12s linear infinite reverse}
+.sy-launch-title{display:flex;align-items:center;justify-content:center;flex-direction:row;flex-wrap:nowrap;gap:clamp(18px,3.2vw,48px);margin:0;padding:0;max-width:100%;font-family:'Suiyi Slogan Serif','Songti SC','STSong','SimSun',serif;font-size:clamp(24px,5.2vw,74px);line-height:1.4;font-weight:300;font-style:normal;font-synthesis:none;letter-spacing:0;white-space:nowrap}
+.sy-launch-word{display:flex;flex:0 0 auto;justify-content:center;gap:clamp(4px,1.3vw,19px);position:relative;white-space:nowrap}
+.sy-launch-char{display:inline-block;position:relative;opacity:0;transform:translateY(18px);animation:sy-launch-char-in 1.05s calc(.45s + var(--char-index)*.14s) cubic-bezier(.22,.75,.2,1) forwards;will-change:transform,opacity}
+.sy-launch-ink{display:inline-block;color:var(--launch-ink);font-weight:300}
+.word-1 .sy-launch-ink{color:var(--launch-blue)}
+.sy-launch-thread{width:min(310px,60vw);height:1px;position:relative;margin:34px 0 24px;background:linear-gradient(90deg,transparent,var(--launch-line),transparent);transform:scaleX(0);animation:sy-launch-thread-in 1.2s 2.1s cubic-bezier(.2,.8,.2,1) forwards;overflow:hidden}
+.sy-launch-thread span{display:block;height:100%;width:45%;background:linear-gradient(90deg,transparent,var(--launch-cyan),transparent);animation:sy-launch-line-travel 2.6s 2.1s ease-in-out infinite}
+.sy-launch-caption{display:flex;align-items:center;gap:14px;color:var(--launch-muted);font-size:11px;letter-spacing:.18em;opacity:0;animation:sy-launch-soft-in 1s 2.3s ease forwards}
+.sy-launch[data-complete=true] .sy-launch-caption{visibility:hidden}
+.sy-launch-loader{width:38px;height:2px;overflow:hidden;border-radius:2px;background:var(--launch-line);display:block}
+.sy-launch-loader i{display:block;width:60%;height:100%;background:var(--launch-cyan);animation:sy-launch-line-travel 1.8s ease-in-out infinite}
+.sy-launch:not(.is-playing) *{animation-play-state:paused!important}
+.sy-launch.is-leaving{opacity:1}
+.sy-launch.is-leaving .sy-launch-stage{opacity:0;transform:translateY(-6px)}
+@keyframes sy-launch-soft-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes sy-launch-char-in{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+@keyframes sy-launch-ink-flow{0%{background-position:0% 50%}100%{background-position:100% 50%}}
+@keyframes sy-launch-emblem-in{from{opacity:0;transform:translateY(16px) scale(.88)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes sy-launch-ribbon{0%,100%{transform:translateY(0) rotate(-6deg)}40%{transform:translateY(-7px) rotate(5deg)}70%{transform:translateY(-3px) rotate(-1deg)}}
+@keyframes sy-launch-orbit-one{from{transform:rotateX(65deg) rotateY(8deg) rotateZ(-32deg)}to{transform:rotateX(65deg) rotateY(8deg) rotateZ(328deg)}}
+@keyframes sy-launch-orbit-two{from{transform:rotateY(65deg) rotateX(-20deg) rotateZ(12deg)}to{transform:rotateY(65deg) rotateX(-20deg) rotateZ(-348deg)}}
+@keyframes sy-launch-cloud-one{from{transform:translate(-5%,-5%) scale(.9)}to{transform:translate(25%,18%) scale(1.13)}}
+@keyframes sy-launch-cloud-two{from{transform:translate(8%,5%) scale(1.08)}to{transform:translate(-22%,-16%) scale(.92)}}
+@keyframes sy-launch-breathe{0%,100%{transform:scale(.86)}50%{transform:scale(1.13)}}
+@keyframes sy-launch-horizon{0%{transform:translateY(18%) rotate(-22deg);opacity:0}35%{opacity:1}100%{transform:translateY(-10%) rotate(-12deg);opacity:.6}}
+@keyframes sy-launch-beam{0%{transform:translateX(0) rotate(32deg);opacity:0}20%{opacity:.6}80%{opacity:.35}100%{transform:translateX(1700%) rotate(32deg);opacity:0}}
+@keyframes sy-launch-silk{0%{stroke-dashoffset:1000;opacity:0}25%{opacity:1}80%{opacity:.7}100%{stroke-dashoffset:-1000;opacity:0}}
+@keyframes sy-launch-thread-in{to{transform:scaleX(1)}}
+@keyframes sy-launch-line-travel{from{transform:translateX(-110%)}to{transform:translateX(240%)}}
+.sy-launch[data-motion=reduced] *{animation:none!important;transition:none!important}
+.sy-launch[data-motion=reduced] .sy-launch-char,.sy-launch[data-motion=reduced] .sy-launch-emblem,.sy-launch[data-motion=reduced] .sy-launch-caption{opacity:1;transform:none;filter:none}
+.sy-launch[data-motion=reduced] .sy-launch-ink{color:var(--launch-ink);background:none}
+.sy-launch[data-motion=reduced] .word-1 .sy-launch-ink{color:var(--launch-blue)}
+.sy-launch[data-motion=reduced] .sy-launch-thread{transform:none}
+.sy-launch[data-motion=reduced] .sy-launch-silk,.sy-launch[data-motion=reduced] .sy-launch-beam,.sy-launch[data-motion=reduced] .sy-launch-orbit{display:none}
+@media(max-width:640px){.sy-launch-footer{padding:23px 22px;font-size:9px;line-height:1.7}.sy-launch-stage{padding:40px 18px 80px}.sy-launch-emblem{margin-bottom:29px;transform:scale(.9)}.sy-launch-title{font-size:clamp(24px,8vw,44px);gap:clamp(12px,3.4vw,22px)}.sy-launch-word{gap:clamp(2px,.9vw,6px)}.sy-launch-skip{flex-shrink:0;gap:8px;padding:9px 12px}.sy-launch-cloud{width:110vw;height:110vw;filter:blur(35px)}.cloud-one{left:-55%;top:0}.cloud-two{right:-58%;bottom:-10%}.sy-launch-caption{font-size:10px;letter-spacing:.12em}.sy-launch-thread{margin-top:29px;margin-bottom:23px}}
+@media(max-height:620px){.sy-launch-footer{padding-top:15px;padding-bottom:15px}.sy-launch-stage{padding-top:30px;padding-bottom:70px}.sy-launch-emblem{height:85px;margin-bottom:15px}.sy-launch-emblem img{width:60px;height:60px}.sy-launch-orbit{width:130px;height:130px;margin-top:-65px;margin-left:-65px}.sy-launch-title{font-size:clamp(24px,6vw,58px)}.sy-launch-thread{margin:19px 0 16px}}
+@media(prefers-reduced-motion:reduce){.sy-launch *{animation:none!important;transition:none!important}.sy-launch-char,.sy-launch-emblem,.sy-launch-caption{opacity:1;transform:none;filter:none}.sy-launch-silk,.sy-launch-beam,.sy-launch-orbit{display:none}.sy-launch-thread{transform:none}}
+
+html[data-suiyi-launch] #root { visibility: hidden; }
+html[data-suiyi-launch] body { margin: 0; }
+@media (prefers-color-scheme: dark) { body:not([data-suiyi-launch-themed]) .sy-launch { --launch-base:#081626;--launch-ink:#e5f4ff;--launch-muted:#8ca8c1;--launch-blue:#7fb7ff;--launch-cyan:#5ed8df;--launch-line:rgba(145,207,255,.18) } }
+
+#suiyi-login-transition, #suiyi-login-transition *, #suiyi-login-transition *::before, #suiyi-login-transition *::after { box-sizing: border-box; }
+.sy-launch { font-size: 14px; }
+.sy-launch-caption { line-height: 15px; }

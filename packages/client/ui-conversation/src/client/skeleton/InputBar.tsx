@@ -255,9 +255,11 @@ export const InputBar = memo(function InputBar({
   // scrolling the conversation.
   useEffect(() => {
     if (locked || editor === null) return
+    // The Suiyi home opens at rest; explicit draft shortcuts still focus it.
+    if (process.env.DSH_CLIENT_BUILD_PROFILE === 'suiyi' && variant === 'hero') return
     if (isMobileDevice()) return
     focusDraftEditor(editor, revealSelection)
-  }, [locked, sessionId, editor])
+  }, [locked, sessionId, editor, variant])
 
   // A read-only phase can move focus to the body. Restore the composer's
   // keyboard position without reopening the mobile keyboard or taking focus

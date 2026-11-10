@@ -78,6 +78,22 @@ it('registers account sign-in in a plain browser without the Desktop-only surfac
   }
 }, 60_000)
 
+it('uses native Suiyi identity without the model-account introduction covering the workspace', async ({ start }) => {
+  vi.stubGlobal('dshDesktop', { suiyiIdentity: {
+    view: async () => ({ state: 'signed-in', displayName: 'Test User' }),
+    subscribe: () => () => {},
+  } })
+  const c = await start()
+  for (const reload of [false, true]) {
+    if (reload) await c.reload(SELF)
+    await c.mock.streams.opened('account/watch', reload ? 2 : 1)
+    expect(c.ctx.slots.entries('settings.section').some(entry => entry.options.id === 'suiyi-account')).toBe(true)
+    expect(c.ctx.slots.entries('shell.overlay').some(entry => entry.options.id === 'desktop-onboarding')).toBe(false)
+    expect(operations(c).hooks.account.getSnapshot().desktopOnboardingVisible).toBe(false)
+    expect(c.ctx.slots.entries('settings.models.sign-in')).toHaveLength(1)
+  }
+}, 60_000)
+
 withoutAccountAccess('opens no account stream and registers no account surface while the current Peer may not watch the account', async ({ start }) => {
   const c = await start()
   expect(c.mock.streams.end('account/watch')).toBe(0)

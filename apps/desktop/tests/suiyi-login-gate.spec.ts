@@ -247,10 +247,10 @@ describe('session expiry watcher', () => {
   afterEach(() => vi.useRealTimers())
 
   /** Observable effects, an injectable clock, and a stub timer for one watcher. */
-  function fixture(expiresAt = Date.now() + 300_000) {
+  function fixture(expiresAt = Date.now() + 300_000, renew?: SuiyiLoginResult['renew']) {
     let clock = Date.now()
     let nextLogin: SuiyiLoginResult | undefined
-    const calls = { closed: 0, stopped: 0, cleared: 0, locks: [] as string[], logins: 0, resumes: [] as number[] }
+    const calls = { closed: 0, stopped: 0, cleared: 0, locks: [] as string[], logins: 0, resumes: [] as number[], renewed: [] as number[] }
     const schedule = vi.fn<(delayMs: number, onExpiry: () => void) => void>()
     const timer: SuiyiSessionTimer = { schedule, cancel: vi.fn() }
     // The lock recording wraps the mock so once-style return values do not
@@ -265,12 +265,13 @@ describe('session expiry watcher', () => {
       openBrowser: vi.fn(async () => {}),
     }
     const watcher = watchSuiyiSession({
-      session: suiyiLoginSession({ issuer: ISSUER, sub: ALICE.sub, expiresAt, accessToken: 'access-token' }, clock),
+      session: suiyiLoginSession({ issuer: ISSUER, sub: ALICE.sub, expiresAt, accessToken: 'access-token' }, clock, renew),
       effects,
       timer,
       now: () => clock,
       login: async () => { calls.logins++; return nextLogin },
       onRelogin: (session) => { calls.resumes.push(session.deadline) },
+      onRenewed: (session) => { calls.renewed.push(session.deadline) },
     })
     const drain = async () => { await vi.advanceTimersByTimeAsync(0); await vi.advanceTimersByTimeAsync(0) }
     return {
@@ -425,6 +426,84 @@ describe('session expiry watcher', () => {
     expect(test.effects.showLock).toHaveBeenCalledOnce()
     expect(test.calls.logins).toBe(0)
     expect(test.calls.resumes).toEqual([])
+    test.watcher.cancel()
+  })
+
+  it('renews before expiry without closing the workspace or opening login', async () => {
+    const deadline = Date.now() + 600_000
+    const renew = vi.fn<NonNullable<SuiyiLoginResult['renew']>>()
+    renew.mockResolvedValue({ ok: true, login: { issuer: ISSUER, sub: ALICE.sub,
+      expiresAt: deadline, accessToken: 'next-access', renew } })
+    const test = fixture(Date.now() + 300_000, renew)
+    expect(test.schedule.mock.calls[0]![0]).toBe(270_000)
+    test.clock = Date.now() + 270_000
+    test.schedule.mock.calls[0]![1]()
+    await test.drain()
+    expect(test.calls.renewed).toEqual([deadline])
+    expect(test.calls.closed).toBe(0)
+    expect(test.calls.logins).toBe(0)
+    test.watcher.cancel()
+  })
+
+  it('retries a temporary renewal failure only within the old token lifetime', async () => {
+    const renew = vi.fn<NonNullable<SuiyiLoginResult['renew']>>()
+      .mockResolvedValueOnce({ ok: false, failure: 'unreachable', message: 'network unavailable', issuer: false })
+      .mockResolvedValue({ ok: true, login: { issuer: ISSUER, sub: ALICE.sub,
+        expiresAt: Date.now() + 600_000, accessToken: 'next-access' } })
+    const test = fixture(Date.now() + 300_000, renew)
+    test.clock = Date.now() + 270_000
+    test.schedule.mock.calls[0]![1]()
+    await test.drain()
+    expect(test.schedule.mock.lastCall![0]).toBe(5000)
+    expect(test.calls.closed).toBe(0)
+    test.clock = Date.now() + 275_000
+    test.schedule.mock.lastCall![1]()
+    await test.drain()
+    expect(test.calls.renewed).toHaveLength(1)
+    test.watcher.cancel()
+  })
+
+  it('rejects a changed identity from renewal without opening its workspace', async () => {
+    const renew = vi.fn<NonNullable<SuiyiLoginResult['renew']>>().mockResolvedValue({ ok: true,
+      login: { issuer: ISSUER, sub: BOB.sub, expiresAt: Date.now() + 600_000, accessToken: 'foreign-access' } })
+    const test = fixture(Date.now() + 300_000, renew)
+    test.lockReturn.mockReturnValue(1)
+    test.clock = Date.now() + 270_000
+    test.schedule.mock.calls[0]![1]()
+    await test.drain()
+    expect(test.calls.closed).toBe(1)
+    expect(test.calls.renewed).toEqual([])
+    expect(renew).toHaveBeenCalledOnce()
+  })
+
+  it('discards an in-flight renewal after cancellation', async () => {
+    let finish!: (result: Awaited<ReturnType<NonNullable<SuiyiLoginResult['renew']>>>) => void
+    const renew = vi.fn<NonNullable<SuiyiLoginResult['renew']>>(() => new Promise((resolve) => { finish = resolve }))
+    const test = fixture(Date.now() + 300_000, renew)
+    test.clock = Date.now() + 270_000
+    test.schedule.mock.calls[0]![1]()
+    test.watcher.cancel()
+    expect(renew.mock.calls[0]![0].aborted).toBe(true)
+    finish({ ok: true, login: { issuer: ISSUER, sub: ALICE.sub,
+      expiresAt: Date.now() + 600_000, accessToken: 'late-access' } })
+    await test.drain()
+    expect(test.calls.renewed).toEqual([])
+    expect(test.calls.closed).toBe(0)
+    expect(test.schedule).toHaveBeenCalledTimes(2)
+  })
+
+  it('silently recovers the same identity after sleep crosses the access-token deadline', async () => {
+    const deadline = Date.now() + 900_000
+    const renew = vi.fn<NonNullable<SuiyiLoginResult['renew']>>().mockResolvedValue({ ok: true,
+      login: { issuer: ISSUER, sub: ALICE.sub, expiresAt: deadline, accessToken: 'resumed-access' } })
+    const test = fixture(Date.now() + 300_000, renew)
+    test.clock = Date.now() + 400_000
+    test.schedule.mock.calls[0]![1]()
+    await test.drain()
+    expect(test.calls.closed).toBe(1)
+    expect(test.calls.resumes).toEqual([deadline])
+    expect(test.calls.logins).toBe(0)
+    expect(test.calls.locks).toEqual([])
     test.watcher.cancel()
   })
 

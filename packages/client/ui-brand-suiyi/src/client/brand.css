@@ -189,6 +189,93 @@ body[data-dsh-brand='suiyi']:has([data-composer-card]:focus-within) .dsh-suiyi-h
   filter: drop-shadow(0 5px 9px var(--dsw-brand-mark-glow));
 }
 
+/* Shared pointer shell: the inner ribbon keeps its independent drift and
+   thinking animations while this outer box carries proximity and click motion. */
+.dsh-suiyi-motion-shell {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  isolation: isolate;
+  width: 100%;
+  height: 100%;
+}
+
+.dsh-suiyi-motion-inner {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  transform: perspective(460px) translate3d(var(--logo-x, 0px), var(--logo-y, 0px), 0) rotateX(var(--logo-rx, 0deg)) rotateY(var(--logo-ry, 0deg));
+  transition: transform 0.32s cubic-bezier(0.19, 1, 0.3, 1), filter 0.32s ease;
+  will-change: transform;
+}
+
+.dsh-suiyi-motion-shell:hover .dsh-suiyi-motion-inner {
+  filter: drop-shadow(0 3px 9px var(--dsw-brand-mark-hover-glow));
+}
+
+/* Slot geometry stays on the SVG; the host's fallback-artwork hover motion does not. */
+body[data-dsh-brand='suiyi'] .dsh-suiyi-motion-inner > .dsh-suiyi-mark {
+  animation: none;
+  transform: none;
+}
+
+.dsh-suiyi-motion-shell.is-burst .dsh-suiyi-motion-inner {
+  animation: suiyi-logo-glide 0.82s cubic-bezier(0.2, 0.74, 0.32, 1) both;
+}
+
+.dsh-suiyi-motion-shell.is-burst::after {
+  content: '';
+  position: absolute;
+  inset: 15%;
+  pointer-events: none;
+  border: 1px solid var(--dsw-brand-mark-burst-border);
+  border-radius: 50%;
+  corner-shape: round;
+  opacity: 0;
+  transform: scale(0.64) rotate(-22deg);
+  animation: suiyi-logo-wake 0.85s ease-out both;
+}
+
+@keyframes suiyi-logo-glide {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0); }
+  21% { transform: translate3d(-3px, 3px, 0) rotate(-4deg) scale(0.96); }
+  59% { transform: translate3d(7px, -5px, 0) rotate(4deg) scale(1.035); }
+  78% { transform: translate3d(-1px, 1px, 0) rotate(-1deg); }
+}
+
+@keyframes suiyi-logo-wake {
+  0% { opacity: 0; transform: scale(0.6) rotate(-25deg); }
+  22% { opacity: 0.65; }
+  100% { opacity: 0; transform: scale(1.33) rotate(-25deg); }
+}
+
+/* The in-app preference mirrors every system-reduced-motion path, including
+   pointer transforms, the click burst, ambient drift, and Assistant motion. */
+:root[data-dsh-reduce-motion='true'] body[data-dsh-brand='suiyi'] .dsh-suiyi-motion-shell,
+:root[data-dsh-reduce-motion='true'] body[data-dsh-brand='suiyi'] .dsh-suiyi-motion-inner,
+:root[data-dsh-reduce-motion='true'] body[data-dsh-brand='suiyi'] .dsh-suiyi-motion-shell::after,
+:root[data-dsh-reduce-motion='true'] body[data-dsh-brand='suiyi'] .dsh-suiyi-scene-field,
+:root[data-dsh-reduce-motion='true'] body[data-dsh-brand='suiyi'] .dsh-suiyi-halo-cloud,
+:root[data-dsh-reduce-motion='true'] body[data-dsh-brand='suiyi'] .dsh-suiyi-halo-ribbon,
+:root[data-dsh-reduce-motion='true'] body[data-dsh-brand='suiyi'] .dsh-suiyi-halo-ribbon-far,
+:root[data-dsh-reduce-motion='true'] body[data-dsh-brand='suiyi'] .dsh-suiyi-mark,
+:root[data-dsh-reduce-motion='true'] body[data-dsh-brand='suiyi'] .dsh-suiyi-mark .dsh-suiyi-ribbon,
+:root[data-dsh-reduce-motion='true'] body[data-dsh-brand='suiyi'] .dsh-suiyi-mark .dsh-suiyi-gloss,
+:root[data-dsh-reduce-motion='true'] body[data-dsh-brand='suiyi'] .dsh-suiyi-orbit {
+  animation: none !important;
+  transition: none !important;
+  transform: none !important;
+  filter: none !important;
+}
+
+:root[data-dsh-reduce-motion='true'] body[data-dsh-brand='suiyi'] .dsh-suiyi-orbit {
+  opacity: 0 !important;
+}
+
 .dsh-suiyi-mark .dsh-suiyi-ribbon {
   transform-box: fill-box;
   transform-origin: center;
@@ -289,6 +376,14 @@ body[data-dsh-brand='suiyi']:has([data-composer-card]:focus-within) .dsh-suiyi-h
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .dsh-suiyi-motion-shell .dsh-suiyi-motion-inner,
+  .dsh-suiyi-motion-shell::after {
+    animation: none;
+    transition: none;
+    transform: none;
+    filter: none;
+  }
+
   .dsh-suiyi-scene-field {
     transform: none;
     transition: none;

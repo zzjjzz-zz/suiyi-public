@@ -13,7 +13,7 @@ Server-expired account credentials clear the displayed account details and emit 
 
 ## Summary
 
-The Account settings section displays DeepSeek login state and offers browser sign-in and cancellation; the sidebar account menu provides Platform sign-out. Desktop users also receive a resumable introduction to account credit and presentation preferences.
+The Account settings section displays DeepSeek login state and offers browser sign-in and cancellation; the sidebar account menu provides Platform sign-out. Desktop users without the Suiyi native identity bridge also receive a resumable introduction to account credit and presentation preferences. Suiyi uses its native identity entry and leaves model-account sign-in in model settings; its startup scene owns the initial workspace interaction lock.
 
 The sign-in dialog offers network troubleshooting only for `no-response` failures. HTTP, business, response-validation, storage, and account-stream failures retain the generic retry message.
 

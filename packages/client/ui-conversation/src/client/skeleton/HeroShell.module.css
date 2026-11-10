@@ -49,6 +49,12 @@
   text-wrap: balance;
 }
 
+/* The animated mark and slogan are chrome, not selectable conversation text. */
+:global(body[data-dsh-brand='suiyi']) .headline {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 /* Keep hover detection on a stationary box while the mark moves within it;
    hover rules target the hitbox so a slot-occupant mark swims too. */
 .fishHitbox {

@@ -77,6 +77,7 @@ const TOKENS = [
   '--dsw-alias-border-l1',
   '--dsw-alias-border-l2',
   '--dsw-alias-switch-thumb',
+  '--dsw-brand-action-fill',
   '--dsw-brand-switch-on',
   '--dsw-alias-brand-primary',
   '--dsw-alias-label-primary',
@@ -107,6 +108,9 @@ const TOKENS = [
   '--dsw-brand-glass-toolbar',
   '--dsw-brand-glass-edge',
   '--dsw-brand-glass-shadow',
+  '--dsw-brand-dialog-shadow',
+  '--dsw-brand-dialog-mask',
+  '--dsw-brand-workspace-border',
   '--dsw-brand-accent-ink',
   '--dsw-brand-accent-soft',
   '--dsw-app-frame-fill',
@@ -135,6 +139,8 @@ const TOKENS = [
   '--dsw-brand-mark-wake-3',
   '--dsw-brand-mark-wake-4',
   '--dsw-brand-mark-glow',
+  '--dsw-brand-mark-hover-glow',
+  '--dsw-brand-mark-burst-border',
 ] as const
 
 describe('suiyi browser-brand plugin', () => {

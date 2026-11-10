@@ -39,6 +39,8 @@ Boot runs in two stages: the module stage adopts the parser-loaded bootstrap bat
 
 ### The boot page
 
+The boot root exposes `data-dsh-boot="failed"` while reporting a fatal failure, so a carrier-owned startup presentation can reveal the original diagnostic immediately. The Suiyi Web entry renders its local launch scene before scripts execute, holds the application inert until both motion and the real shell mount finish, and releases the scene on failure or document disposal. Skipping the scene never bypasses readiness. Leaving it returns keyboard navigation to the application without automatically focusing the home composer.
+
 The boot page uses plain DOM and local CSS, so bundle and plugin-activation failures remain visible: it shows one spinner node whose CSS arc grows as entries activate. The spinner and its animation phase persist until the full UI replaces the boot page. When a required plugin fails import or activation, the page names every inactive plugin with the reason (missing service, import failure, or activation error) and marks the required ones, instead of a blank page. An optional plugin's failure appears in one console warning and does not stop the application. The console contains the original import error.
 
 <a id="the-shared-module-table"></a>

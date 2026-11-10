@@ -18,13 +18,15 @@
  * scrollbar indirection away while it is elsewhere, so a list the user is not
  * pointing at carries no bar.
  */
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import clsx from 'clsx'
 import {
   FishLogo, IconCloseFillRegular, IconNewChatOutlineRegular,
-  IconPanelLeftOutlineRegular, IconPinFillRegular, focusWithoutRing, isBehindModal, isDarwinDesktop, Menu, ShortcutKeys, Toast,
+  IconPanelLeftOutlineRegular, IconPinFillRegular, IconSettingsOutlineRegular, focusWithoutRing, isBehindModal,
+  isDarwinDesktop, Menu, Modal, ShortcutKeys, Toast,
   Tooltip, useModalLayer, writeClipboard,
 } from '@deepseek-ai/dsh-client-ui-primitives'
+import type { ShortcutCatalogEntry, ShortcutCommandId } from '@deepseek-ai/dsh-client-shortcuts/client'
 import type { InjectFace, PropsRenderFactories, PropsRenderSlots, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type {
   SidebarPanelActionsOwnerProps, SidebarPanelMetadata, SidebarRootComponentProps, SidebarRootInjected, SidebarSectionHookContext,
@@ -103,7 +105,7 @@ function PanelRow({
         <button type="button" className={css.panelUnpin} aria-label={unpinLabel} onClick={(event) => {
           // Unpin is rendered only while this navigation also renders More.
           const navigation = event.currentTarget.closest('nav') as HTMLElement
-          const more = navigation.querySelector('button[aria-haspopup="menu"]') as HTMLButtonElement
+          const more = navigation.querySelector('button[data-more-launcher]') as HTMLButtonElement
           focusWithoutRing(more)
           setPinned(id, false)
         }}>
@@ -119,30 +121,55 @@ type PanelMoreMenuProps =
   & Omit<SidebarPanelActionsOwnerProps, 'onDismiss'>
   & PropsRenderSlots<'sidebar.panellist.actions'>
   & Pick<InjectFace<SidebarRootInjected>, 'trackEntryClick'>
-  & { readonly label: string; readonly active: boolean }
+  & Pick<InjectFace<SidebarRootInjected>, 'invokeShortcut'>
+  & {
+    readonly label: string
+    readonly active: boolean
+    readonly title: string
+    readonly closeLabel: string
+    readonly commands: readonly ShortcutCatalogEntry[]
+    readonly historyLabel: string
+    readonly settingsLabel: string
+    readonly unavailableLabel: string
+  }
 
 /** The panel list's More launcher: a panel-row button whose menu rows come from `sidebar.panellist.actions`. */
-function PanelMoreMenu({ wide, label, entries, onOpen, onPinnedChange, trackEntryClick, renderSlot, active }: PanelMoreMenuProps) {
+function PanelMoreMenu({
+  wide, label, title, closeLabel, entries, onOpen, onPinnedChange, trackEntryClick, renderSlot, active,
+  invokeShortcut, commands, historyLabel, settingsLabel, unavailableLabel,
+}: PanelMoreMenuProps) {
   const [open, setOpen] = useState(false)
   const onDismiss = (): void => { setOpen(false) }
-  return (
-    <Menu open={open} onClose={onDismiss} portal autoFocus className={css.moreAnchor} listClassName={css.moreMenu}
-      anchor={(
-        <Tooltip label={label} delayMs={500} disabled={wide}>
-          <button type="button" className={css.panelRow} aria-label={label} aria-haspopup="menu" aria-expanded={open}
-            data-active={active || undefined}
-            onClick={() => {
-              trackEntryClick({ menu_name: 'more', position: 'sidebar' })
-              setOpen(value => !value)
-            }}>
-            <span className={css.panelGlyph} aria-hidden="true"><GridGlyph size={wide ? 16 : 18} /></span>
-            {wide && <span className={clsx(css.panelTitle, css.wide)}>{label}</span>}
-          </button>
-        </Tooltip>
-      )}>
-      {renderSlot('sidebar.panellist.actions', { entries, onOpen, onPinnedChange, onDismiss })}
-    </Menu>
-  )
+  const [unavailable, setUnavailable] = useState(false)
+  const invoke = (id: ShortcutCommandId): void => {
+    if (invokeShortcut(id)) { setUnavailable(false); onDismiss() }
+    else setUnavailable(true)
+  }
+  const suiyi = process.env.DSH_CLIENT_BUILD_PROFILE === 'suiyi'
+  const trigger = <Tooltip label={label} delayMs={500} disabled={wide}>
+    <button type="button" className={css.panelRow} data-more-launcher="" aria-label={label} aria-haspopup={suiyi ? 'dialog' : 'menu'} aria-expanded={open}
+      data-active={active || undefined} onClick={() => {
+        trackEntryClick({ menu_name: 'more', position: 'sidebar' })
+        setOpen(value => !value)
+      }}>
+      <span className={css.panelGlyph} aria-hidden="true"><GridGlyph size={wide ? 16 : 18} /></span>
+      {wide && <span className={clsx(css.panelTitle, css.wide)}>{label}</span>}
+    </button>
+  </Tooltip>
+  const content = renderSlot('sidebar.panellist.actions', { entries, onOpen, onPinnedChange, onDismiss })
+  return suiyi ? <>{trigger}<Modal
+    open={open} onClose={onDismiss} title={title} headless shortcutModal="sidebar" className={clsx(css.moreDialog)}>
+    <header className={css.moreDialogHeader}>
+      <h2>{title}</h2>
+      <button type="button" aria-label={closeLabel} onClick={onDismiss}><IconCloseFillRegular size={16} /></button>
+    </header>
+    <div className={css.moreDialogBody}>{content}
+      {commands.some(row => row.id === 'session.search') && <button type="button" onClick={() => { invoke('session.search' as ShortcutCommandId) }}><ChatBubbleGlyph size={16} />{historyLabel}</button>}
+      {commands.some(row => row.id === 'settings.open') && <button type="button" onClick={() => { invoke('settings.open' as ShortcutCommandId) }}><IconSettingsOutlineRegular size={16} />{settingsLabel}</button>}
+      {unavailable && <p role="alert">{unavailableLabel}</p>}
+    </div>
+  </Modal></> : <Menu open={open} onClose={onDismiss} portal autoFocus
+    className={css.moreAnchor} listClassName={css.moreMenu} anchor={trigger}>{content}</Menu>
 }
 
 /**
@@ -157,6 +184,7 @@ export function SidebarRoot({
   startSession,
   toggleSidebar,
   selectPanel,
+  invokeShortcut,
   setPinned,
   trackEntryClick,
   useRemoteAccess,
@@ -175,6 +203,7 @@ export function SidebarRoot({
   const activePanelId = usePanelInfo(info => info.activePanelId)
   const hasEntryActions = useEntryActions(registered => registered)
   const hasSearch = useSearchEntries(occupied => occupied)
+  const commands = useShortcuts(rows => rows)
   // The More row owns every panel that has no visible primary row: settings
   // pages, hidden Automation tasks, and other main panels outside the list.
   const visiblePanels = panels.filter(({ id }) => id === FIXED_PANEL_ID || !hasEntryActions || !unpinned.includes(id))
@@ -450,27 +479,39 @@ export function SidebarRoot({
         >
           {panels.length > 0 && (
             <nav className={css.panelList} aria-label={t('panels.label')}>
-              {visiblePanels.map(({ id, label }) => (
-                <PanelRow
-                  key={id}
-                  id={id}
-                  label={label}
-                  wide={wide}
-                  unpinLabel={t('panels.unpin', { name: label })}
-                  unpinTooltip={t('panels.unpinTooltip')}
-                  canUnpin={hasEntryActions && id !== FIXED_PANEL_ID}
-                  setPinned={setPinned}
-                  usePanelInfo={usePanelInfo}
-                  selectPanel={selectPanel}
-                  trackEntryClick={trackEntryClick}
-                  renderFactorySlot={renderFactorySlot}
-                />
-              ))}
+              {visiblePanels.map(({ id, label }) => {
+                const row = (
+                  <PanelRow
+                    key={id}
+                    id={id}
+                    label={label}
+                    wide={wide}
+                    unpinLabel={t('panels.unpin', { name: label })}
+                    unpinTooltip={t('panels.unpinTooltip')}
+                    canUnpin={hasEntryActions && id !== FIXED_PANEL_ID}
+                    setPinned={setPinned}
+                    usePanelInfo={usePanelInfo}
+                    selectPanel={selectPanel}
+                    trackEntryClick={trackEntryClick}
+                    renderFactorySlot={renderFactorySlot}
+                  />
+                )
+                return process.env.DSH_CLIENT_BUILD_PROFILE === 'suiyi' && id === 'workspaces'
+                  ? <Fragment key={id}>{renderSlot('sidebar.workspace.switcher', { wide }, { fallback: row })}</Fragment>
+                  : row
+              })}
               {hasEntryActions && (
                 <PanelMoreMenu
                   wide={wide}
                   active={moreActive}
                   label={t('panels.more')}
+                  title={t('panels.all')}
+                  historyLabel={t('panels.history')}
+                  settingsLabel={t('panels.settings')}
+                  unavailableLabel={t('panels.unavailable')}
+                  commands={commands}
+                  invokeShortcut={invokeShortcut}
+                  closeLabel={t('panels.close')}
                   entries={panels.filter(({ id }) => id !== FIXED_PANEL_ID)
                     .map(({ id, label }) => ({ id, label, pinned: !unpinned.includes(id), active: id === activePanelId }))}
                   onOpen={(id) => {

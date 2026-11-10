@@ -20,7 +20,7 @@ import type {
 import { visualRuntimeConfig, resetVisualRuntimeConfig } from "./runtime/isolated-frame.ts";
 import { disposeVisualInstances } from "./runtime/instances.ts";
 
-/** Host config namespace and field owned by this plugin. */
+/** Legacy namespace for runtimes predating entry-id discovery. */
 export const VISUAL_OUTPUT_SETTINGS = "dsh-generative-ui";
 const VISUAL_OUTPUT_FIELD = "visualOutput";
 
@@ -37,6 +37,7 @@ const snapshot = <T>(initial: T): { source: Snapshot<T>; set: (next: T) => void 
     set(next) {
       if (Object.is(value, next)) return;
       value = next;
+      // eslint-disable-next-line unicorn/no-useless-spread -- Subscribe and unsubscribe during publication apply to the next publication.
       for (const listener of [...listeners]) listener();
     },
     source: {
@@ -59,7 +60,11 @@ export function createVisualOutput(ctx: ClientContext, onChange: (enabled: boole
   let connection: ConnectionHandle | undefined;
   let form: ConfigForm<SettingsValue> | undefined;
   let formRevision = 0;
+  let formNamespace = VISUAL_OUTPUT_SETTINGS;
+  let bindRuntimeForm: ((namespace: string) => void) | undefined;
   let configurationReady = false;
+  let runtimeRevision = 0;
+  let runtimePending: Promise<void> | undefined;
   let disposed = false;
   const readiness = snapshot<VisualOutputReadiness>({ ready: false, reason: "isolation" });
   // Readiness and the preference are separate sources; this listener set only
@@ -82,24 +87,55 @@ export function createVisualOutput(ctx: ClientContext, onChange: (enabled: boole
     onChange(enabledNow(), next.ready);
   };
   const notifyEnabled = (): void => {
+    // eslint-disable-next-line unicorn/no-useless-spread -- Publish to the listeners present before callbacks can change the set.
     for (const listener of [...enabledListeners]) listener();
     publish();
+    if (!configurationReady && runtimePending === undefined) readRuntime();
   };
+
+  function readRuntime(): void {
+    if (disposed || runtimePending !== undefined) return;
+    const revision = runtimeRevision;
+    runtimePending = visualRuntimeConfig().then(
+      (runtime) => {
+        if (disposed || revision !== runtimeRevision) return;
+        configurationReady = true;
+        const namespace = runtime.settingsNamespace ?? VISUAL_OUTPUT_SETTINGS;
+        if (namespace !== formNamespace) {
+          formNamespace = namespace;
+          bindRuntimeForm?.(namespace);
+        }
+        publish();
+      },
+      () => {
+        if (disposed || revision !== runtimeRevision) return;
+        configurationReady = false;
+        publish();
+      },
+    ).finally(() => { if (revision === runtimeRevision) runtimePending = undefined; });
+  }
 
   const accountChanged = (): void => {
     // An account switch replaces the generation and a disconnect removes it.
     disposeVisualInstances();
+    if (!configurationReady) {
+      runtimeRevision += 1;
+      runtimePending = undefined;
+      resetVisualRuntimeConfig();
+      if (connection?.generation.getSnapshot() !== undefined) readRuntime();
+    }
     publish();
   };
 
   let stopGeneration: (() => void) | undefined;
   const stopInjects: (() => void)[] = [];
   const bindConnection = (next: ConnectionHandle | undefined): void => {
+    if (next === connection) return;
     stopGeneration?.();
     stopGeneration = undefined;
     connection = next;
     stopGeneration = connection?.generation.subscribe(accountChanged);
-    publish();
+    accountChanged();
   };
   const connectionHandle = ctx.inject(["connection"], (scoped) => {
     if (disposed) return;
@@ -119,15 +155,22 @@ export function createVisualOutput(ctx: ClientContext, onChange: (enabled: boole
   stopInjects.push(serviceHandle);
   const formHandle = ctx.inject(["configForms"], (scoped) => {
     if (disposed) return;
-    form = scoped.configForms.get<SettingsValue>(VISUAL_OUTPUT_SETTINGS);
-    const revision = ++formRevision;
-    stopForm = form.subscribe(() => {
-      if (disposed || revision !== formRevision) return;
+    const bind = (namespace: string): void => {
+      stopForm?.();
+      const revision = ++formRevision;
+      form = scoped.configForms.get<SettingsValue>(namespace);
+      stopForm = form.subscribe(() => {
+        if (disposed || revision !== formRevision) return;
+        notifyEnabled();
+      });
       notifyEnabled();
-    });
-    notifyEnabled();
+    };
+    bindRuntimeForm = bind;
+    bind(formNamespace);
     return () => {
-      if (revision !== formRevision) return;
+      if (bindRuntimeForm !== bind) return;
+      bindRuntimeForm = undefined;
+      formRevision += 1;
       stopForm?.();
       stopForm = undefined;
       form = undefined;
@@ -142,18 +185,7 @@ export function createVisualOutput(ctx: ClientContext, onChange: (enabled: boole
   };
   globalThis.addEventListener?.("pagehide", pagehide);
 
-  void visualRuntimeConfig().then(
-    () => {
-      if (disposed) return;
-      configurationReady = true;
-      publish();
-    },
-    () => {
-      if (disposed) return;
-      configurationReady = false;
-      publish();
-    },
-  );
+  readRuntime();
 
   const enabledSource: Snapshot<boolean> = {
     getSnapshot: enabledNow,
@@ -180,6 +212,7 @@ export function createVisualOutput(ctx: ClientContext, onChange: (enabled: boole
     capability,
     dispose: () => {
       disposed = true;
+      runtimeRevision += 1;
       formRevision += 1;
       stopGeneration?.();
       stopForm?.();

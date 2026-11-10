@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join, relative } from 'node:path'
 import { expect, it } from 'vitest'
 import { resolveDesktopIdentity, isDesktopOpenUrl } from '../src/product-identity.ts'
-import { suiyiDataPaths, suiyiHostEnvironment, initializeSuiyiStorage } from '../src/paths.ts'
+import { suiyiDataPaths, suiyiHostEnvironment, initializeSuiyiStorage, initializeSuiyiUserStorage } from '../src/paths.ts'
 import { claimDesktopSingleInstance } from '../src/single-instance.ts'
 import { expandMacro } from 'app-builder-lib/out/util/macroExpander.js'
 import { AppInfo, Packager } from 'app-builder-lib'
@@ -59,8 +59,10 @@ it('sets independent storage before lock acquisition and strips inherited Host c
     const environment = { DSH_HOME: original, DSH_AGENTS_HOME: join(root, '.agents'), DSH_CONFIG: 'original.yml',
       dsh_home: 'case-insensitive-windows-pollution', PATH: 'existing path', DSH_DESKTOP_DIAGNOSTIC_FILE: 'diagnostic' }
     const paths = new Map<string, string>()
-    initializeSuiyiStorage({ getPath: () => root, setName: () => {}, setPath: (name, path) => { paths.set(name, path) } }, environment)
+    initializeSuiyiStorage({ isPackaged: true, getPath: () => root, setName: () => {},
+      setPath: (name, path) => { paths.set(name, path) } }, environment)
     const expected = suiyiDataPaths(root)
+    expect(paths.has('appData')).toBe(false)
     expect(paths.get('userData')).toBe(expected.userData)
     expect(paths.get('sessionData')).toBe(expected.sessionData)
     for (const [key, path] of Object.entries(expected)) {
@@ -90,6 +92,53 @@ it('sets independent storage before lock acquisition and strips inherited Host c
     // Negative control: sharing userData sends the focus to the wrong product.
     expect(launch(original, 'conflicting fork')).toBe(false)
     expect(focused).toEqual(['suiyi', 'official'])
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})
+
+it('isolates development login, browser and authenticated Host data from the installed application across restarts', () => {
+  const root = mkdtempSync(join(tmpdir(), 'suiyi-development-'))
+  try {
+    const installed = join(root, 'installed')
+    mkdirSync(installed)
+    writeFileSync(join(installed, 'preserved'), 'installed data')
+    const browserData = join(root, 'development-browser')
+    const identity = { issuer: 'https://identity.example.invalid', sub: 'test-user' }
+    const launch = () => {
+      const paths = { appData: installed, userData: browserData, sessionData: browserData }
+      const environment: NodeJS.ProcessEnv = { DSH_HOME: installed }
+      initializeSuiyiStorage({ isPackaged: false, getPath: name => paths[name],
+        setPath: (name, value) => { paths[name] = value }, setName: () => {} }, environment)
+      return { paths, environment, user: initializeSuiyiUserStorage(paths.appData, identity) }
+    }
+    const first = launch()
+    const expectedRoot = join(browserData, 'suiyi-development')
+    expect(first.paths.appData).toBe(expectedRoot)
+    expect(first.paths.userData).toBe(suiyiDataPaths(expectedRoot).userData)
+    expect(first.paths.sessionData).toBe(suiyiDataPaths(expectedRoot).sessionData)
+    expect(first.environment.DSH_HOME).toBe(suiyiDataPaths(expectedRoot).home)
+    expect(relative(expectedRoot, first.user.home).startsWith('..')).toBe(false)
+    writeFileSync(join(first.user.home, 'session'), 'development session')
+    expect(launch()).toEqual(first)
+    expect(readFileSync(join(first.user.home, 'session'), 'utf8')).toBe('development session')
+    expect(readFileSync(join(installed, 'preserved'), 'utf8')).toBe('installed data')
+    expect(existsSync(join(installed, 'Suiyi'))).toBe(false)
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})
+
+it('rejects a redirected development browser directory before selecting application storage', () => {
+  const root = mkdtempSync(join(tmpdir(), 'suiyi-development-link-'))
+  try {
+    const installed = join(root, 'installed')
+    const browserData = join(root, 'browser')
+    mkdirSync(installed)
+    symlinkSync(installed, browserData, 'junction')
+    let selected = false
+    expect(() => {
+      initializeSuiyiStorage({ isPackaged: false, getPath: () => browserData,
+        setPath: () => { selected = true }, setName: () => {} }, {})
+    }).toThrow(/link or junction/)
+    expect(selected).toBe(false)
+    expect(existsSync(join(installed, 'suiyi-development'))).toBe(false)
   } finally { rmSync(root, { recursive: true, force: true }) }
 })
 
@@ -132,7 +181,9 @@ it('rejects foreign deep links and redirected data roots without touching origin
     mkdirSync(original)
     writeFileSync(join(original, 'session'), 'preserved')
     symlinkSync(original, join(root, 'Suiyi'), 'junction')
-    expect(() => { initializeSuiyiStorage({ getPath: () => root, setPath: () => {}, setName: () => {} }, {}) }).toThrow(/link or junction/)
+    expect(() => {
+      initializeSuiyiStorage({ isPackaged: true, getPath: () => root, setPath: () => {}, setName: () => {} }, {})
+    }).toThrow(/link or junction/)
     expect(readFileSync(join(original, 'session'), 'utf8')).toBe('preserved')
     expect(existsSync(join(original, 'dsh-home'))).toBe(false)
   } finally { rmSync(root, { recursive: true, force: true }) }

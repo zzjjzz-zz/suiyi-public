@@ -19,7 +19,7 @@ const SEATS = ['sidebar.panellist.actions', 'conversation.session.header.views.a
 const runtimes = new Set<SlotTestRuntime>()
 afterEach(async () => {
   try { for (const runtime of runtimes) await runtime.dispose() }
-  finally { runtimes.clear(); cleanup(); vi.useRealTimers(); vi.unstubAllGlobals() }
+  finally { runtimes.clear(); cleanup(); vi.useRealTimers(); vi.unstubAllGlobals(); vi.unstubAllEnvs() }
 })
 
 type ContentProps = ComponentProps<typeof EntryMenuContent>
@@ -45,6 +45,18 @@ function content(overrides: Partial<ContentProps> = {}) {
 }
 
 describe('More menu rows', () => {
+  it('shows real navigation without internal plugin creation in the Suiyi feature dialog', () => {
+    vi.stubEnv('DSH_CLIENT_BUILD_PROFILE', 'suiyi')
+    const b = content()
+    expect(b.view.queryByText('Create your plugin')).toBeNull()
+    expect(b.view.queryByText('Browse other plugins')).toBeNull()
+    expect(b.view.queryByText('Notes')).toBeNull()
+    fireEvent.click(b.view.getByRole('button', { name: 'Tasks' }))
+    expect(b.onOpen).toHaveBeenCalledExactlyOnceWith('tasks')
+    expect(b.onDismiss).toHaveBeenCalledOnce()
+    expect(b.onPinnedChange).not.toHaveBeenCalled()
+  })
+
   it.each(['rightbar'] as const)('shows only discovery and creation in %s regardless of entries', (region) => {
     const b = content({ region, entries: [
       { id: 'notes', label: 'Notes', pinned: true, active: true },

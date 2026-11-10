@@ -13,6 +13,7 @@ afterEach(() => {
   document.documentElement.style.removeProperty('--dsh-windows-titlebar-height')
   document.documentElement.lang = 'en'
   document.body.removeAttribute('data-ds-dark-theme')
+  document.body.removeAttribute('data-dsh-brand')
   vi.restoreAllMocks()
   send.mockClear()
 })
@@ -31,12 +32,12 @@ it('synchronizes live language and palette changes and stops observing a closed 
     backgroundColor: document.body.hasAttribute('data-ds-dark-theme') ? 'oklch(0.2 0 0)' : 'hsl(0 0% 100%)',
     color: 'black',
   }) as CSSStyleDeclaration)
-  const context = {
+  const context: Pick<CanvasRenderingContext2D, 'fillStyle' | 'clearRect' | 'fillRect' | 'getImageData'> = {
     fillStyle: '', clearRect: vi.fn(), fillRect: vi.fn(),
-    getImageData: () => ({ data: new Uint8ClampedArray(context.fillStyle === 'black'
-      ? [0, 0, 0, 255] : context.fillStyle.startsWith('oklch') ? [27, 27, 28, 255] : [255, 255, 255, 255]) }),
+    getImageData: (): ImageData => ({ width: 1, height: 1, colorSpace: 'srgb', data: new Uint8ClampedArray(context.fillStyle === 'black'
+      ? [0, 0, 0, 255] : typeof context.fillStyle === 'string' && context.fillStyle.startsWith('oklch') ? [27, 27, 28, 255] : [255, 255, 255, 255]) }),
   }
-  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(context as unknown as CanvasRenderingContext2D)
+  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(context as CanvasRenderingContext2D)
   document.documentElement.lang = 'en'
   syncWindowsAppearance()
   expect(send).not.toHaveBeenCalled()
@@ -52,4 +53,33 @@ it('synchronizes live language and palette changes and stops observing a closed 
   document.documentElement.lang = 'en'
   await new Promise<void>((resolve) => { queueMicrotask(resolve) })
   expect(send).not.toHaveBeenCalled()
+})
+
+it('keeps Suiyi captions transparent when branding arrives and the palette changes', async () => {
+  vi.spyOn(process, 'platform', 'get').mockReturnValue('win32')
+  vi.spyOn(document, 'readyState', 'get').mockReturnValue('loading')
+  vi.spyOn(globalThis, 'getComputedStyle').mockImplementation(() => ({
+    backgroundColor: document.body.querySelector('span')?.style.backgroundColor ?? '',
+    color: document.body.hasAttribute('data-ds-dark-theme') ? 'white' : 'black',
+  }) as CSSStyleDeclaration)
+  const context: Pick<CanvasRenderingContext2D, 'fillStyle' | 'clearRect' | 'fillRect' | 'getImageData'> = {
+    fillStyle: '', clearRect: vi.fn(), fillRect: vi.fn(),
+    getImageData: (): ImageData => ({ width: 1, height: 1, colorSpace: 'srgb', data: new Uint8ClampedArray(context.fillStyle === 'transparent'
+      ? [0, 0, 0, 0] : context.fillStyle === 'black' ? [0, 0, 0, 255] : [255, 255, 255, 255]) }),
+  }
+  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(context as CanvasRenderingContext2D)
+  syncWindowsAppearance()
+  window.dispatchEvent(new Event('DOMContentLoaded'))
+  const probe = document.body.querySelector('span')!
+  expect(probe.style.backgroundColor).toBe('var(--dsw-specific-sidebar-fill)')
+  document.body.dataset.dshBrand = 'suiyi'
+  await vi.waitFor(() => {
+    expect(send).toHaveBeenLastCalledWith(DESKTOP_IPC.windowsAppearance, 'en', 'rgba(0, 0, 0, 0)', 'rgba(0, 0, 0, 1)')
+  })
+  expect(probe.style.backgroundColor).toBe('transparent')
+  expect(document.documentElement.style.getPropertyValue('--dsh-windows-titlebar-height')).toBe('62px')
+  document.body.setAttribute('data-ds-dark-theme', '')
+  await vi.waitFor(() => {
+    expect(send).toHaveBeenLastCalledWith(DESKTOP_IPC.windowsAppearance, 'en', 'rgba(0, 0, 0, 0)', 'rgba(255, 255, 255, 1)')
+  })
 })

@@ -13,7 +13,7 @@ import type {
 } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ObservableSnapshot } from '@deepseek-ai/dsh-client-store'
 import type { WorkspaceId } from '@deepseek-ai/dsh-api-workspace-controller/client'
-import type { ShortcutCatalogEntry } from '@deepseek-ai/dsh-client-shortcuts/client'
+import type { ShortcutCatalogEntry, ShortcutCommandId } from '@deepseek-ai/dsh-client-shortcuts/client'
 import type { MainPanelId } from '@deepseek-ai/dsh-client-ui-layout/client'
 import type { ProductEventMap } from '@deepseek-ai/dsh-client-product-analytics/client'
 
@@ -54,6 +54,8 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      * control, so the shell renders this seat only while expanded.
      */
     'sidebar.search': { kind: 'single'; scope: 'root'; owner: Record<never, never> }
+    /** Workspace-owned navigation trigger with the sidebar's current width. */
+    'sidebar.workspace.switcher': { kind: 'single'; scope: 'root'; owner: Pick<SidebarSectionOwnerProps, 'wide'> }
     /**
      * The workspace/session browsing region: section header, search, the
      * grouped/flat session list, and every workspace dialog. Declared by this
@@ -211,6 +213,8 @@ export type SidebarRootInjected = {
   toggleSidebar: () => void
   /** Select the global panel addressed by a sidebar row. */
   selectPanel: (id: MainPanelId | null) => void
+  /** Invoke an available navigation command; false leaves the menu open with an error. */
+  invokeShortcut: (id: ShortcutCommandId) => boolean
   /**
    * Show or unpin one panel launcher; Plugins is ignored.
    * @param id - Panel id.
@@ -245,6 +249,7 @@ export type SidebarRootComponentProps =
     | 'sidebar.toggle.badge'
     | 'sidebar.panellist.actions'
     | 'sidebar.search'
+    | 'sidebar.workspace.switcher'
     | 'sidebar.workspaces'
     | 'sidebar.settings'
     | 'sidebar.footer.action'

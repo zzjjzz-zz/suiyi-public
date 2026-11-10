@@ -35,7 +35,7 @@ Electron 在 `userData/desktop/locale-cache` 缓存最近确认的界面语言�
 
 桌面埋点遵循[产品采集策略](../../packages/client/product-analytics/README.zh.md)及其动态应用配置，不包含 Web 使用情况。安装更新会等待该操作的本地埋点接收请求结束，再锁定 API 准入并停止 Host。接收请求的时限为一秒，失败不会阻止安装，也不等待收集端完成发送。
 
-桌面应用是完整 dsh Web 应用外的一层 Electron 壳。Electron RunAsNode 子进程启动共享 profile runner，Electron 立即从 `dsh-app://app/` 加载打包内的 Web 入口。共享加载页等待 Host 启动注入，然后在同一文档中启动客户端。Electron 将应用 HTTP 请求转发给已认证的 Web Host，转发时丢弃描述 Node fetch 连接而非资源本身的响应头（`transfer-encoding`、`connection`、`keep-alive`），并把插件 bundle 响应标记为 `no-store`，因为其每次启动都变化的 revision 只会在 Chromium 磁盘缓存中累积；WebSocket 流连接到该 Host，仅为归属的应用窗口附加凭据。Node IPC 承载启动注入、就绪与关闭。Desktop 默认监听系统分配的端口，因此不会与 Web 的 `3080` 或系统保留端口冲突；可通过 `webserver.config.port` patch 覆盖。原生 Host 请求会显式发送当前 Host 的认证 Cookie，任何 Electron session 都不保存该 Cookie；每次启动 Host 时都会移除早期版本遗留在默认 session 中的 `dsh-auth-*` Cookie，因为 Cookie 不区分端口，否则这些 Cookie 会随每个发往 `127.0.0.1` 的请求一并发送。
+桌面应用是完整 dsh Web 应用外的一层 Electron 壳。Electron RunAsNode 子进程启动共享 profile runner，Electron 立即从 `dsh-app://app/` 加载打包内的 Web 入口。共享加载页等待 Host 启动注入，然后在同一文档中启动客户端。Electron 将应用 HTTP 请求转发给已认证的 Web Host，转发时丢弃描述 Node fetch 连接而非资源本身的响应头（`transfer-encoding`、`connection`、`keep-alive`），并把插件 bundle 响应标记为 `no-store`，因为其每次启动都变化的 revision 只会在 Chromium 磁盘缓存中累积；WebSocket 流连接到该 Host，仅为归属的应用窗口附加凭据。Node IPC 承载启动注入、就绪与关闭。Desktop 默认监听系统分配的端口，因此不会与 Web 的 `3080` 或系统保留端口冲突；可通过 `webserver.config.port` patch 覆盖。原生 Host 请求会显式发送当前 Host 的认证 Cookie，任何 Electron session 都不保存该 Cookie；每次启动 Host 时都会移除早期版本遗留在默认 session 中的 `dsh-auth-*` Cookie，因为 Cookie 不区分端口，否则这些 Cookie 会随每个发往 `127.0.0.1` 的请求一并发送。 插件资源的 GET 和 HEAD 请求在收到响应头前遇到连接重置时重试一次；取消、HTTP 错误、其他路由和写请求不重试，第二次传输失败进入现有错误报告。
 
 Desktop 绑定 `127.0.0.1`，即 Electron 为就绪 URL 与 WebSocket 凭据过滤器拨号的地址。WebSocket 流按 Host 监听器使用 `ws:` 或 `wss:`；附加凭据要求 authority 与 scheme 均匹配。
 
@@ -53,7 +53,7 @@ Desktop Host 的 Platform API 请求与更新策略请求用相同的 Platform �
 
 桌面麦克风访问仅允许主 `dsh-app://app` 页面发起的音频请求。macOS 使用系统麦克风授权、随包用途说明，以及主应用与 Helper 签名中的 `com.apple.security.device.audio-input` 权限。
 
-按 F12（多媒体功能键键盘上为 Fn+F12）、macOS 的 Command+Option+I 或 Windows 的 Ctrl+Shift+I，可切换当前获得焦点的应用页面的 DevTools，打包版本同样支持。应用菜单在隐藏和退出命令之前的独立分组中显示本地化的“开发者工具”命令。Windows 在标题栏的应用弹出菜单中显示开关，通过隐藏的原生应用菜单注册快捷键；macOS 和 Linux 的应用菜单保留隐藏的 F12 快捷键别名。更新遮罩和打包版本的内嵌浏览器禁用 DevTools。
+按 F12（多媒体功能键键盘上为 Fn+F12）、macOS 的 Command+Option+I 或 Windows 的 Ctrl+Shift+I，可切换当前获得焦点的应用页面的 DevTools，打包版本同样支持。应用菜单在隐藏和退出命令之前的独立分组中显示本地化的“开发者工具”命令。Windows 在标题栏的应用弹出菜单中显示开关，通过隐藏的原生应用菜单注册快捷键。遂意 Windows 在全局工具栏中保留一个紧凑菜单按钮，其“应用”弹出菜单附带完整的编辑命令组，不再占用第二条 caption 行；官方构建仍保留独立的“应用”和“编辑”按钮。macOS 和 Linux 的应用菜单保留隐藏的 F12 快捷键别名。更新遮罩和打包版本的内嵌浏览器禁用 DevTools。
 
 <a id="terminal-command"></a>
 
@@ -381,6 +381,8 @@ node apps/desktop/node_modules/pnpm/bin/pnpm.mjs --dir apps/desktop run test:upd
 
 未打包的 Electron 进程使用应用目录下的 `.desktop-build/development/project` 作为开发项目。`DSH_DESKTOP_PNPM_ENTRY` 和 `DSH_DESKTOP_DSH_DIR` 是带应用路径默认值的可选覆盖项。每次未打包启动都必须设置 `DSH_DESKTOP_PRIMARY_RUNTIME_DIR`：开发启动器（`dev:desktop`、`start:desktop` 及工作区更新验证运行器）会把它设置为自己已准备目标的 primary-runtime 目录；缺少该变量的启动会以致命启动对话框失败。启动器必须设置它，因为壳无法从 `process.arch` 推导该目录：构建目标将 Windows 固定为 x64，而宿主可能是 arm64。打包应用会忽略这些变量，从 `process.resourcesPath` 解析签名资源，并使用受管 Desktop profile。
 
+遂意开发模式将启动器初始 Electron 浏览器数据目录下的 `suiyi-development` 用作应用数据根目录。因此，`DSH_DESKTOP_USER_DATA_DIR` 会一并隔离登录设置、Chromium 分区和每个已认证用户的 Host 数据；`DSH_HOME` 不会覆盖遂意按身份划分的存储。同一开发目录在重启后保留会话；打包后的遂意仍使用操作系统的应用数据根目录，不会采用开发目录。
+
 <a id="known-limitations"></a>
 
 ## 已知限制
@@ -414,7 +416,7 @@ node apps/desktop/node_modules/pnpm/bin/pnpm.mjs --dir apps/desktop run test:upd
 
 ## Suiyi 身份登录
 
-浏览器回调仅确认已收到授权响应，登录是否成功由桌面端完成校验后显示。成功登录窗口关闭后，进程保持运行，直到首个工作区窗口打开；取消登录仍明确退出。
+浏览器回调仅确认已收到授权响应，登录是否成功由桌面端完成校验后显示。登录成功页保持显示，直到工作区启动过场打开；过场等待真实 Host 和客户端就绪；取消登录仍明确退出。
 
 构建时选择的 `suiyi` flavor 要求在启动任何 Host 或工作区之前，通过系统浏览器完成 Keycloak 登录。默认 issuer 为 `https://sso.zzjjzz.top/realms/identity`，公共客户端为 `suiyi-desktop`，使用授权码流程、PKCE S256 和 `127.0.0.1` 随机端口上的 `/suiyi-desktop/callback` 回调。运维人员须注册客户端及其回环重定向策略；应用不携带客户端密钥。可选的 `suiyi-oidc-issuer.json` 文件位于登录前共享的 Electron userData 目录，内容为 `{"issuer":"https://your-host/realms/identity"}`。配置无效或无法读取时停止登录。
 
@@ -422,14 +424,14 @@ node apps/desktop/node_modules/pnpm/bin/pnpm.mjs --dir apps/desktop run test:upd
 
 桌面安装包包含沙箱登录窗口所需的 `lib/preload-suiyi-login.cjs`。登录前窗口通过共用的欢迎渲染层呈现该登录：就绪页、可在浏览器中手动完成的授权与可复制的登录链接、带重试的分类失败，以及进入工作区前的交接状态。渲染层契约见 `src/welcome-api.ts` 的 `WelcomeApi.suiyi`；只有遂意登录窗口提供它，缺少它时仍走 official 的账户与 API Key 欢迎流程。该页面不提供体验身份和 API Key 入口，跟随系统深浅外观，在 900 CSS px 以下改为单列并可在窗口内滚动。原型提取的尺寸、颜色与交互由 `renderer/welcome.css` 维护，状态机由 `src/client/WelcomePage.tsx` 维护。
 
-登录窗口是唯一的认证界面：首次登录、失败重试和访问令牌过期后的重新登录都加载同一页面。原生提示只说明会话已过期；确认后打开真实页面，关闭或取消则保持锁定。渲染层自带 `renderer/assets/noto-sans-sc/` 下的 Noto Sans SC 子集；复制到窗口目录的 brand font 表映射到这份共享资源，不再交付第二份字体负载，页面不发起网络字体请求。遂意不会进入 official 的模型账户欢迎流程：身份来自 Keycloak，DeepSeek 账户视图保持未登录。
+登录窗口是唯一的认证界面：首次登录、失败重试和无法续期时的重新登录都加载同一页面。锁定的客户端直接打开此页面，关闭或取消则保持锁定。渲染层自带 `renderer/assets/noto-sans-sc/` 下的 Noto Sans SC 子集；复制到窗口目录的 brand font 表映射到这份共享资源，不再交付第二份字体负载，页面不发起网络字体请求。遂意不会进入 official 的模型账户欢迎流程：身份来自 Keycloak，DeepSeek 账户视图保持未登录。
 
-遂意 preload 只在遂意构建中暴露 `dshDesktop.suiyiIdentity`：安全的 `{state, displayName?}` 视图、从锁定态打开真实登录页的登录操作，以及清空令牌、停止 Host 并按既有锁定生命周期回到登录页的退出操作。它绝不调用 DeepSeek 账户退出，也不暴露令牌、issuer 或 subject。消费方在 bridge 缺失时（Web 或 official 构建）应显示身份中心不可用，而不是展示替代账号。
+Desktop 单独构建在解析仓库元数据时保留 `DSH_BUILD_CLIENT_PROFILE`，使 preload 与完整构建使用同一选定配置。遂意开发启动使用本产品的托盘和关于图标。原生标题栏按钮与 Web 工具栏共享 62 DIP 高度，背景透明，符号颜色跟随应用配色。遂意 preload 只在遂意构建中暴露 `dshDesktop.suiyiIdentity`：安全的 `{state, displayName?}` 视图、从锁定态打开真实登录页的登录操作，以及清空令牌、停止 Host 并按既有锁定生命周期回到登录页的退出操作。它绝不调用 DeepSeek 账户退出，也不暴露令牌、issuer 或 subject。消费方在 bridge 缺失时（Web 或 official 构建）应显示身份中心不可用，而不是展示替代账号。
 
 已验证的访问令牌只保存在 Electron 主进程内存，并通过子进程私有 IPC 通道交给 Host，绝不经过渲染层、环境变量、argv、文件或日志。[令牌传输约定](SUIYI-TOKEN-TRANSPORT.md)规定了两端的消息、刷新与撤销义务。Host 的 `suiyiAccess` 服务持有当前令牌，plugin-hub 在每次目录读取、MCP 连接与调用时读取；平台按用户过滤，仅凭 issuer/subject 哈希绝不构成授权。
 
-验证后的 issuer 和 subject 决定 `%APPDATA%/Suiyi/users/<sha256>/` 下独立的 Host、智能体和应用数据目录。内嵌 Platform 偏好所用分区同时包含该 Suiyi 用户哈希、Platform origin 和用户 ID；official Platform 分区保持不变。Chromium 在就绪前确定的 Suiyi sessionData 根目录内使用持久化用户哈希分区；Electron 就绪后不再更改 sessionData 路径。既有共享 Suiyi 数据和上游主目录保留，不作迁移。过滤继承的 Harness 配置和环境凭据后，Host 仅接收个人主目录路径。已验证的访问令牌只进入 Host 的私有 IPC 通道内存，绝不进入渲染层、环境变量、argv、文件或日志；刷新令牌不保留。模型、API 密钥和 base URL 仍由用户在现有 Models 界面配置。只有 Suiyi 跳过 DeepSeek 账户引导；official flavor 保留原有账户流程。
+验证后的 issuer 和 subject 决定 `%APPDATA%/Suiyi/users/<sha256>/` 下独立的 Host、智能体和应用数据目录。内嵌 Platform 偏好所用分区同时包含该 Suiyi 用户哈希、Platform origin 和用户 ID；official Platform 分区保持不变。Chromium 在就绪前确定的 Suiyi sessionData 根目录内使用持久化用户哈希分区；Electron 就绪后不再更改 sessionData 路径。既有共享 Suiyi 数据和上游主目录保留，不作迁移。过滤继承的 Harness 配置和环境凭据后，Host 仅接收个人主目录路径。已验证的访问令牌只进入 Host 的私有 IPC 通道内存，绝不进入渲染层、环境变量、argv、文件或日志；刷新令牌仅保存在主进程续期闭包中，退出登录或进程退出后释放。模型、API 密钥和 base URL 仍由用户在现有 Models 界面配置。只有 Suiyi 跳过 DeepSeek 账户引导；official flavor 保留原有账户流程。
 
-Host 启动前清除默认及已认证用户的 Electron 会话存储和缓存；清理失败则停止启动。访问令牌到期时（最长 24 小时），受保护窗口关闭，IPC 和 Host 访问被拒绝，Host 停止立即启动，不等待 UI 或 Platform 存储清理。全部清理成功后，相同身份才能重新登录恢复；清理挂起或失败时持续锁定。取消重新登录后应用保持锁定，允许稍后登录；Host 停止失败时无法解锁。以不同身份认证需要完全重启应用，不支持热切换。共享操作系统登录的账户不提供强隔离，也无法抵御并发文件系统修改。交付仍须验证 Windows 安装、连续用户 A/B 的 Cookie 和凭据隔离及真实 Keycloak 登录。
+Host 启动前清除默认及已认证用户的 Electron 会话存储和缓存；清理失败则停止启动。客户端运行期间在访问令牌到期前续期，通过私有 IPC 将新令牌交给同一个 Host，不重新打开登录页或重置对话。临时网络失败只在旧令牌有效期内重试。提供方拒绝、撤销和服务端会话时限仍要求真实登录。系统休眠恢复后先撤销已过期的访问，再尝试静默续期恢复相同身份。未能续期的访问令牌到期时（最长 24 小时），受保护窗口关闭，IPC 和 Host 访问被拒绝，Host 停止立即启动，不等待 UI 或 Platform 存储清理。全部清理成功后，相同身份才能重新登录恢复；清理挂起或失败时持续锁定。取消重新登录后应用保持锁定，允许稍后登录；Host 停止失败时无法解锁。以不同身份认证需要完全重启应用，不支持热切换。共享操作系统登录的账户不提供强隔离，也无法抵御并发文件系统修改。交付仍须验证 Windows 安装、连续用户 A/B 的 Cookie 和凭据隔离及真实 Keycloak 登录。
 
 设置可通过 `suiyiIdentity.openWelcome` 重新打开已认证的遂意欢迎页。隔离渲染层只提供返回工作空间，不提供登录、凭据或切换账号操作。主进程在打开前及加载后检查当前身份，合并并发打开请求，并在身份访问结束时关闭窗口。关闭或返回保留当前会话及模型配置。

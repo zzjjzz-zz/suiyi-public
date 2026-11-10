@@ -178,12 +178,24 @@ export function suiyiHostEnvironment(environment: NodeJS.ProcessEnv, appData: st
     DSH_HOME: paths.home, DSH_AGENTS_HOME: paths.agents }
 }
 
-/** Set Electron storage before its first userData/log lookup and before claiming the instance lock. */
+/**
+ * Set Suiyi storage before claiming the instance lock. Unpackaged launches keep
+ * all identity-scoped data beneath the launcher's initial browser-data directory;
+ * packaged applications retain the operating system's application-data root.
+ * @param application - Electron application before storage or windows initialize.
+ * @param environment - Process environment whose Host paths are replaced.
+ */
 export function initializeSuiyiStorage(application: {
-  getPath(name: 'appData'): string
-  setPath(name: 'userData' | 'sessionData', path: string): void
+  readonly isPackaged: boolean
+  getPath(name: 'appData' | 'userData'): string
+  setPath(name: 'appData' | 'userData' | 'sessionData', path: string): void
   setName(name: string): void
 }, environment: NodeJS.ProcessEnv): void {
+  if (!application.isPackaged) {
+    const developmentData = join(application.getPath('userData'), 'suiyi-development')
+    ensureSuiyiDirectory(developmentData)
+    application.setPath('appData', developmentData)
+  }
   const appData = application.getPath('appData')
   const paths = suiyiDataPaths(appData)
   for (const path of [join(appData, 'Suiyi'), ...Object.values(paths)]) {

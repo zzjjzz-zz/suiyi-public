@@ -1,4 +1,5 @@
-import { afterEach, expect, it, vi } from 'vitest'
+import { afterEach, expect, it, onTestFinished, vi } from 'vitest'
+import { createServer } from 'node:http'
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -96,4 +97,77 @@ it('removes only legacy Host authentication cookies for the Host hostname', asyn
   await removeLegacyHostCookies(cookies, 'http://127.0.0.1:1234/?token=secret')
   expect(cookies.get).toHaveBeenCalledExactlyOnceWith({ url: 'http://127.0.0.1:1234' })
   expect(removed).toEqual([['http://127.0.0.1:1234', 'dsh-auth-old'], ['http://127.0.0.1:1234', 'dsh-auth-older']])
+})
+
+it('loads a plugin script after the Host resets its first real connection', async () => {
+  let attempts = 0
+  const server = createServer((request, response) => {
+    attempts++
+    if (attempts === 1) { request.socket.destroy(); return }
+    response.writeHead(200, { 'content-type': 'text/javascript' })
+    response.end('window.loaded = true')
+  })
+  onTestFinished(async () => {
+    server.closeAllConnections()
+    await new Promise<void>((resolve, reject) => server.close((error) => { if (error) reject(error); else resolve() }))
+  })
+  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
+  const address = server.address()
+  if (address === null || typeof address === 'string') throw new Error('Expected TCP listener')
+  const response = await forwardWebRequest(new Request('dsh-app://app/plugins/??module/client.js&rev=1'),
+    `http://127.0.0.1:${String(address.port)}/`, 'session=owned')
+  expect(response.status).toBe(200)
+  expect(await response.text()).toBe('window.loaded = true')
+  expect(attempts).toBe(2)
+})
+
+function resetFailure(): TypeError {
+  return new TypeError('fetch failed', { cause: Object.assign(new Error('read ECONNRESET'), { code: 'ECONNRESET' }) })
+}
+
+it('bounds connection reset recovery to one additional attempt', async () => {
+  const last = resetFailure()
+  const fetch = vi.fn().mockRejectedValueOnce(resetFailure()).mockRejectedValue(last)
+  vi.stubGlobal('fetch', fetch)
+  await expect(forwardWebRequest(new Request('dsh-app://app/plugins/a/client.js'), 'http://127.0.0.1:1234/', 'c'))
+    .rejects.toBe(last)
+  expect(fetch).toHaveBeenCalledTimes(2)
+})
+
+it.each([
+  ['POST', '/plugins/upload'], ['GET', '/api/read'], ['HEAD', '/api/read'],
+])('does not replay %s %s when its connection resets', async (method, path) => {
+  const error = resetFailure()
+  const fetch = vi.fn().mockRejectedValue(error)
+  vi.stubGlobal('fetch', fetch)
+  await expect(forwardWebRequest(new Request(`dsh-app://app${path}`, { method }), 'http://127.0.0.1:1234/', 'c'))
+    .rejects.toBe(error)
+  expect(fetch).toHaveBeenCalledOnce()
+})
+
+it('does not retry a cancelled plugin request', async () => {
+  const controller = new AbortController()
+  const error = resetFailure()
+  const fetch = vi.fn().mockImplementation(async () => { controller.abort(); throw error })
+  vi.stubGlobal('fetch', fetch)
+  await expect(forwardWebRequest(new Request('dsh-app://app/plugins/a/client.js', { signal: controller.signal }),
+    'http://127.0.0.1:1234/', 'c')).rejects.toBe(error)
+  expect(fetch).toHaveBeenCalledOnce()
+})
+
+it.each([401, 403, 404, 500])('preserves a plugin HTTP %i response without retry', async (status) => {
+  const fetch = vi.fn().mockResolvedValue(new Response('unavailable', { status }))
+  vi.stubGlobal('fetch', fetch)
+  const response = await forwardWebRequest(new Request('dsh-app://app/plugins/a/client.js'), 'http://127.0.0.1:1234/', 'c')
+  expect(response.status).toBe(status)
+  expect(fetch).toHaveBeenCalledOnce()
+})
+
+it('propagates other plugin transport failures without retry', async () => {
+  const error = new TypeError('fetch failed', { cause: Object.assign(new Error('refused'), { code: 'ECONNREFUSED' }) })
+  const fetch = vi.fn().mockRejectedValue(error)
+  vi.stubGlobal('fetch', fetch)
+  await expect(forwardWebRequest(new Request('dsh-app://app/plugins/a/client.js'), 'http://127.0.0.1:1234/', 'c'))
+    .rejects.toBe(error)
+  expect(fetch).toHaveBeenCalledOnce()
 })

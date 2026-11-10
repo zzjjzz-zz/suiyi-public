@@ -40,6 +40,10 @@ body {
   --dsw-brand-glass-toolbar: var(--dsw-alias-bg-layer-1);
   --dsw-brand-glass-edge: var(--dsw-alias-border-l1);
   --dsw-brand-glass-shadow: transparent;
+  --dsw-brand-dialog-shadow: var(--dsw-elevation-prominent);
+  --dsw-brand-action-fill: var(--dsw-alias-button-primary-fill);
+  --dsw-brand-dialog-mask: var(--dsw-alias-bg-mask-1);
+  --dsw-brand-workspace-border: var(--dsw-alias-border-l3);
   /* Shared accent pair for navigation selections, settings categories, and
    * workbench labels. Defaults reproduce the current business accent; a brand
    * profile supplies the prototype's ink and soft values. */
@@ -90,6 +94,8 @@ body {
   --dsw-brand-shortcut-shadow: none;
   /* Artwork shadow around the brand mark. */
   --dsw-brand-mark-glow: transparent;
+  --dsw-brand-mark-hover-glow: transparent;
+  --dsw-brand-mark-burst-border: transparent;
   /* Application frame fill. AppFrame paints this instead of a fixed alias so a
    * brand can let one ambient scene back the window; the default keeps the
    * stock ground for every other profile. */

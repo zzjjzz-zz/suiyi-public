@@ -76,6 +76,7 @@ export const inject = [
  * @param ctx - the browser plugin context.
  */
 export function apply(ctx: ClientContext): void {
+  if (process.env.DSH_CLIENT_BUILD_PROFILE === 'suiyi') return
   const toolsSettings = ctx.configForms.get<{ enabled: boolean }>('ui-settings')
   const presetSettings = ctx.configForms.get(AGENT_PRESET_SETTINGS_NS)
   let active = true

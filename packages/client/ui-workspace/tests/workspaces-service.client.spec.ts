@@ -694,6 +694,21 @@ describe('UiWorkspaceService', () => {
     await vi.waitFor(() => { expect(b.sessions.retain).toHaveBeenCalledWith(sid('blank'), expect.anything()) })
   })
 
+  it('starts Suiyi conversations with Standard without reusing a blank from another preset', async () => {
+    vi.stubEnv('DSH_CLIENT_BUILD_PROFILE', 'suiyi')
+    try {
+      const b = bench({
+        sessions: sessionState([
+          summary('creator', { blank: true, cwd: '/w/a', projectionValues: { agentPreset: 'cordis' } }),
+          summary('plain', { blank: true, cwd: '/w/a', projectionValues: { agentPreset: 'standard' } }),
+        ], 'pending'),
+        workspaces: workspaceState([workspace('a', [sid('creator'), sid('plain')])]),
+      })
+      await expect(b.uiWorkspace.connectWorkspace(wid('a'))).resolves.toBe(sid('plain'))
+      expect(b.sessions.create).toHaveBeenCalledWith({ workspaceId: wid('a'), sessionId: sid('plain'), agentPreset: 'standard' })
+    } finally { vi.unstubAllEnvs() }
+  })
+
   it('reuses any blank without a requested preset and only a matching blank with one', async () => {
     const b = bench({
       sessions: sessionState([

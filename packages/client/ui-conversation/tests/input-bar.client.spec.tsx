@@ -322,6 +322,22 @@ function writeDraft(shell: SessionInputShell, text: string): void {
 }
 
 describe('composer focus handoff', () => {
+  it('keeps the Suiyi home at rest until the user chooses the composer', () => {
+    vi.stubEnv('DSH_CLIENT_BUILD_PROFILE', 'suiyi')
+    onTestFinished(() => { vi.unstubAllEnvs() })
+    const { view, textarea } = bench({ variant: 'hero' })
+    expect(document.activeElement).not.toBe(textarea)
+    fireEvent.mouseDown(view.container.querySelector('[data-composer-card]')!, { button: 0 })
+    expect(document.activeElement).toBe(textarea)
+  })
+
+  it.each(['suiyi', 'official'])('retains desktop conversation focus in the %s profile', (profile) => {
+    vi.stubEnv('DSH_CLIENT_BUILD_PROFILE', profile)
+    onTestFinished(() => { vi.unstubAllEnvs() })
+    const { textarea } = bench({ variant: 'composer' })
+    expect(document.activeElement).toBe(textarea)
+  })
+
   it.each(['hero', 'composer'] as const)('focuses the %s editor when its card background is pressed', (variant) => {
     const { view, shell, textarea } = bench({ variant })
     writeDraft(shell, 'draft text')

@@ -30,3 +30,5 @@
   .sidebarEntry:hover .activeMark,
   :global(html[data-input-modality='keyboard']) .sidebarEntry:focus-within .activeMark { opacity: 0; }
 }
+
+.suiyiEntries { display: contents; }

@@ -5,7 +5,7 @@ import { createHash } from 'node:crypto'
 import type { AddressInfo } from 'node:net'
 import type { ServerResponse } from 'node:http'
 import { createServer, request as httpRequest, type Server } from 'node:http'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { generateKeyPair, exportJWK, SignJWT } from 'jose'
 import {
   discoverOidcEndpoints,
@@ -180,7 +180,7 @@ async function issueIdToken(claims: {
 /** A loopback login driver that captures the authorize URL and drives callbacks over real TCP. */
 interface LoopbackRun {
   authorizeUrl: URL
-  result: Promise<{ readonly ok: boolean }>
+  result: ReturnType<typeof runAuthorizationCodeLogin>
 }
 
 describe('ID token verification (real RSA signatures)', () => {
@@ -313,6 +313,8 @@ describe('loopback authorization-code login over real TCP', () => {
     await provider.start()
   })
 
+  beforeEach(() => { provider.tokenRequests.length = 0 })
+
   afterAll(async () => {
     await provider.stop()
   })
@@ -353,6 +355,82 @@ describe('loopback authorization-code login over real TCP', () => {
     })
     return response
   }
+
+  /** Complete a signed login before exercising its private renewal operation. */
+  async function loggedInIdentity() {
+    const run = await startLogin()
+    const port = Number(new URL(run.authorizeUrl.searchParams.get('redirect_uri') ?? '').port)
+    const state = run.authorizeUrl.searchParams.get('state') ?? ''
+    await hitCallback(port, `${SUIYI_CALLBACK_PATH}?code=renewable-login&state=${encodeURIComponent(state)}`)
+    const result = await run.result
+    if (!result.ok) throw new Error(`login failed: ${result.failure}`)
+    return result.identity
+  }
+
+  /** Refresh responses may omit nonce; every returned identity is still signed. */
+  async function renewedIdToken(claims: { sub?: string; nonce?: string; audience?: string } = {}) {
+    return new SignJWT({ sub: claims.sub ?? SUB, ...(claims.nonce === undefined ? {} : { nonce: claims.nonce }) })
+      .setProtectedHeader({ alg: 'RS256', kid: 'test-key-1' })
+      .setIssuer(ISSUER).setAudience(claims.audience ?? AUDIENCE)
+      .setIssuedAt().setExpirationTime('10m').sign(providerKey.privateKey)
+  }
+
+  it('renews a signed identity without nonce and rotates refresh credentials only in memory', async () => {
+    const identity = await loggedInIdentity()
+    expect(identity).not.toHaveProperty('refreshToken')
+    expect(identity.renew).toBeTypeOf('function')
+    const idToken = await renewedIdToken()
+    provider.tokenResponse = { status: 200, body: JSON.stringify({
+      access_token: 'renewed-access', id_token: idToken, refresh_token: 'rotated-refresh', expires_in: 300, token_type: 'Bearer',
+    }) }
+    try {
+      const renewed = await identity.renew!(new AbortController().signal)
+      expect(renewed).toMatchObject({ ok: true, identity: { issuer: ISSUER, sub: SUB, accessToken: 'renewed-access' } })
+      expect(provider.tokenRequests.at(-1)?.body.get('grant_type')).toBe('refresh_token')
+      expect(provider.tokenRequests.at(-1)?.body.get('refresh_token')).toBe('refresh-token-value')
+      if (!renewed.ok) throw new Error('identity was not renewed')
+      expect(JSON.stringify(renewed.identity)).not.toContain('rotated-refresh')
+      // A provider may keep the rotated token rather than issue another one.
+      provider.tokenResponse = { status: 200, body: JSON.stringify({
+        access_token: 'next-access', id_token: idToken, expires_in: 300, token_type: 'Bearer',
+      }) }
+      const next = await renewed.identity.renew!(new AbortController().signal)
+      expect(next.ok).toBe(true)
+      expect(provider.tokenRequests.at(-1)?.body.get('refresh_token')).toBe('rotated-refresh')
+      if (!next.ok) throw new Error('second renewal failed')
+      expect((await next.identity.renew!(new AbortController().signal)).ok).toBe(true)
+      expect(provider.tokenRequests.at(-1)?.body.get('refresh_token')).toBe('rotated-refresh')
+    } finally { provider.tokenResponse = undefined }
+  })
+
+  it.each([
+    { sub: 'different-user' }, { nonce: 'different-login' }, { audience: 'different-client' },
+  ])('rejects a refreshed identity that changes verified login claims: %j', async (claims) => {
+    const identity = await loggedInIdentity()
+    provider.tokenResponse = { status: 200, body: JSON.stringify({
+      access_token: 'untrusted-access', id_token: await renewedIdToken(claims), expires_in: 300, token_type: 'Bearer',
+    }) }
+    try {
+      expect(await identity.renew!(new AbortController().signal)).toMatchObject({ ok: false, failure: 'token-rejected' })
+    } finally { provider.tokenResponse = undefined }
+  })
+
+  it('classifies revoked refresh credentials without including the provider response', async () => {
+    const identity = await loggedInIdentity()
+    provider.tokenResponse = { status: 400, body: JSON.stringify({ error: 'invalid_grant', error_description: 'private provider details' }) }
+    try {
+      const result = await identity.renew!(new AbortController().signal)
+      expect(result).toMatchObject({ ok: false, failure: 'token-rejected' })
+      expect(JSON.stringify(result)).not.toContain('private provider details')
+    } finally { provider.tokenResponse = undefined }
+  })
+
+  it('cancels renewal without accepting a new bearer token', async () => {
+    const identity = await loggedInIdentity()
+    const controller = new AbortController()
+    controller.abort()
+    expect(await identity.renew!(controller.signal)).toMatchObject({ ok: false, failure: 'callback-aborted' })
+  })
 
   it('completes a login: one listener, matching port, PKCE S256, nonce, and verified identity', async () => {
     const receipt = resolveDesktopLocale('zh-CN').messages.suiyiLoginCallbackReceived

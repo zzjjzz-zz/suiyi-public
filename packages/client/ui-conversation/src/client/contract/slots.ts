@@ -448,7 +448,7 @@ export interface ConversationShellChromeInjected {
 /** Live navigation action for the conversation chat-top row. */
 export interface ConversationSessionBarInjected {
   /** Select the registered Workspaces main panel when one exists. */
-  openWorkspaces(): void
+  openWorkspaces(this: void): void
 }
 
 /** Live sources and recovery action for the root shell footer. */
@@ -485,6 +485,12 @@ export interface ConversationHeaderCornerOwnerProps {
 export interface ConversationHeaderLeadingOwnerProps {
   /** Marker field: the occupant receives no owner-specific values. */
   children?: never
+  /**
+   * Render the existing workspace button with provider-controlled state and actions.
+   * @param controls - menu state and toggle action.
+   * @returns the conversation-owned button with its existing geometry.
+   */
+  renderWorkspaceButton?: (controls: { open: boolean; disabled: boolean; onClick: () => void }) => ReactNode
 }
 
 /** Plain breadcrumb data handed to the optional lineage renderer. */

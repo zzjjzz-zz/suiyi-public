@@ -27,6 +27,7 @@ import { SessionRenameDialog } from '../src/client/session-actions/RenameSession
 import { RowActionToast } from '../src/client/session-actions/RowActionToast.tsx'
 import type { ArchiveToastInjected, ToastDisplayInjected } from '../src/client/contract/toast.ts'
 import { WorkspacePicker } from '../src/client/WorkspacePicker.tsx'
+import type { WorkspacesPageInjected } from '../src/client/WorkspacesPage.tsx'
 import { FLAT_SESSION_ORDER_KEY } from '../src/client/stores.ts'
 import { UNGROUPED_KEY } from '../src/client/tree.ts'
 import { apply as hostApply } from '../src/index.ts'
@@ -176,7 +177,7 @@ async function bench(access: 'fake' | 'static' = 'fake') {
   }
 }
 
-type HoleName = 'sidebar.workspaces' | 'conversation.hero.workspace' | 'conversation.empty.workspace' | 'shell.overlay'
+type HoleName = 'sidebar.workspaces' | 'conversation.hero.workspace' | 'conversation.header.leading' | 'conversation.empty.workspace' | 'shell.overlay'
 
 const MENU_ITEM = 'sidebar.workspaces.session.menu.item'
 const ROW_ACTION = 'sidebar.workspaces.session.row.action'
@@ -238,6 +239,21 @@ function viewInstance(slots: SlotRegistry) {
 const settled = (): Promise<void> => new Promise((resolve) => { setTimeout(resolve, 0) })
 
 describe('ui-workspace apply', () => {
+  it('keeps Suiyi workspace management in the upper-left picker instead of primary navigation', async () => {
+    vi.stubEnv('DSH_CLIENT_BUILD_PROFILE', 'suiyi')
+    const b = await bench()
+    onTestFinished(() => b.ctx.fiber.dispose())
+    try {
+      declare(b.slots, 'conversation.header.leading')
+      await b.ctx.plugin({ inject: [...inject], apply }).await()
+      expect(b.slots.entries('main').map(entry => entry.options.key)).toContain('workspaces')
+      expect(b.slots.entries('sidebar.panellist').map(entry => entry.options.id)).not.toContain('workspaces')
+      const picker = faceOf(b.slots.entries('conversation.header.leading')[0]!) as { manageWorkspaces: () => void }
+      picker.manageWorkspaces()
+      expect(b.selectPanel).toHaveBeenCalledExactlyOnceWith('workspaces')
+    } finally { vi.unstubAllEnvs() }
+  })
+
   it('keeps the host Loader entry inert', () => {
     expect(hostApply).not.toThrow()
   })
@@ -251,6 +267,23 @@ describe('ui-workspace apply', () => {
       expect(b.slots.entries('main').map(entry => entry.options.key)).toContain('workspaces')
       expect(b.slots.entries('sidebar.panellist').map(entry => entry.options.id)).toContain('workspaces')
     })
+  })
+
+  it('opens the registered add flow from the page instead of calling the native picker', async () => {
+    const b = await bench()
+    onTestFinished(() => b.ctx.fiber.dispose())
+    declare(b.slots, 'sidebar.workspaces')
+    await b.ctx.plugin({ inject: [...inject], apply }).await()
+    const registration = b.slots.entries('main').find(entry => entry.options.key === 'workspaces')!
+    const page = faceOf(registration) as WorkspacesPageInjected
+    await expect(page.addWorkspace()).rejects.toThrow()
+    const dispose = b.slots.register({ name: 'sidebar.workspaces.directoryFlow' }, () => null)
+    onTestFinished(dispose)
+    await page.addWorkspace()
+    const browser = faceOf(b.slots.entries('sidebar.workspaces')[0]!) as WorkspaceBrowserInjected
+    expect(browser.hooks.workspaceShortcuts.getSnapshot().addRequested).toBe(true)
+    expect(b.pickDirectory).not.toHaveBeenCalled()
+    expect(b.create).not.toHaveBeenCalled()
   })
 
   it('declares the services it drives', () => {

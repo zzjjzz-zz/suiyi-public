@@ -4,7 +4,7 @@ import { build } from 'vite'
 import { fileURLToPath } from 'node:url'
 import { readFileSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
-import { repositoryClientBuildEnvironment, resolveClientBuildEnvironment } from '../../scripts/client-build-environment.ts'
+import { CLIENT_BUILD_PROFILE_SELECTOR, repositoryClientBuildEnvironment, resolveClientBuildEnvironment } from '../../scripts/client-build-environment.ts'
 import { packagedImportsPlugin } from './scripts/desktop-bundle-imports.mjs'
 
 // This config runs after the workspace tsdown pass, not inside it: the main bundle inlines
@@ -26,7 +26,7 @@ const REPOSITORY_ROOT = fileURLToPath(new URL('../..', import.meta.url))
 /** Use the client environment this build already received, otherwise the repository's own version and commit. */
 const clientEnvironment = resolveClientBuildEnvironment(process.env.DSH_CLIENT_VERSION === undefined
   ? repositoryClientBuildEnvironment(REPOSITORY_ROOT, process.env)
-  : process.env)
+  : process.env, process.env[CLIENT_BUILD_PROFILE_SELECTOR])
 const clientVersion = clientEnvironment.DSH_CLIENT_VERSION
 if (clientVersion === undefined) throw new Error('desktop build: the client environment carries no DSH_CLIENT_VERSION')
 

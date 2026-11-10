@@ -1,6 +1,7 @@
 /** Browser entry for the Web client. */
 import '@deepseek-ai/dsh-client-ui-theme/brand-font.css'
 import { AppWebEntry, applyIndexInjections } from '@deepseek-ai/dsh-client-web'
+import { dismissSuiyiLaunch, installSuiyiLaunch } from './suiyi-launch.ts'
 
 interface DesktopBootGlobal {
   dshDesktopBoot?: {
@@ -10,6 +11,7 @@ interface DesktopBootGlobal {
 }
 const desktop = (globalThis as DesktopBootGlobal).dshDesktopBoot
 const reportFailure = (reason: unknown): void => {
+  dismissSuiyiLaunch()
   if (desktop === undefined) throw reason
   void desktop.failed(reason instanceof Error ? reason.message : String(reason)).catch(console.error)
 }
@@ -17,6 +19,7 @@ const reportFailure = (reason: unknown): void => {
 try {
   const el = document.getElementById('root')
   if (el === null) throw new Error('web app: missing #root')
+  installSuiyiLaunch(el)
   const entry = new AppWebEntry(el)
   if (desktop !== undefined) {
     const gate = (globalThis as { __DSH_BOOT_READY__?: PromiseWithResolvers<void> }).__DSH_BOOT_READY__

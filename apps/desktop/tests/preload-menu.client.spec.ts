@@ -43,6 +43,7 @@ afterEach(() => {
   menu?.dispose()
   menu = undefined
   document.body.replaceChildren()
+  document.body.removeAttribute('data-dsh-brand')
   document.documentElement.lang = ''
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
@@ -140,4 +141,57 @@ it('restores a contenteditable selection before opening Edit with the keyboard',
   expect(document.activeElement).toBe(editor)
   expect(document.getSelection()!.toString()).toBe('itable')
   await vi.waitFor(() => { expect(buttons[1]!.getAttribute('aria-expanded')).toBe('false') })
+})
+
+it('moves an already-mounted menu into a late Suiyi seat and back to the official caption', async () => {
+  menu = installWindowsMenu()
+  const host = document.querySelector<HTMLElement>('[data-windows-menu]')!
+  expect(host.parentElement).toBe(document.body)
+  document.body.dataset.dshBrand = 'suiyi'
+  await new Promise<void>((resolve) => { queueMicrotask(resolve) })
+  expect(host.parentElement).toBe(document.body)
+  const seat = document.createElement('div')
+  seat.dataset.windowsSuiyiMenu = ''
+  document.body.append(seat)
+  await vi.waitFor(() => { expect(host.parentElement).toBe(seat) })
+  expect(host.dataset.brand).toBe('suiyi')
+  expect(host.shadowRoot!.querySelector('svg')).not.toBeNull()
+  document.body.removeAttribute('data-dsh-brand')
+  await vi.waitFor(() => { expect(host.parentElement).toBe(document.body) })
+  expect(host.dataset.brand).toBe('official')
+})
+
+it('never moves Suiyi keyboard focus to the hidden Edit entry', () => {
+  document.body.dataset.dshBrand = 'suiyi'
+  const seat = document.createElement('div')
+  seat.dataset.windowsSuiyiMenu = ''
+  document.body.append(seat)
+  menu = installWindowsMenu()
+  const buttons = document.querySelector('[data-windows-menu]')!.shadowRoot!.querySelectorAll('button')
+  expect(buttons[1]!.hidden).toBe(true)
+  buttons[0]!.focus()
+  buttons[0]!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', cancelable: true }))
+  expect(document.querySelector('[data-windows-menu]')!.shadowRoot!.activeElement).toBe(buttons[0])
+  expect(document.querySelector('[data-windows-menu]')!.shadowRoot!.activeElement).not.toBe(buttons[1])
+  expect(buttons[0]!.tabIndex).toBe(0)
+  expect(buttons[1]!.tabIndex).toBe(-1)
+  expect(invoke).not.toHaveBeenCalled()
+})
+
+it('keeps a keyboard entry when the focused Edit menu becomes hidden', async () => {
+  const seat = document.createElement('div')
+  seat.dataset.windowsSuiyiMenu = ''
+  document.body.append(seat)
+  menu = installWindowsMenu()
+  const host = document.querySelector('[data-windows-menu]')!
+  const buttons = host.shadowRoot!.querySelectorAll('button')
+  buttons[0]!.focus()
+  buttons[0]!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', cancelable: true }))
+  expect(host.shadowRoot!.activeElement).toBe(buttons[1])
+  document.body.dataset.dshBrand = 'suiyi'
+  await vi.waitFor(() => { expect(host.parentElement).toBe(seat) })
+  expect(buttons[1]!.hidden).toBe(true)
+  expect(buttons[1]!.tabIndex).toBe(-1)
+  expect(buttons[0]!.tabIndex).toBe(0)
+  expect(host.shadowRoot!.activeElement).toBe(buttons[0])
 })

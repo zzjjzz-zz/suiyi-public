@@ -11,6 +11,8 @@ English | [中文](README.zh.md)
 
 Choose Agent presets and the new-task default in Web, read what each mode does and what it declares. Authoring is guided to Creator mode.
 
+Suiyi does not mount this preset interface, its navigation entry, or its settings. Normal new Suiyi conversations request Standard through the workspace owner; backend presets and existing Sessions retain their capabilities.
+
 ## Table of Contents
 
 - [Use this package](#use-this-package)

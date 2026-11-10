@@ -6,7 +6,10 @@
  */
 import type { ReactNode } from 'react'
 import { useState } from 'react'
-import { IconFolderCloseRegular, IconPlusOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
+import {
+  IconEllipsisOutlineRegular, IconFolderCloseRegular, IconPlusOutlineRegular, IconRightUpOutlineRegular,
+  Menu, MenuItemButton, Tooltip,
+} from '@deepseek-ai/dsh-client-ui-primitives'
 import { workspaceDisplayTitle } from '@deepseek-ai/dsh-api-workspace-controller/default-workspace'
 import type { WorkspaceId, WorkspaceView } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
@@ -20,7 +23,7 @@ export interface WorkspacesPageInjected {
   readonly requestWorkspaceAction: (workspaceId: WorkspaceId, displayTitle: string, action: 'rename' | 'delete') => void
   /**
    * Pick a Host directory and adopt it as a Workspace.
-   * @returns completion after the Host accepts or the pick is cancelled.
+   * @returns completion after the existing directory flow receives the opening request.
    */
   readonly addWorkspace: () => Promise<void>
 }
@@ -44,23 +47,50 @@ function WorkspaceCard({ workspace, title, t, startSession, requestWorkspaceActi
   requestWorkspaceAction: WorkspacesPageInjected['requestWorkspaceAction']
 }): ReactNode {
   const count = workspace.sessionIds.length
+  const [menuOpen, setMenuOpen] = useState(false)
+  const manageLabel = t('actions.workspace.aria', { name: title })
   return (
     <article className={css.card} data-workspace-id={workspace.workspaceId}>
-      <div className={css.cardTitle}>
-        <IconFolderCloseRegular size={18} />
-        <span title={title}>{title}</span>
+      <div className={css.cardTop}>
+        <span className={css.cardIcon} aria-hidden="true"><IconFolderCloseRegular size={22} /></span>
+        <Menu
+          open={menuOpen}
+          onClose={() => { setMenuOpen(false) }}
+          portal
+          autoFocus
+          anchor={(
+            <Tooltip label={manageLabel} delayMs={500}>
+              <button
+                type="button"
+                className={css.manage}
+                aria-label={manageLabel}
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
+                onClick={() => { setMenuOpen(value => !value) }}
+              >
+                <IconEllipsisOutlineRegular size={18} />
+              </button>
+            </Tooltip>
+          )}
+        >
+          <MenuItemButton onSelect={() => {
+            setMenuOpen(false)
+            requestWorkspaceAction(workspace.workspaceId, title, 'rename')
+          }}>{t('rename')}</MenuItemButton>
+          <MenuItemButton onSelect={() => {
+            setMenuOpen(false)
+            requestWorkspaceAction(workspace.workspaceId, title, 'delete')
+          }}>{t('delete.workspace')}</MenuItemButton>
+        </Menu>
       </div>
-      <p className={css.path} title={workspace.path}>{workspace.path}</p>
-      <p className={css.meta}>{t(count === 1 ? 'sessions.count.one' : 'sessions.count.other', { n: count })}</p>
-      <div className={css.actions}>
-        <button type="button" className={css.action} onClick={() => { requestWorkspaceAction(workspace.workspaceId, title, 'rename') }}>
-          {t('rename')}
-        </button>
-        <button type="button" className={css.action} onClick={() => { requestWorkspaceAction(workspace.workspaceId, title, 'delete') }}>
-          {t('delete.workspace')}
-        </button>
-        <button type="button" className={`${css.action} ${css.actionPrimary}`} onClick={() => { startSession(workspace.workspaceId) }}>
-          {t('session.new')}
+      <h3 className={css.cardName} title={title}>{title}</h3>
+      <p className={css.description}>{t('workspace.description')}</p>
+      <div className={css.path} title={workspace.path}>{workspace.path}</div>
+      <div className={css.cardFooter}>
+        <span>{t(count === 1 ? 'sessions.count.one' : 'sessions.count.other', { n: count })}</span>
+        <button type="button" className={css.enter} onClick={() => { startSession(workspace.workspaceId) }}>
+          {t('workspace.enter')}
+          <IconRightUpOutlineRegular size={18} />
         </button>
       </div>
     </article>

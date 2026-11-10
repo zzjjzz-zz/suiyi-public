@@ -17,6 +17,9 @@
       "path": "../../vendor/cordis"
     },
     {
+      "path": "../../vendor/loader"
+    },
+    {
       "path": "../../vendor/schemastery"
     },
     {

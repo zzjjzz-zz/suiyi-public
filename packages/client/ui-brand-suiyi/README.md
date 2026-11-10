@@ -35,6 +35,10 @@ The shipped Web and Desktop compositions already mount this plugin. A Suiyi desk
 
 ### The artwork
 
+The feature dialog and workspace switcher share the prototype glass palette through `--dsw-brand-dialog-shadow`, `--dsw-brand-dialog-mask` and `--dsw-brand-workspace-border`.
+
+The Web build also selects Suiyi favicons for both colour schemes, an Apple touch icon, and a Suiyi installation manifest. The PNG icons are resized from the existing desktop artwork; the official profile retains its own browser assets.
+
 The mark is the prototype ribbon: one body stroke and one tail stroke crossing the same silhouette, two white glass highlights, and a wake stroke. The four painted gradients read the `--dsw-brand-mark-wing-*` and `--dsw-brand-mark-wake-*` theme tokens, so the light and dark artwork each keep their prototype stops; the glass highlights are scheme-invariant artwork. The sidebar and hero marks drift through one 7.8 s loop with a glass glimmer. The Assistant reply mark runs a faster thinking drift while its step streams and stays still once the step settles.
 
 The wordmark is a single line — the hanzi 遂意 in Chinese, the product name in other locales — set at 22 px, weight 500, and 0.04 em tracking. The prototype drops the romanization subline, so no second line exists.
@@ -127,8 +131,8 @@ These limits define how brand presentation is supplied. They are current package
 - **Mark size is each slot owner's** — the sidebar requests 24 px, the hero 96 px, and the Assistant reply 32 px; the artwork follows those edges rather than the prototype's 42 px sidebar logo, and the host class carries each surface's geometry.
 - **The scene follows the platform background** — macOS Desktop keeps the transparent body its window vibrancy needs, so its frame keeps the platform material.
 - **The frame must consume the fill token** — the scene needs AppFrame to paint `--dsw-app-frame-fill` with `var(--dsw-alias-bg-base)` as its fallback; a frame that stays opaque adds a second wash and flattens the scene.
-- **Reduced motion is the OS preference** — the prototype's in-app motion switch has no DSH equivalent; the mark and scene follow `prefers-reduced-motion`.
-- **The mark interactions stay out** — the prototype's pointer approach and click burst are not reproduced because the mark sits inside the sidebar identity, which is `aria-hidden` and not itself interactive.
+- **Reduced motion** — either the system preference or the application’s `data-dsh-reduce-motion` setting disables drift, pointer transforms, click feedback, and thinking motion.
+- **Decorative interactions** — sidebar and hero marks follow nearby pointers and play a brief glide and wake on click. Their outer measurement box stays fixed; clicks retain the host action. Plugin disposal removes listeners, animation frames, and timers.
 - **The browser title is independent** — `DSH_CLIENT_TITLE` selects title text at build time rather than through a UI slot.
 
 <a id="dev-note"></a>

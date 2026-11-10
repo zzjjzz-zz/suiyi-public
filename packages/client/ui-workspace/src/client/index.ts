@@ -63,6 +63,7 @@ import { SessionRenameDialog } from './session-actions/RenameSession.tsx'
 import { RowActionToast } from './session-actions/RowActionToast.tsx'
 import { registerToasts } from './toast/register.ts'
 import { WorkspacePicker } from './WorkspacePicker.tsx'
+import { SidebarWorkspaceSwitcher } from './SidebarWorkspaceSwitcher.tsx'
 import { en, ja, es, fr, de, ru, pt, zh, type WorkspaceKey } from './locales.ts'
 
 export type { StartSessionOptions, UiWorkspace } from './navigation.ts'
@@ -357,25 +358,33 @@ export function apply(ctx: Context): void {
     inject: () => ({ requestSearch, hooks: { shortcuts: ctx.shortcuts.catalog } }),
   }, SidebarSearchTrigger))
   const WORKSPACES_PANEL_ID = 'workspaces' as MainPanelId
-  const addWorkspaceFromPage = async (): Promise<void> => {
-    const path = await uiWorkspace.pickDirectory()
-    if (path === null) return
-    const workspace = await workspaces.create({ path })
-    uiWorkspace.startSession(workspace.workspaceId)
+  const addWorkspaceFromPage = (): Promise<void> => {
+    if (!browserFlowSource.getSnapshot()) return Promise.reject(new Error(ctx.locale.bind(NS)('shortcut.noPicker')))
+    shortcutControls.add()
+    return Promise.resolve()
   }
   const workspacesPageInjected = (): WorkspacesPageInjected => ({
     startSession: (workspaceId) => { uiWorkspace.startSession(workspaceId) },
     requestWorkspaceAction,
     addWorkspace: addWorkspaceFromPage,
   })
-  // A non-official build exposes the workspace management page and its real
-  // sidebar entry; official artifacts keep the shell's existing surfaces.
+  // Suiyi keeps workspace selection in the conversation's upper-left corner.
   if (process.env.DSH_CLIENT_BUILD_PROFILE !== 'official') {
     const t = ctx.locale.bind(NS)
+    if (process.env.DSH_CLIENT_BUILD_PROFILE === 'suiyi') {
+      ctx.slots.inject('conversation.header.leading', () => ctx.slots.register({
+        name: 'conversation.header.leading', locale: NS,
+        inject: () => ({
+          openWorkspace: (id: WorkspaceId) => uiWorkspace.openWorkspace(id),
+          manageWorkspaces: () => { ctx.layout.selectPanel(WORKSPACES_PANEL_ID) },
+          addWorkspace: addWorkspaceFromPage,
+        }),
+      }, SidebarWorkspaceSwitcher))
+    }
     ctx.slots.inject('main', () => ctx.slots.register({
       name: 'main', key: WORKSPACES_PANEL_ID, locale: NS, inject: workspacesPageInjected,
     }, WorkspacesPage))
-    ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({
+    if (process.env.DSH_CLIENT_BUILD_PROFILE !== 'suiyi') ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({
       name: 'sidebar.panellist', id: WORKSPACES_PANEL_ID, order: 5, locale: NS,
       label: () => t('section.workspaces'),
     }, WorkspacePanelIcon))
