@@ -83,6 +83,37 @@ it('accepts only a displayed choice from its isolated shell frame', async () => 
   expect(dialogs!.isOpen).toBe(false)
 })
 
+it('keeps recovery visible when a background update prompt arrives', async () => {
+  const f = setup()
+  const pending = f.show(undefined, { presentation: 'suiyi-recovery', buttons: ['Exit', 'Restart'], defaultId: 1, cancelId: 0 })
+  expect(f.invoke(UPDATE_DIALOG_IPC.status)).toMatchObject({ presentation: 'suiyi-recovery', primaryId: 1 })
+  expect(await f.show()).toMatchObject({ response: 1 })
+  expect(f.invoke(UPDATE_DIALOG_IPC.status)).toMatchObject({ presentation: 'suiyi-recovery' })
+  f.invoke(UPDATE_DIALOG_IPC.respond, 1)
+  expect(await pending).toMatchObject({ response: 1 })
+})
+
+it('reports an unavailable recovery document to its independent native fallback', async () => {
+  fixture.load.failure = true
+  const f = setup()
+  await expect(f.show(undefined, { presentation: 'suiyi-recovery' })).rejects.toThrow('Suiyi recovery document is unavailable')
+  expect(dialogs!.isOpen).toBe(false)
+  expect(fixture.views[0]!.destroyed).toBe(true)
+})
+
+it.each(['ordinary', 'recovery'])('preserves native fallback when a reused %s surface fails during recovery', async (initial) => {
+  const f = setup()
+  const previous = f.show(undefined, initial === 'recovery' ? { presentation: 'suiyi-recovery' } : {})
+  const pending = f.show(undefined, { presentation: 'suiyi-recovery', cancelId: 0 })
+  const rejected = expect(pending).rejects.toThrow('Suiyi recovery document is unavailable')
+  expect(await previous).toMatchObject({ response: 1 })
+  expect(fixture.views).toHaveLength(1)
+  fixture.views[0]!.webContents.emit('render-process-gone')
+  await rejected
+  expect(dialogs!.isOpen).toBe(false)
+  expect(fixture.views[0]!.destroyed).toBe(true)
+})
+
 it('attaches within its owner and resizes below the Windows caption without a native child window', async () => {
   const f = setup()
   const pending = f.show()

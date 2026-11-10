@@ -129,9 +129,10 @@ function quitWithoutConfirmation(): void {
   skipQuitConfirmation = true
   app.quit()
 }
+let showFatalRecovery = (options: Electron.MessageBoxOptions): Promise<Electron.MessageBoxReturnValue> => dialog.showMessageBox(options)
 const recovery = new DesktopFatalRecovery({
   messages: () => currentDesktopLocale().messages,
-  show: options => dialog.showMessageBox(options),
+  show: options => showFatalRecovery(options),
   stop: () => { shuttingDown = true; return stopForRecovery() },
   disablePlugins: async () => {
     const manager = new DesktopProjectManager(resolveDesktopPaths(), runtimeResources())
@@ -1034,7 +1035,7 @@ async function main(): Promise<void> {
   }
 
   const reconcileBackend = (): Promise<void> => {
-    startup ??= (async () => {
+    startup ??= Promise.resolve().then(async () => {
       await navigateMain(applicationUrl)
       await backend.start(async () => {
         await Promise.all([manager.applyRelease(), prepareHostEnvironment()])
@@ -1044,7 +1045,7 @@ async function main(): Promise<void> {
       if (backend.host !== undefined && (!desktopIdentity.suiyi || !suiyiLocked)) await openInitialWindow()
       if (backend.host !== undefined) updateJournal?.action('workspace-ready')
       // The existing Web document resumes through the boot IPC response.
-    })().catch((error: unknown) => {
+    }).catch((error: unknown) => {
       updateJournal?.action('workspace-failed')
       reportFatal(error, 'main')
       throw error
@@ -1173,6 +1174,20 @@ async function main(): Promise<void> {
     }
     return Promise.resolve(new Response(null, { status: 404 }))
   })
+
+  if (desktopIdentity.suiyi) showFatalRecovery = async (options) => {
+    const parent = mainWindow
+    if (parent === undefined || parent.isDestroyed()) return dialog.showMessageBox(options)
+    parent.show()
+    try {
+      return await updateDialog.show(parent, { ...options, presentation: 'suiyi-recovery',
+        detail: locale.messages.startupReinstallAdvice, technicalDetails: options.detail ?? '' })
+    } catch (error) {
+      // Recovery must remain reachable when the isolated shell renderer also fails.
+      console.error('Suiyi recovery presentation failed', error)
+      return dialog.showMessageBox(options)
+    }
+  }
 
   installDesktopDirectoryPicker(() => mainWindow)
   installMicrophonePermissions(documentSession, () => mainWindow?.webContents)
@@ -2002,10 +2017,12 @@ async function main(): Promise<void> {
   // exist. Arm expiry before any Host startup; an expired startup login locks
   // the existing hidden window without launching a Host.
   armSuiyiExpiry?.()
-  if (desktopIdentity.suiyi && suiyiAccessAllowed()) await enterWorkspace()
   if (!desktopIdentity.suiyi || suiyiAccessAllowed()) {
+    // Publish the readiness promise before the first document can invoke boot.
+    const ready = reconcileBackend().catch(() => undefined)
+    if (desktopIdentity.suiyi) await enterWorkspace()
     automaticCheck()
-    await reconcileBackend().catch(() => undefined)
+    await ready
   }
   // Window lifecycle callbacks run while backend startup is pending.
   if (isQuitting()) return

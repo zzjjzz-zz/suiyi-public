@@ -3135,6 +3135,37 @@ describe('Suiyi main lifecycle', () => {
     expect(window.webContents.send.mock.calls).toContainEqual([WELCOME_IPC.suiyiState, { phase: 'success' }])
   }
 
+  it('holds the first document boot request until the authenticated Host is ready', async () => {
+    selectSuiyi()
+    harness.suiyiLoginResult.mockResolvedValueOnce(login())
+    const requested = Promise.withResolvers<undefined>()
+    let result: unknown
+    let settled = false
+    vi.spyOn(harness.FakeWindow.prototype, 'loadURL').mockImplementation(async function (this: InstanceType<typeof harness.FakeWindow>, url) {
+      this.urls.push(url)
+      this.webContents.mainFrame.url = url
+      if (url !== 'dsh-app://app/') return
+      harness.navigated.resolve()
+      void Promise.resolve(harness.handlers.get(DESKTOP_IPC.boot)!({
+        sender: this.webContents, senderFrame: this.webContents.mainFrame,
+      })).then((value) => { result = value; settled = true }, (error: unknown) => { result = error; settled = true })
+      requested.resolve(undefined)
+    })
+    await import('../src/main.ts')
+    await completeLoginWindow()
+    await requested.promise
+    await harness.preparing.promise
+    const settledBeforePreparation = settled
+    harness.prepared.resolve()
+    await harness.hostStarted.promise
+    const settledBeforeHost = settled
+    harness.hosts[0]!.ready.resolve()
+    await vi.waitFor(() => { expect(settled).toBe(true) })
+    expect(settledBeforePreparation).toBe(false)
+    expect(settledBeforeHost).toBe(false)
+    expect(result).toHaveProperty('streamBaseUrl', expect.any(String))
+  })
+
   it('renews the same running Host through its private credential channel without reopening login', async () => {
     selectSuiyi()
     const renewed = { ...login().identity, accessToken: 'renewed-access', expiresAt: Date.now() + 600_000 }

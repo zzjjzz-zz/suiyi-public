@@ -1,4 +1,13 @@
 /* 品牌过场：规整细宋体、原始字形比例，以及不透出底层的加载背景。 */
+.sy-launch[data-failed=true] .sy-launch-title,.sy-launch[data-failed=true] .sy-launch-thread,.sy-launch[data-failed=true] .sy-launch-loader,.sy-launch[data-failed=true] .sy-launch-footer{display:none}
+.sy-launch[data-failed=true] *{animation:none!important}
+.sy-launch[data-failed=true] .sy-launch-emblem,.sy-launch[data-failed=true] .sy-launch-caption{opacity:1;transform:none;visibility:visible}
+.sy-launch-error{max-width:min(560px,calc(100vw - 48px));margin:24px auto 0;padding:24px;border:1px solid var(--launch-line);border-radius:24px;background:color-mix(in srgb,var(--launch-base) 80%,transparent);color:var(--launch-ink);font-size:14px;line-height:1.7;backdrop-filter:blur(24px)}
+.sy-launch-error pre{max-height:180px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;text-align:left}
+.sy-launch-error button{display:block;margin:20px auto 0;padding:10px 24px;min-height:44px;border:0;border-radius:12px;color:white;background:linear-gradient(120deg,#4285f4,#2367d9);font:inherit;cursor:pointer}
+.sy-launch-error summary{cursor:pointer}
+.sy-launch-error:focus{outline:none}
+.sy-launch-error button:focus-visible,.sy-launch-error summary:focus-visible{outline:2px solid var(--launch-blue);outline-offset:3px}
 @font-face{font-family:'Suiyi Slogan Serif';src:url('./assets/suiyi-launch/noto-serif-sc-slogan-light.woff2') format('woff2');font-style:normal;font-weight:300;font-display:block;unicode-range:U+4E8B,U+610F,U+6210,U+7531,U+800C,U+884C,U+9042}
 #suiyi-login-transition{position:fixed;inset:0;z-index:10000;isolation:isolate}
 .sy-launch{--launch-base:#f3f9ff;--launch-ink:#183554;--launch-muted:#6b849c;--launch-blue:#246bd9;--launch-cyan:#169db2;--launch-line:rgba(72,133,190,.17);position:absolute;inset:0;display:grid;grid-template-rows:minmax(0,1fr);overflow:hidden;color:var(--launch-ink);background:var(--launch-base);font-family:var(--sy-font-ui,'Noto Sans SC'),'PingFang SC','Microsoft YaHei',sans-serif;opacity:1;perspective:1100px}

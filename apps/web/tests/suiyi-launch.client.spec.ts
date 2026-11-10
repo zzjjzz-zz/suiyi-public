@@ -3,7 +3,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { dismissSuiyiLaunch, installSuiyiLaunch } from '../src/suiyi-launch.ts'
+import { dismissSuiyiLaunch, failSuiyiLaunch, installSuiyiLaunch } from '../src/suiyi-launch.ts'
 
 const html = readFileSync(join(import.meta.dirname, '../launch/suiyi-launch.html'), 'utf8')
 let dispose: (() => void) | undefined
@@ -86,9 +86,24 @@ it('Escape skips motion and a failed boot remains visible', async () => {
   failed.textContent = 'original boot failure'
   container.append(failed)
   await vi.advanceTimersByTimeAsync(1)
-  expect(container.inert).toBe(false)
+  expect(container.inert).toBe(true)
   expect(container.textContent).toBe('original boot failure')
-  expect(document.getElementById('suiyi-login-transition')).toBeNull()
+  expect(document.querySelector('.sy-launch-error pre')?.textContent).toBe('original boot failure')
+  expect(document.querySelector('.sy-launch')?.getAttribute('data-failed')).toBe('true')
+  expect(document.querySelector<HTMLButtonElement>('.sy-launch-skip')!.hidden).toBe(true)
+})
+
+it('keeps early desktop failures branded and does not release an unready app', async () => {
+  vi.stubGlobal('dshDesktopBoot', {})
+  failSuiyiLaunch('<img src=x onerror=alert(1)>')
+  dispose = installSuiyiLaunch(container)
+  ready()
+  await vi.advanceTimersByTimeAsync(5000)
+  expect(container.inert).toBe(true)
+  expect(document.querySelector('.sy-launch-error')).not.toBeNull()
+  expect(document.querySelector('.sy-launch-error button')).toBeNull()
+  expect(document.querySelector('.sy-launch-error img')).toBeNull()
+  expect(document.querySelector('.sy-launch')?.classList.contains('is-leaving')).toBe(false)
 })
 it('uses the reduced motion duration without removing the readiness gate', async () => {
   reduced = true

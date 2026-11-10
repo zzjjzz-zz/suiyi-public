@@ -75,6 +75,27 @@ it.each(['en', 'zh-CN'])('keeps ordinary diagnostics folded, text-only, and keyb
   expect(backdrop.classList.contains('visible')).toBe(false)
 })
 
+it('renders startup recovery with the product mark and restarts only on its explicit choice', async () => {
+  const p = page('update-dialog')
+  const locale = resolveDesktopLocale('zh-CN')
+  const state: UpdateDialogView = { revision: 1, locale: locale.id, title: locale.messages.startupFailed,
+    message: locale.messages.fatalSummary, detail: locale.messages.startupReinstallAdvice,
+    buttons: [locale.messages.exitApplication, locale.messages.restartApplication, locale.messages.getDiagnosticReport],
+    cancelId: 0, primaryId: 1, presentation: 'suiyi-recovery', closeLabel: locale.messages.updateClose,
+    technicalDetails: 'Desktop Host is unavailable', technicalDetailsLabel: locale.messages.updateTechnicalDetails }
+  const respond = vi.fn(async () => {})
+  const api: UpdateDialogApi = { status: async () => state, respond, subscribe: () => () => {} }
+  Object.defineProperty(p.dom.window, 'dshUpdateDialog', { value: api })
+  p.run()
+  await expect.poll(() => p.element('dialog').hidden).toBe(false)
+  expect(p.document.body.classList.contains('suiyi-recovery')).toBe(true)
+  expect(p.element('recovery-mark').hidden).toBe(false)
+  expect(p.element('dialog').textContent?.replace(/\s+/gu, ' ').trim()).toMatchInlineSnapshot('"应用无法启动或已意外停止。 如果应用文件缺失或损坏，请关闭应用并重新安装。任务数据存储在独立位置。 查看技术详情 Desktop Host is unavailable 退出重启获取诊断报告"')
+  expect(respond).not.toHaveBeenCalled()
+  p.document.querySelector<HTMLButtonElement>('.primary')!.click()
+  expect(respond).toHaveBeenCalledWith(1, 1)
+})
+
 it('keeps mandatory diagnostics expandable without clearing the block or authorizing installation', async () => {
   const p = page('mandatory-update')
   const locale = resolveDesktopLocale('zh-CN')

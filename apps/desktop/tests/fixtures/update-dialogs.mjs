@@ -28,9 +28,11 @@ export async function qualifyUpdateDialogs(root, fixture) {
   const screenshots = []
   protocol.handle('dsh-app', async request => {
     const name = new URL(request.url).pathname.slice(1)
-    assert.ok(['design-platform.css', 'shell-theme.js', 'update-dialog.html', 'update-dialog.js', 'update-dialog.css', 'update-close.svg'].includes(name))
+    assert.ok(['design-platform.css', 'shell-theme.js', 'update-dialog.html', 'update-dialog.js', 'update-dialog.css',
+      'update-close.svg', 'assets/noto-sans-sc.css', 'assets/suiyi-mark.svg'].includes(name)
+      || /^assets\/noto-sans-sc\/[\w.-]+\.woff2$/u.test(name))
     const mime = name.endsWith('.js') ? 'text/javascript' : name.endsWith('.css') ? 'text/css'
-      : name.endsWith('.svg') ? 'image/svg+xml' : 'text/html'
+      : name.endsWith('.svg') ? 'image/svg+xml' : name.endsWith('.woff2') ? 'font/woff2' : 'text/html'
     return new Response(await readFile(new URL(`${name === 'design-platform.css' ? '../../lib/welcome' : '../../renderer'}/${name}`, import.meta.url)), { headers: { 'content-type': mime } })
   })
   const parent = new BrowserWindow({ show: true, width: 900, height: 650 })

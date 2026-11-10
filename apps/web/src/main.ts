@@ -1,7 +1,7 @@
 /** Browser entry for the Web client. */
 import '@deepseek-ai/dsh-client-ui-theme/brand-font.css'
 import { AppWebEntry, applyIndexInjections } from '@deepseek-ai/dsh-client-web'
-import { dismissSuiyiLaunch, installSuiyiLaunch } from './suiyi-launch.ts'
+import { failSuiyiLaunch, installSuiyiLaunch } from './suiyi-launch.ts'
 
 interface DesktopBootGlobal {
   dshDesktopBoot?: {
@@ -11,7 +11,7 @@ interface DesktopBootGlobal {
 }
 const desktop = (globalThis as DesktopBootGlobal).dshDesktopBoot
 const reportFailure = (reason: unknown): void => {
-  dismissSuiyiLaunch()
+  failSuiyiLaunch(reason instanceof Error ? reason.message : String(reason))
   if (desktop === undefined) throw reason
   void desktop.failed(reason instanceof Error ? reason.message : String(reason)).catch(console.error)
 }

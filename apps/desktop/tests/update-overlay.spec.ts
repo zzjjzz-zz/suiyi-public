@@ -1,4 +1,5 @@
 import { EventEmitter } from 'node:events'
+import type { Session } from 'electron'
 import { afterEach, expect, it, vi } from 'vitest'
 import { DesktopUpdateOverlays } from '../src/update-overlay.ts'
 
@@ -11,7 +12,7 @@ function fixture() {
     getContentBounds: () => ({ x: 50, y: 40, width: 900, height: 650 }), isDestroyed: () => destroyed,
     isFocused: vi.fn(() => false), focus: vi.fn(), show: vi.fn(),
     contentView: { addChildView: vi.fn(), removeChildView: vi.fn() },
-    webContents: Object.assign(new EventEmitter(), { focus: vi.fn() }),
+    webContents: Object.assign(new EventEmitter(), { focus: vi.fn(), session: {} as Session }),
     destroy() { destroyed = true; parent.emit('closed') },
   })
   const views: ReturnType<typeof view>[] = []
@@ -32,6 +33,7 @@ function fixture() {
 
 it('never shows or activates its native owner on visibility or background loading', () => {
   const f = fixture(); const overlay = f.create()
+  expect(native.create.mock.calls[0]?.[0]).toHaveProperty('webPreferences.session', f.parent.webContents.session)
   expect(f.parent.contentView.addChildView).toHaveBeenCalledWith(f.views[0])
   f.parent.emit('show'); f.parent.emit('hide'); f.parent.emit('show')
   overlay.webContents.emit('did-finish-load')

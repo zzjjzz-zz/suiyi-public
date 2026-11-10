@@ -18,7 +18,7 @@ export interface DesktopUpdateOverlay {
 
 type UpdateOwner = Pick<BrowserWindow, 'getContentBounds' | 'isDestroyed' | 'isFocused'>
   & Pick<EventEmitter, 'on' | 'once' | 'off'> & {
-    readonly webContents: Pick<EventEmitter, 'prependListener' | 'off'> & Pick<WebContents, 'focus'>
+    readonly webContents: Pick<EventEmitter, 'prependListener' | 'off'> & Pick<WebContents, 'focus' | 'session'>
     readonly contentView: Pick<View, 'addChildView' | 'removeChildView'>
   }
 
@@ -40,6 +40,7 @@ export class DesktopUpdateOverlays {
   create(parent: UpdateOwner, preload: string): DesktopUpdateOverlay {
     const view = new WebContentsView({ webPreferences: {
       preload, contextIsolation: true, sandbox: true, nodeIntegration: false, webSecurity: true,
+      session: parent.webContents.session,
     } })
     const ownerContents = parent.webContents
     const contents = view.webContents

@@ -8,6 +8,9 @@ export const UPDATE_DIALOG_IPC = { status: 'dsh-update-dialog:status', changed: 
 
 /** Text and choices supplied by the main process, never by product documents. */
 export interface UpdateDialogView {
+  /** Recovery uses the product's opaque startup surface rather than an update backdrop. */
+  readonly presentation?: 'suiyi-recovery'
+  readonly primaryId?: number
   /** Button running a main-owned action; responses are disabled until it settles. */
   readonly busyButton?: number
   /** Identifies the displayed choices; a response from an older prompt is rejected. */
@@ -25,6 +28,7 @@ export interface UpdateDialogView {
 
 /** Electron message options with separately expandable, main-owned diagnostics. */
 export interface UpdateDialogOptions extends MessageBoxOptions {
+  readonly presentation?: 'suiyi-recovery'
   readonly technicalDetails?: string
   /** Synchronous auxiliary action that leaves the current prompt and choices open. */
   readonly keepOpenAction?: { index: number; run: () => void }
@@ -53,6 +57,7 @@ export class DesktopUpdateDialog {
     view: UpdateDialogView
     finish: (index: number, retain?: boolean) => void
     respond: (index: number) => Promise<void>
+    fail: () => void
   } | undefined
 
   /** Focus the current explanation or confirmation without replacing it or granting permission. */
@@ -90,12 +95,16 @@ export class DesktopUpdateDialog {
    * @param parent - Window blocked by this confirmation.
    * @param options - Main-owned localized content, response choices, and optional cancellation signal.
    * @returns A displayed response, or cancellation on replacement, abort, close, or load failure; backdrop dismissal fades independently.
+   * @throws When a recovery document fails while its owner remains open; the caller must provide independent recovery UI.
    */
   show(parent: BrowserWindow, options: UpdateDialogOptions): Promise<MessageBoxReturnValue> {
     const locale = typeof this.locale === 'function' ? this.locale() : this.locale
     const buttons = options.buttons ?? [locale.messages.updateAcknowledge]
     const cancelId = options.cancelId ?? buttons.length - 1
     if (this.disposed || options.signal?.aborted === true || parent.isDestroyed()) {
+      return Promise.resolve({ response: cancelId, checkboxChecked: false })
+    }
+    if (this.active?.view.presentation === 'suiyi-recovery' && options.presentation !== 'suiyi-recovery') {
       return Promise.resolve({ response: cancelId, checkboxChecked: false })
     }
     if (this.parent !== parent) { this.cancel(); this.close() }
@@ -108,8 +117,9 @@ export class DesktopUpdateDialog {
     this.parent = parent
     let view: UpdateDialogView = { revision: ++this.revision, locale: locale.id, title: options.title ?? '', message: options.message,
       detail: options.detail ?? '', buttons, cancelId, closeLabel: locale.messages.updateClose,
-      technicalDetails: options.technicalDetails ?? '', technicalDetailsLabel: locale.messages.updateTechnicalDetails }
-    return new Promise((resolve) => {
+      technicalDetails: options.technicalDetails ?? '', technicalDetailsLabel: locale.messages.updateTechnicalDetails,
+      ...(options.presentation === undefined ? {} : { presentation: options.presentation, primaryId: options.defaultId ?? 0 }) }
+    return new Promise((resolve, reject) => {
       const abort = (): void => { finish(cancelId) }
       const finish = (response: number, retain = false): void => {
         if (this.active?.view !== view) return
@@ -149,10 +159,20 @@ export class DesktopUpdateDialog {
           throw error
         }
       }
-      this.active = { view, finish, respond }
+      const fail = (): void => {
+        if (options.presentation === 'suiyi-recovery' && !parent.isDestroyed()) {
+          reject(new Error('Suiyi recovery document is unavailable'))
+        }
+        finish(cancelId)
+      }
+      this.active = { view, finish, respond, fail }
       options.signal?.addEventListener('abort', abort, { once: true })
       if (existing !== undefined) { surface.webContents.send(UPDATE_DIALOG_IPC.changed, view); return }
-      const failed = (): void => { if (this.view === surface) { this.cancel(); this.close() } }
+      const failed = (): void => {
+        if (this.view !== surface) return
+        this.active?.fail()
+        this.close()
+      }
       surface.webContents.once('destroyed', failed)
       surface.webContents.once('render-process-gone', failed)
       surface.webContents.once('preload-error', failed)

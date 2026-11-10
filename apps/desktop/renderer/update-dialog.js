@@ -28,6 +28,8 @@ function render(state) {
   if (view !== undefined && state.revision <= view.revision) return
   responding = false
   view = state
+  document.body.classList.toggle('suiyi-recovery', state.presentation === 'suiyi-recovery')
+  document.getElementById('recovery-mark').hidden = state.presentation !== 'suiyi-recovery'
   document.documentElement.lang = state.locale
   document.title = state.title
   document.getElementById('title').textContent = state.message
@@ -46,7 +48,7 @@ function render(state) {
     button.textContent = label
     button.disabled = state.busyButton !== undefined
     if (state.busyButton === index) button.setAttribute('aria-busy', 'true')
-    button.className = index === 0 ? 'primary' : 'secondary'
+    button.className = index === (state.primaryId ?? 0) ? 'primary' : 'secondary'
     button.addEventListener('click', () => { respond(index) })
     document.getElementById('actions').append(button)
   }

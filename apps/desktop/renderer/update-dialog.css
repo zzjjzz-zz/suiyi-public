@@ -1,3 +1,4 @@
+@import url('./assets/noto-sans-sc.css');
 :root {
   color-scheme: light dark;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
@@ -40,3 +41,37 @@ button[aria-busy="true"] { opacity: 1; display: flex; align-items: center; justi
 button[aria-busy="true"]::before { content: ""; width: 14px; height: 14px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: reload-spin 800ms linear infinite; }
 @keyframes reload-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { button[aria-busy="true"]::before { animation: none; } }
+
+/* Startup recovery uses the login prototype's local font, glass and blue/cyan atmosphere. */
+body.suiyi-recovery {
+  --recovery-base: #f3f9ff;
+  --recovery-card: rgba(255, 255, 255, .76);
+  --recovery-line: rgba(124, 156, 194, .25);
+  --recovery-ink: #183554;
+  color: var(--recovery-ink);
+  font-family: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  background: radial-gradient(ellipse at 20% 85%, #4285f42b, transparent 65%),
+    radial-gradient(ellipse at 85% 25%, #55dcdf30, transparent 60%), var(--recovery-base);
+}
+body.suiyi-recovery[data-ds-dark-theme] {
+  --recovery-base: #081626;
+  --recovery-card: rgba(18, 34, 54, .8);
+  --recovery-line: rgba(141, 184, 234, .22);
+  --recovery-ink: #e5f4ff;
+}
+body.suiyi-recovery::before { display: none; }
+.suiyi-recovery main {
+  width: min(560px, calc(100vw - 32px)); padding: 32px;
+  border: 1px solid var(--recovery-line); border-radius: 28px;
+  background: var(--recovery-card); backdrop-filter: blur(24px);
+  box-shadow: 0 28px 80px #25528e1f, inset 0 1px 0 #ffffff50;
+}
+#recovery-mark { display: block; margin: 0 auto 24px; }
+.suiyi-recovery h1 { font-size: 22px; line-height: 1.5; font-weight: 500; }
+.suiyi-recovery #detail { opacity: .8; }
+.suiyi-recovery #actions { position: static; flex-direction: row; flex-wrap: wrap; background: transparent; gap: 10px; margin-top: 28px; }
+.suiyi-recovery #actions button { flex: 1 1 180px; border: 1px solid var(--recovery-line); }
+.suiyi-recovery .primary { order: -1; background: linear-gradient(120deg, #4285f4, #2367d9); color: white; }
+.suiyi-recovery .secondary { background: transparent; }
+.suiyi-recovery pre { border: 1px solid var(--recovery-line); background: transparent; }
+@media (max-width: 480px) { .suiyi-recovery main { padding: 24px; } }
