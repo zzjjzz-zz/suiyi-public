@@ -3,6 +3,7 @@ import { expect, it } from 'vitest'
 import { desktopCiVersion } from '../scripts/desktop-ci-version.mjs'
 import { desktopBuildVersionPrefix } from '../scripts/desktop-build-version.mjs'
 import { createElectronBuilderConfig } from '../scripts/electron-builder-config.mjs'
+import { desktopUpdatesEnabled } from '../src/update-capability.ts'
 
 it.each(['nightly', 'stable'] as const)('resolves every CI version mode independently of %s', (channel) => {
   const now = new Date('2026-11-03T00:00:00Z')
@@ -35,7 +36,9 @@ it.each(['arm64', 'x64'] as const)('embeds stable in a prerelease macOS %s packa
     DSH_DESKTOP_MACOS_TEAM_ID: 'TEAMID1234',
     APPLE_KEYCHAIN_PROFILE: 'channel-test',
   }, 'darwin', arch)
-  expect(config.extraMetadata).toMatchObject({ version, dshDesktopUpdateChannel: 'stable' })
+  expect(config.extraMetadata).toMatchObject({ version, dshDesktopUpdateChannel: 'stable', dshDesktopUpdatesEnabled: true })
+  expect(desktopUpdatesEnabled(config.extraMetadata, true, true)).toBe(true)
+  expect(() => desktopUpdatesEnabled(config.extraMetadata, true, false)).toThrow('missing app-update.yml')
   expect(config.publish).toEqual([{ provider: 'generic', url: `https://download.deepseek.com/dsh-desk/feeds/mac-${arch}/`, channel: 'stable' }])
 })
 
@@ -50,6 +53,6 @@ it('accepts a stable prerelease in an unsigned Windows x64 configuration', () =>
     DSH_DESKTOP_MANDATORY_UPDATE_PROD_ORIGIN: 'https://policy.example.com',
     DSH_DESKTOP_UNSIGNED: '1',
   }, 'win32', 'x64')
-  expect(config.extraMetadata).toMatchObject({ version })
+  expect(config.extraMetadata).toMatchObject({ version, dshDesktopUpdatesEnabled: false })
   expect(config.publish).toBeNull()
 })

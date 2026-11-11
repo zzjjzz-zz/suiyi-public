@@ -45,7 +45,7 @@ The browser entry imports the generated Remote contribution and hands it to `mou
 ## Further Exploration
 
 - [The bridge](../claude-code-mods/README.md) — how the band is drawn and which mods draw first.
-- [Compatibility with Claude Code mods](../../../docs/subsystems/claude-code-mods.md) — the element and prop subset this band renders.
+- Compatibility with Claude Code mods — the element and prop subset this band renders.
 
 -----
 

@@ -60,7 +60,7 @@ Computer Use 仅支持 macOS DSH Host。原生提供方是仅在 macOS 安装的
 <a id="further-exploration"></a>
 ## 进一步探索
 
-[Computer use](../../../docs/subsystems/computer-use.zh.md)
+Computer use
 
 -----
 

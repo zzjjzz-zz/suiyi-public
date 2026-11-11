@@ -35,7 +35,7 @@ kind: "package-reference"
 
 图片拖放回调通过图片入口的注入接口从 [ui-file-drag](../ui-file-drag/README.zh.md) 获取。
 
-已发送的普通文件附件保留草稿中的[文件卡片圆角](../../../docs/ui-radius.zh.md#radius-scale)。
+已发送的普通文件附件保留草稿中的文件卡片圆角。
 
 `ChatView` 通过节点列表外围既有的 `MarkdownDelegateProvider` 提供文件及 HTTP(S) 导航，直接传入 `requestOpenFile`、`openExternalLink` 和 `fileImages`。文件打开动作保留 Chat 的失败反馈与重试处理。Assistant Markdown 文件链接在消息落定后可于右侧栏打开，包括未修改文件的引用。相对路径基于当前查看的 Session 工作区解析；绝对路径仍使用同一 Session 的文件系统访问。[支持的 Markdown 行号引用](../ui-primitives/README.zh.md#rendering-agent-output)定位到指定起始行，并复用现有文件标签。文件缺失时显示预览错误状态。
 
@@ -78,7 +78,7 @@ Chat 在 `MarkdownDelegateProvider.getTriggerProps` 接入处适配 Markdown 目
 
 设置 → 通用设置 → 性能与用量位于繁忙时的发送行为之后、Session Log 上传之前，将 `ui-chat.performanceUsage` 保存为 `detailed`（默认）或 `compact`。简洁模式仅在输入框下方显示可用的输出速度和缓存命中率，不显示统计交互卡片或每轮用量。详细模式提供会话统计和每轮 token 用量。两种模式的已完成轮次页脚均不显示耗时。该偏好仅影响展示，记账和 Session 事件保持完整。
 
-输入框统计信息由两个 `conversation.composer.dock` 列表条目组成：`activity`（order 0，轮次数、步骤数与输出速度，以及 LLM 耗时、工具耗时与 TTFT）和 `usage`（order 1，token 总量与缓存命中）。这些控件遵循公共的[统计控件圆角规则](../../../docs/ui-radius.zh.md#radius-scale)。其他插件以相同的 id 和相同的 `order` 注册即可替换某个控件；dock 按 `order` 排列各行，更低的 `priority` 决定由替换者渲染：动态插件会自动获得，静态组合的插件需显式传入。以新 id 注册则新增控件。每个控件在 `data-composer-stat` 中携带其 id。按下 Escape，或在已打开的对话框之外发生 pointerdown 或点击时，该对话框会关闭，因此用指针或键盘激活另一个控件会切换对话框，而不会叠加两个。读数被省略号截断时，提示气泡会显示完整读数。带对话框的控件在悬停或键盘聚焦时显示，对话框打开期间不显示；没有对话框的读数在悬停、点击或轻触时显示。会话统计对话框的标题行显示轮次数与步骤数。统计对话框通过 CSS 锚点定位，并按布局视口限制尺寸；浏览器缩放和平移时随页面移动，因此可以超出视觉视口。较高的对话框内容可在内部滚动。
+输入框统计信息由两个 `conversation.composer.dock` 列表条目组成：`activity`（order 0，轮次数、步骤数与输出速度，以及 LLM 耗时、工具耗时与 TTFT）和 `usage`（order 1，token 总量与缓存命中）。这些控件遵循公共的统计控件圆角规则。其他插件以相同的 id 和相同的 `order` 注册即可替换某个控件；dock 按 `order` 排列各行，更低的 `priority` 决定由替换者渲染：动态插件会自动获得，静态组合的插件需显式传入。以新 id 注册则新增控件。每个控件在 `data-composer-stat` 中携带其 id。按下 Escape，或在已打开的对话框之外发生 pointerdown 或点击时，该对话框会关闭，因此用指针或键盘激活另一个控件会切换对话框，而不会叠加两个。读数被省略号截断时，提示气泡会显示完整读数。带对话框的控件在悬停或键盘聚焦时显示，对话框打开期间不显示；没有对话框的读数在悬停、点击或轻触时显示。会话统计对话框的标题行显示轮次数与步骤数。统计对话框通过 CSS 锚点定位，并按布局视口限制尺寸；浏览器缩放和平移时随页面移动，因此可以超出视觉视口。较高的对话框内容可在内部滚动。
 
 明确选择会立即更新所有使用方；Host 接受的设置会校正实时值，因此写入被拒绝或尚未应答时保持所选模式，直到 Host 应答。
 
@@ -129,7 +129,7 @@ Chat Builder 按节点发布 `bottomSource`：节点可见且属于已加载的�
 
 运行中的分组标题、思考预览、工具与命令行、当前重试行以及底部运行状态使用共享的 [TextShimmer](../ui-primitives/README.zh.md#component-catalog)。每行的文字共用一道从左到右的高光，包括折叠的分组标题；图标和悬停箭头保留底色。普通流程行之间相隔 4px；展开的分组标题与内容之间相隔 8px；Assistant 回复与相邻过程行之间相隔 12px；每轮完成／耗时控件与其输入、以及紧随其后的可见行之间保留 16px。控件与回复之间隔着已收起的行时，回复保持 12px 回复间距，因此折叠不会改变它的间距。隐藏行与空行（包括保留的空 slot 锚点）不产生间距。“深度求索”运行文字保留蓝色底色，并使用主题专用高光扫过文字。
 
-运行状态显示一只鲸鱼，其 APNG 遮罩继承文字颜色。启用减少动态效果或强制颜色模式、或浏览器不支持 alpha 遮罩时，CSS 选择静态 SVG。APNG 是插件样式表引用的[包资源](../AGENTS.md#dependency-declaration)；React 不通过 DOM 样式传递图片数据。
+运行状态显示一只鲸鱼，其 APNG 遮罩继承文字颜色。启用减少动态效果或强制颜色模式、或浏览器不支持 alpha 遮罩时，CSS 选择静态 SVG。APNG 是插件样式表引用的包资源；React 不通过 DOM 样式传递图片数据。
 
 滚动边缘渐隐在 `ResizeObserver` 报告已展开组的布局后初始化；展开组时不会在 layout effect 中立即读取滚动尺寸。
 

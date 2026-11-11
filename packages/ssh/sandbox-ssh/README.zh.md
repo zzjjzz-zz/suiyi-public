@@ -46,7 +46,7 @@ kind: "package-reference"
 <a id="further-exploration"></a>
 ## 进一步探索
 
-- [进程沙箱子系统](../../../docs/subsystems/sandbox.zh.md) — 策略含义及执行完整性披露。
+- 进程沙箱子系统 — 策略含义及执行完整性披露。
 - [本地沙箱提供方](../../sandbox/sandbox-local/README.zh.md) — 远端主机继承的后端及平台限制。
 
 -----

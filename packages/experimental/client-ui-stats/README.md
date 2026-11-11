@@ -81,7 +81,7 @@ Windows are bounded: when a step's `step/start` is outside the loaded window, it
 
 - [`@deepseek-ai/dsh-client-ui-trajectory`](../../client/ui-trajectory/README.md) — the event ledger this panel borrows its table conventions from.
 - [`@deepseek-ai/dsh-session-stats`](../../session/session-stats/README.md) — the host-side session totals the footer vocabulary follows.
-- [`docs/subsystems/conversation.md`](../../../docs/subsystems/conversation.md) — how view targets and Definitions assemble.
+- `docs/subsystems/conversation.md` — how view targets and Definitions assemble.
 
 -----
 

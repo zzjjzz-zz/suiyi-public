@@ -1,0 +1,1 @@
+- group "Update channel": Update channel Automatic updates are disabled in this build. Install a newer version manually.

@@ -75,7 +75,7 @@ inferenceOrigin 默认为 `https://api.deepseek.com`。私有部署 patch 可将
 <a id="further-exploration"></a>
 ## 深入探索
 
-[凭证子系统](../../../docs/subsystems/credentials.zh.md)定义存储接口；[架构](../../../docs/architecture.zh.md)说明应用组合。
+凭证子系统定义存储接口；架构说明应用组合。
 
 attemptTimeoutMs 包含初始化、等待浏览器和兑换的耗时。初始化不会延长绝对截止时间；服务端 TTL 只能缩短剩余时间。在到期前已获准的凭证持久化不再取消。
 
@@ -97,7 +97,7 @@ attemptTimeoutMs 包含初始化、等待浏览器和兑换的耗时。初始化
 <a id="dev-note"></a>
 ### 开发备注
 
-[桌面登录决策](../../../.agents/notes/implemented/architecture/2026-09-14-deepseek-account-login.zh.md)记录取消和存储的职责。
+桌面登录决策记录取消和存储的职责。
 
 登录后首次读取资料使用 auth_exchange 返回并经筛选的 user。user 为 null 或格式无效时回退到 current；后续刷新及 Host 重启也查询 current。current 请求失败时保留 Host 内存中同一凭证最近一次成功的资料；凭证变更或提供者销毁时清空。current 成功返回的稳定账号 ID 首次可用或变化时仅通知使用 `watch(signal, true)` 的 Host 订阅者，供标识使用方重新读取 getPlatformSession；重复相同 ID 的刷新不通知。exchange 负责登记提交的设备信息。
 

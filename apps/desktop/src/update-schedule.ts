@@ -58,6 +58,7 @@ export class DesktopUpdateSchedule {
    */
   async check(manual = false, force = manual): Promise<DesktopUpdateState> {
     if (this.disposed) throw new Error('desktop update: polling is disposed')
+    if (this.updates.state.phase === 'unavailable') return this.updates.state
     if (this.pending !== undefined && !manual) return this.pending
     if (!force && this.now() < this.nextCheck) return this.updates.state
     clearTimeout(this.timer)
@@ -91,7 +92,7 @@ export class DesktopUpdateSchedule {
   }
 
   private schedule(failed: boolean): void {
-    if (this.disposed) return
+    if (this.disposed || this.updates.state.phase === 'unavailable') return
     const { intervalMs, maxBackoffMs, jitter } = this.config
     this.delay = failed ? Math.min(maxBackoffMs, this.delay * 2) : intervalMs
     const lower = Math.max(1_000, this.delay * (1 - jitter))

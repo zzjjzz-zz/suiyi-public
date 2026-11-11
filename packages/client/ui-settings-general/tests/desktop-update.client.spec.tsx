@@ -50,6 +50,46 @@ function fixture() {
 
 const available = { phase: 'available', version: '1.0.1' } as const
 
+it('clears retry feedback and blocks direct update actions when the shell reports unavailable', async () => {
+  const f = fixture()
+  try {
+    await f.emit({ phase: 'error', failure: 'check' })
+    expect(screen.getByRole('button', { name: '重试更新' })).toBeTruthy()
+    await f.emit({ phase: 'unavailable' })
+    await act(async () => { f.status.reject(new Error('stale status failure')) })
+    f.source.open()
+    expect(screen.queryByRole('button')).toBeNull()
+    expect(f.source.store.getSnapshot().failed).toBe(false)
+    expect(f.open).not.toHaveBeenCalled()
+  } finally { f.view.unmount(); f.status.resolve(available) }
+})
+
+it('keeps unavailable state after an older update action fails', async () => {
+  const f = fixture()
+  const action = Promise.withResolvers<undefined>()
+  try {
+    await f.emit(available)
+    f.open.mockImplementationOnce(() => action.promise)
+    act(() => { f.source.open() })
+    await f.emit({ phase: 'unavailable' })
+    await act(async () => { action.reject(new Error('stale action failure')) })
+    expect(f.source.store.getSnapshot()).toEqual({ presentation: { phase: 'unavailable' }, failed: false, opening: false })
+    expect(screen.queryByRole('button')).toBeNull()
+  } finally { action.resolve(undefined); f.status.resolve(available); f.view.unmount() }
+})
+
+it('clears an earlier action failure when the initial status confirms updates are unavailable', async () => {
+  const f = fixture()
+  try {
+    f.open.mockRejectedValueOnce(new Error('action unavailable'))
+    await act(async () => { f.source.open() })
+    expect(f.source.store.getSnapshot().failed).toBe(true)
+    await act(async () => { f.status.resolve({ phase: 'unavailable' }) })
+    expect(f.source.store.getSnapshot().failed).toBe(false)
+    expect(screen.queryByRole('button')).toBeNull()
+  } finally { f.view.unmount(); f.status.resolve(available) }
+})
+
 it('renders nothing outside the Desktop carrier', () => {
   const source = new DesktopUpdateSource(undefined)
   const view = render(<DesktopUpdateIndicator wide hidden={false} t={translate(zh)}

@@ -27,8 +27,8 @@
   en: 8213b79c776f1a75
   zh: 481c0dffd342426a
 /deepseek-ai-dsh-compaction/use-this-package/implementing-a-backend:
-  en: 280b5fda4c9b9c8b
-  zh: 764ca79fccf98279
+  en: bd6719dc47884a01
+  zh: bf34f0dcb71693df
 /deepseek-ai-dsh-compaction/use-this-package/recognizing-condensed-history:
   en: 35502487f2850f05
   zh: 333d2b86cc1d6eb0
@@ -36,20 +36,20 @@
   en: 321c3dc665ea03ff
   zh: f0fa408cde7b0454
 /deepseek-ai-dsh-compaction/understand-the-implementation/design-philosophy:
-  en: 226e05fde1f7ad54
-  zh: 4b0f671d68aee872
+  en: 31c91d21e4764a2f
+  zh: c61eeed7727bd5a0
 /deepseek-ai-dsh-compaction/understand-the-implementation/service-api:
-  en: d742d41c7eb5d406
-  zh: 6ff26c23eba5dd59
+  en: 63b9a2cda62130ff
+  zh: 5027122dddb8fb5d
 /deepseek-ai-dsh-compaction/understand-the-implementation/manual-failure-taxonomy:
-  en: 81449c88ba52f445
-  zh: 2cdcce236bfbf284
+  en: 082b9959c25450ec
+  zh: 8c1eac766fb5a739
 /deepseek-ai-dsh-compaction/understand-the-implementation/tool-pairing-boundaries:
   en: 15dad68a04d6c86b
   zh: 3b95acf1b7e503bf
 /deepseek-ai-dsh-compaction/understand-the-implementation/the-surface-contract:
-  en: 28980d8259e59700
-  zh: c452e0bb4b778824
+  en: 2392e7c7a0d4a2a8
+  zh: 28af4a994cfc14a1
 /deepseek-ai-dsh-compaction/understand-the-implementation/source-map:
   en: 076448ecc9911baf
   zh: 1b671f96fb217d5e
@@ -57,11 +57,11 @@
   en: 68caa51bed28bada
   zh: 3f8261f9dcba95ed
 /deepseek-ai-dsh-compaction/understand-the-implementation/events:
-  en: dc5faf71b27cc340
-  zh: 065f8339009c1a3a
+  en: da2fff89fd30eb5e
+  zh: 32dcd8a800be1a52
 /deepseek-ai-dsh-compaction/further-exploration:
-  en: b12341c6424d7960
-  zh: 09fe5b30a599146f
+  en: bc7f6765b20a8fc7
+  zh: 321146c8eec96f75
 /deepseek-ai-dsh-compaction/model-experience:
   en: 215e7ba838619b7b
   zh: a311da3843709f90

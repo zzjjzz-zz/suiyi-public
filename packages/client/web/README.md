@@ -46,20 +46,20 @@ The boot page uses plain DOM and local CSS, so bundle and plugin-activation fail
 <a id="the-shared-module-table"></a>
 ### The shared module table
 
-`PLATFORM_MODULES` (in `src/platform.ts`) names the shell-seeded shared modules — React, Cordis, Zod (`zod`), TanStack Virtual (`@tanstack/react-virtual`), and static UI libraries — and together with `PRELOADED_CLIENT_EXTERNALS` (the parser-preloaded runtime row) defines the implicit external baseline every dynamic bundle resolves against. `dsh.client.external` adds only exact non-baseline requests; see [shared modules and the module graph](../AGENTS.md#shared-modules-and-the-module-graph).
+`PLATFORM_MODULES` (in `src/platform.ts`) names the shell-seeded shared modules — React, Cordis, Zod (`zod`), TanStack Virtual (`@tanstack/react-virtual`), and static UI libraries — and together with `PRELOADED_CLIENT_EXTERNALS` (the parser-preloaded runtime row) defines the implicit external baseline every dynamic bundle resolves against. `dsh.client.external` adds only exact non-baseline requests; see shared modules and the module graph.
 
 Built-in and installed browser plugins in the same page receive the same module instances. The shell supplies the dependency versions declared in this package's `package.json`; the module table does not negotiate versions per plugin. External plugins that use these modules must target a host that provides the required specifiers and APIs, and keep those imports external when building their client bundle. Inlined dependencies remain private to their bundle; Host code and Workers resolve their dependencies separately.
 
 ### Configuration
 
-The package accepts no plugin config of its own; the generated [configuration catalog](../../../docs/config-catalog.md) lists every plugin config in the repo for comparison.
+The package accepts no plugin config of its own; the generated configuration catalog lists every plugin config in the repo for comparison.
 
 -----
 
 <a id="understand-the-implementation"></a>
 ## Understand the implementation
 
-Menus use the shared `MenuSurface` material, including the macOS backing for background blur; custom content follows the [menu rules](../../../docs/web-styling.md#component-rules).
+Menus use the shared `MenuSurface` material, including the macOS backing for background blur; custom content follows the menu rules.
 
 <details>
 <summary>Implementation internals — click to expand</summary>
@@ -72,7 +72,7 @@ The kernel owns exactly three things: the module system, the Cordis Loader, and 
 
 ### Two-stage boot
 
-`run()` calls the Host-installed `window.__ModuleLoader__.create({ boot, staticModules, ...seams })`; the facade returns the constructed module system and parsed manifest after adopting the parser-loaded bootstrap batch. The module stage prefetches the `immediately` tier through the one shared application-batch URL. The plugin stage mounts the Loader, assigns `loader.internal = modules`, creates every graph entry uniformly, awaits quiescence, then audits activation with the same policy as [Host startup strictness](../../../.agents/notes/implemented/architecture/2026-09-09-consumer-owned-startup-strictness.md): an entry that failed import, stayed pending on a missing service, or landed in another non-active state is inactive. When an inactive entry is on the global required list in [`src/boot-client.ts`](src/boot-client.ts) (the module system, Session control, renderer, application frame, Session view, and sidebar), the audit throws one aggregated error naming every inactive entry and marking the required ones; otherwise it writes one console warning and the application mounts. A required name absent from the graph has no effect. An entry that a required entry waits on leaves the required entry pending, so its failure also rejects startup. An entry the Loader could not create, because its module failed to import or exports no plugin, has no fiber and is reported as an import failure, as the Host audit reports `failed to import`; the original error is in the console log.
+`run()` calls the Host-installed `window.__ModuleLoader__.create({ boot, staticModules, ...seams })`; the facade returns the constructed module system and parsed manifest after adopting the parser-loaded bootstrap batch. The module stage prefetches the `immediately` tier through the one shared application-batch URL. The plugin stage mounts the Loader, assigns `loader.internal = modules`, creates every graph entry uniformly, awaits quiescence, then audits activation with the same policy as Host startup strictness: an entry that failed import, stayed pending on a missing service, or landed in another non-active state is inactive. When an inactive entry is on the global required list in [`src/boot-client.ts`](src/boot-client.ts) (the module system, Session control, renderer, application frame, Session view, and sidebar), the audit throws one aggregated error naming every inactive entry and marking the required ones; otherwise it writes one console warning and the application mounts. A required name absent from the graph has no effect. An entry that a required entry waits on leaves the required entry pending, so its failure also rejects startup. An entry the Loader could not create, because its module failed to import or exports no plugin, has no fiber and is reported as an import failure, as the Host audit reports `failed to import`; the original error is in the console log.
 
 ### Boot page mechanics
 
@@ -106,8 +106,8 @@ Read these when the boot contract is not enough: the module system it boots, the
 
 - [Client module system](../modules/README.md) — the lazy module table and boot graph this kernel consumes.
 - [UI renderer](../ui-renderer/README.md) — receives the mount point and binds slot data to React.
-- [Client modules subsystem](../../../docs/subsystems/client-modules.md) — the web plugin table, boot graph wire, and bundle route.
-- [Client authoring rules](../AGENTS.md#shared-modules-and-the-module-graph) — the shared-module baseline and `dsh.client.external` semantics.
+- Client modules subsystem — the web plugin table, boot graph wire, and bundle route.
+- Client authoring rules — the shared-module baseline and `dsh.client.external` semantics.
 - [Client group map](../README.md) — the browser half this package belongs to.
 
 -----

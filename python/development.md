@@ -25,7 +25,7 @@ uv sync --project python/sdk --group test
 uv run --project python/sdk pytest
 ```
 
-`python/sdk/tests/test_bundled_runtime.py` exercises available bundled carriers and skips a carrier when its artifact has not been built. For repository-wide test policy, see [Testing](../docs/testing.md).
+`python/sdk/tests/test_bundled_runtime.py` exercises available bundled carriers and skips a carrier when its artifact has not been built. For repository-wide test policy, see Testing.
 
 LibreOffice Kit CI owns visible Office content checks through its installed Node API and CLI on macOS, Windows, and Linux when matching engine packages are published. Harness verifies the relocated Office sidecar through the installed-wheel smoke; the Python tests reject white, transparent, reversed, and text-free output.
 

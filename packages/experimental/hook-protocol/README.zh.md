@@ -66,7 +66,7 @@ kind: "package-library"
 
 ### `hook/*` 会话事件
 
-`hook/invoked` 与 `hook/result` 事件通过 declaration merging 合并进 `SessionEventMap`，作为仅日志记录：与 `compaction/*` 相同，它们不是 surface 事件，也不携带 `surfaceOp`。`hook/result` 按 `handlerId` 与其 `hook/invoked` 配对，决策规则由 `appendHookResult` 负责。载荷与逐事件 JSDoc 位于生成的[持久化日志事件目录](../../../docs/persistence-catalog.zh.md)中。
+`hook/invoked` 与 `hook/result` 事件通过 declaration merging 合并进 `SessionEventMap`，作为仅日志记录：与 `compaction/*` 相同，它们不是 surface 事件，也不携带 `surfaceOp`。`hook/result` 按 `handlerId` 与其 `hook/invoked` 配对，决策规则由 `appendHookResult` 负责。载荷与逐事件 JSDoc 位于生成的持久化日志事件目录中。
 
 调用与结果记录必须位于尚未结束的轮次内：`UserPromptSubmit`、`PreToolUse`、`PostToolUse` 与 `Stop` 按构造满足该关系，而 `SessionStart` 在轮次 1 之前运行、没有 `hook/*` 记录——改为投递其注入的上下文。
 
@@ -77,7 +77,7 @@ kind: "package-library"
 - **绝不向循环抛异常。** 每种失败模式——格式错误的 JSON、无效正则、执行器拒绝——都会降级为受控的结果或不匹配，因此钩子永远不能使调用轮次崩溃。
 - **仅日志、轮次内的事件。** `hook/*` 记录是「运行了什么、决定了什么」的持久证据；它们不是 surface 事件。
 
-[hook-protocol-lib Agent Note](../../../.agents/notes/archived/feature/2026-06-30-hook-protocol-lib.md) 记录了共享与逐方言的划分以及备选方案。
+hook-protocol-lib Agent Note 记录了共享与逐方言的划分以及备选方案。
 
 ### 源码地图
 
@@ -102,10 +102,10 @@ kind: "package-library"
 当包级约定不够用时阅读以下页面。它们从共享规则进入应用这些规则的桥接，以及它们所面向的扩展点。
 
 - [hooks 组地图](../README.zh.md)——同级组页面及其包表。
-- [hook-protocol-lib Agent Note](../../../.agents/notes/archived/feature/2026-06-30-hook-protocol-lib.md)——协议核心为何共享、各桥接负责什么。
-- [钩子桥接 Agent Note](../../../.agents/notes/archived/feature/2026-06-30-hook-bridges.md)——两个桥接如何使用这些原语。
-- [拦截扩展点 参考](../../../docs/tool-execution-pipeline.zh.md)——桥接所映射的类型化 Decision 接口面。
-- [生成的持久化日志事件目录](../../../docs/persistence-catalog.zh.md)——`hook/*` 事件载荷与逐事件 JSDoc。
+- hook-protocol-lib Agent Note——协议核心为何共享、各桥接负责什么。
+- 钩子桥接 Agent Note——两个桥接如何使用这些原语。
+- 拦截扩展点 参考——桥接所映射的类型化 Decision 接口面。
+- 生成的持久化日志事件目录——`hook/*` 事件载荷与逐事件 JSDoc。
 
 -----
 
@@ -125,7 +125,7 @@ kind: "package-library"
 
 这些限制描述钩子目前还无法通过共享引擎做到的事情。它们是当前包约束，而非任务积压。
 
-- **`HookOutput.updatedInput` 会被解析但不会应用**——输入改写是已延期的一致性设计问题（见 [pre-tool-input-rewrite Agent Note](../../../.agents/notes/proposed/feature/2026-06-30-pre-tool-input-rewrite.zh.md)）；当 hook 设置它时，桥接会记录并警告。
+- **`HookOutput.updatedInput` 会被解析但不会应用**——输入改写是已延期的一致性设计问题（见 pre-tool-input-rewrite Agent Note）；当 hook 设置它时，桥接会记录并警告。
 - **折叠出的停止没有运行级效果**——`mergeHookOutputs` 把 `continue: false` 折叠为粘性 `stop`，但拦截点没有硬停止原语，因此桥接只记录该停止并保留 hook 的逐点效果。
 - **只有 command 形态会运行**——协议只执行 `{ type: 'command', command, timeout? }`；桥接会解析并跳过其方言定义的其他形态（`http`、`mcp_tool`、`prompt`、`agent`）。
 

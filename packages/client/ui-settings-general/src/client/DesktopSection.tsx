@@ -19,6 +19,7 @@ export function DesktopSection({ useDesktopUpdate, openUpdate, t }:
   const view = useDesktopUpdate(state => state)
   const presentation = view.presentation
   if (presentation === undefined) return <p className={css.description}>{t('desktop.unavailable')}</p>
+  if (presentation.phase === 'unavailable') return <p className={css.description}>{t('desktop.disabled')}</p>
   return <div className={css.row}>
     <div className={css.copy}>
       <div className={css.title}>{t('desktop.title')}</div>

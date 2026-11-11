@@ -7662,7 +7662,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'PluginInstanceView',
-    declaration: 'export interface PluginInstanceView {\n    pluginId: string;\n    releaseVersion: string;\n    state: \'disabled\' | \'connecting\' | \'enabled\' | \'error\';\n    added?: boolean;\n    error?: string;\n}',
+    declaration: 'export interface PluginInstanceView {\n    pluginId: string;\n    releaseVersion: string;\n    state: \'disabled\' | \'connecting\' | \'enabled\' | \'error\';\n    authorized: boolean;\n    added?: boolean;\n    error?: string;\n}',
   },
   {
     name: 'PluginInventoryEntry',

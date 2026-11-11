@@ -61,7 +61,7 @@ kind: "package-reference"
 
 ### 调整压缩开始的时机
 
-所有设置都可选。设上下文窗口为 `W`、生效请求输出上限为 `O`、余量为 `B`，默认触发阈值为 `floor(min(W × 0.8, W − O − B))`，其中 `B = 65,536` tokens。逐字保留的近期历史预算仍为 `W − O` 的 16%。下表列出全部设置；生成的[配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-compaction-basic)还包含字段类型。
+所有设置都可选。设上下文窗口为 `W`、生效请求输出上限为 `O`、余量为 `B`，默认触发阈值为 `floor(min(W × 0.8, W − O − B))`，其中 `B = 65,536` tokens。逐字保留的近期历史预算仍为 `W − O` 的 16%。下表列出全部设置；生成的配置目录还包含字段类型。
 
 | 字段 | 默认值 | 含义 |
 |---|---|---|
@@ -87,7 +87,7 @@ kind: "package-reference"
 
 在提供方或模型发生变化的请求写入日志前，自动压缩会按目标模型的容量、输出预留和压力策略测量现有历史。需要压缩时，使用原路由模型及其摘要设置；显式配置的摘要目标仍然优先。只有历史降到目标阈值以下，才会继续目标请求。失败会报告 `MODEL_SWITCH_COMPACTION_FAILED`，并保留原请求头；可选择更大窗口的模型，或修正报告的原因后重试。即使后续尝试失败，已经完成的裁剪或压缩仍保留在会话中。检查在下次请求准备时执行，`auto: false` 会禁用它。
 
-即使历史很短，目标也必须有已注册的适配器、已声明的上下文容量和有效的压力预算。默认 65,536 token 的余量无法适配同等或更小的窗口；请按上例为该路由设置 `modelPolicies[].headroomTokens`。迁移方法见[升级指南](../../../docs/upgrade-guide/v0.2.1-alpha.4/model-switch-compaction/guide.zh.md)。
+即使历史很短，目标也必须有已注册的适配器、已声明的上下文容量和有效的压力预算。默认 65,536 token 的余量无法适配同等或更小的窗口；请按上例为该路由设置 `modelPolicies[].headroomTokens`。迁移方法见升级指南。
 
 ### 通过 /compact 按需压缩
 
@@ -160,11 +160,11 @@ kind: "package-reference"
 当包级约定不够用时阅读以下页面；它们从共享 seam 逐步进入可选配套工具与决策证据。
 
 - [压缩 seam](../compaction/README.zh.md)——本后端实现的压缩约定。
-- [压缩子系统参考](../../../docs/subsystems/compaction.zh.md)——压缩词汇、结果与服务行为。
+- 压缩子系统参考——压缩词汇、结果与服务行为。
 - [工具结果修剪器](../compaction-tool-result-pruner/README.zh.md)——先修剪超大工具输出的可选配套工具。
 - [人类 /compact 命令](../command-compact/README.zh.md)——无需等待压力的按需压缩。
 - [Token meter](../../llm/token-meter/README.zh.md)——决定何时压缩的测量服务。
-- [生成配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-compaction-basic)——每个受支持配置字段及其源声明。
+- 生成配置目录——每个受支持配置字段及其源声明。
 
 -----
 

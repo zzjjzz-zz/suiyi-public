@@ -25,7 +25,7 @@ uv sync --project python/sdk --group test
 uv run --project python/sdk pytest
 ```
 
-`python/sdk/tests/test_bundled_runtime.py` 会运行可用的内置载体；某个载体的产物尚未构建时，会跳过该载体。仓库级测试政策见 [测试](../docs/testing.zh.md)。
+`python/sdk/tests/test_bundled_runtime.py` 会运行可用的内置载体；某个载体的产物尚未构建时，会跳过该载体。仓库级测试政策见 测试。
 
 匹配的 engine 包已发布时，LibreOffice Kit CI 负责在 macOS、Windows 和 Linux 上通过已安装的 Node API 与 CLI 检查可见的 Office 内容。Harness 则通过已安装 wheel 包的冒烟测试验证搬移后的 Office sidecar；Python 测试会拒绝全白、全透明、左右颠倒和缺少文字的输出。
 

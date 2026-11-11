@@ -20,7 +20,8 @@ describe('web e2e: Desktop update workspace chrome', () => {
   it.each(['zh-CN', 'en-US'])('renders update states and routes explicit actions in %s', async (locale) => {
     const scaffold = await launchWebScaffold({})
     try {
-      const browser = await chromium.launch()
+      const executablePath = process.env.DSH_PLAYWRIGHT_EXECUTABLE_PATH
+      const browser = await chromium.launch(executablePath === undefined ? {} : { executablePath })
       try {
         const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, locale })
         await page.addInitScript(() => {

@@ -80,7 +80,7 @@ An unparseable own base URL makes that capability's provider unavailable; and a 
 
 The [plugin](src/index.ts) reads its settings once per operation, registers both providers, and turns one capability's settings snapshot, the conversation's route, and the active model route entries into its endpoint and credential. The [Search provider](src/search.ts) validates response JSON before returning service results; the [Fetch provider](src/fetch.ts) validates the Markdown body. The [transport](src/transport.ts) owns credential resolution, the choice between the account endpoint and the API-key endpoint, cancellation, redirect rejection, and failure guidance; a recording hook runs before dispatch and prevents it by throwing. Search and Fetch API calls emit no auxiliary request event. The [Messages search provider](../web-search-deepseek/README.md) owns its `web/deepseek-search-llm-request` Session event declaration and recording. Tool calls and results retain their normal Session logging.
 
-See the [web subsystem](../../../docs/subsystems/web.md) for service types and [tool-web](../tool-web/README.md) for bounded model output.
+See the web subsystem for service types and [tool-web](../tool-web/README.md) for bounded model output.
 
 </details>
 

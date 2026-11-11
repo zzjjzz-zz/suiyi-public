@@ -36,7 +36,7 @@ account 命名空间提供 getState、getProfile / getBalance、getUnnotifiedBon
 <a id="further-exploration"></a>
 ## 深入探索
 
-[凭证子系统](../../../docs/subsystems/credentials.zh.md)定义存储接口；[架构](../../../docs/architecture.zh.md)说明应用组合。
+凭证子系统定义存储接口；架构说明应用组合。
 
 <a id="model-experience"></a>
 ## 模型体验
@@ -56,4 +56,4 @@ account 命名空间提供 getState、getProfile / getBalance、getUnnotifiedBon
 <a id="dev-note"></a>
 ### 开发备注
 
-[桌面登录决策](../../../.agents/notes/implemented/architecture/2026-09-14-deepseek-account-login.zh.md)记录取消和存储的职责。
+桌面登录决策记录取消和存储的职责。

@@ -1,93 +1,97 @@
-# 遂意 Suiyi · 公开源码快照
+# Suiyi · Public source snapshot
 
-这是遂意 Suiyi 的**独立公开源码快照**，用于在 GitHub Actions 的 `windows-2025` 运行器上构建
-Windows x64 **未签名** NSIS 测试安装包。它不是私有开发仓库的历史副本，也不是正式发行版。
+English | [中文](README.zh.md)
 
-## 基线
+This is an **independent public source snapshot** of Suiyi, used to build
+Windows x64 **unsigned** NSIS test installers on GitHub Actions `windows-2025` runners. It contains no private development repository history and is not a formal release.
 
-- 来源私有源码提交：`ecfd90d3fc4eb01392447feedf3c4ba2570d0aa4`
-- 导出方式：在干净的私有工作树上执行 `git archive --format=tar HEAD`
-- 本仓库从独立 root commit 开始，后续提交只更新经检查的公开快照，不包含私有 Git 历史
-- 公开快照仅保留 Windows 打包所需的 `apps/`、`packages/`、`plugins/`、`native/`、
-  `vendor/`、`python/`、`scripts/`、`patches/` 及完整锁文件
-- 已排除 `.agents/`、`snapshots/`、`docs/`、`website/`、`benchmarks/`、私有 `.github/`
-  工作流、内部代理说明、会话记录与内部发布脚本
-- 依赖上述会话快照或文档站的测试/文档脚本未纳入，以避免发布快照内容；Windows 打包
-  所需的源码、锁文件和工作流保持完整
-- 已移除插件测试种子中的 `.env`，以及包含私人绝对路径的插件集成文档
-- 遂意公开版默认 OIDC 身份中心标识为
-  `https://sso.zzjjzz.top/realms/identity`；此地址为公开服务元数据，不包含认证密钥
-- 根许可 `LICENSE` 与第三方许可原文保留；未声称全部第三方许可已完成法律审核
+## Baseline
 
-## 下载测试包
+- Private source commit: `d9ba3ec471177ff4f3ba295d9ce7f54b623e7795`
+- Export method: run `git archive --format=tar HEAD` in a clean private worktree
+- This repository starts from an independent root commit; subsequent commits update reviewed public snapshots without private Git history
+- This repository maintains `main` as its public build branch; development takes place in the private repository, with reviewed source snapshots exported for updates
+- Public exports retain links to excluded internal files as plain text and regenerate bilingual pairing records against the public file set
+- The public snapshot retains the Windows packaging sources in `apps/`, `packages/`, `plugins/`, `native/`,
+  `vendor/`, `python/`, `scripts/`, `patches/`, and complete lockfiles
+- Exclusions include `.agents/`, `snapshots/`, `docs/`, `website/`, `benchmarks/`, private `.github/`
+  workflows, internal agent instructions, session records, and internal release scripts
+- Tests and documentation scripts that depend on those session snapshots or documentation sites are excluded to avoid publishing snapshot content; Windows packaging
+  sources, lockfiles, and the workflow remain complete
+- Plugin test seed `.env` files and plugin integration documents containing private absolute paths are removed
+- The public Suiyi build uses the default OIDC identity provider
+  `https://sso.zzjjzz.top/realms/identity`; this address is public service metadata and contains no authentication keys
+- The root `LICENSE` and original third-party licenses are retained; this snapshot does not claim a complete legal review of third-party licenses
 
-1. 打开本仓库的 **Actions** 页面。
-2. 选择 **Build Windows x64 NSIS (unsigned)** 工作流的最新成功运行。
-3. 在该运行的 **Artifacts** 中下载
-   `suiyi-windows-x64-unsigned-<run_number>-<run_attempt>`。
-4. Artifact 保留 **14 天**，包含实际安装包和 `SHA256SUMS.txt`。
+## Download test installers
 
-安装包文件名由构建版本决定，格式为：
+1. Open this repository's **Actions** page.
+2. Select the latest successful **Build Windows x64 NSIS (unsigned)** workflow run.
+3. Download the following archive from that run's **Artifacts**:
+   `suiyi-windows-x64-unsigned-<run_number>-<run_attempt>`.
+4. Artifacts are retained for **14 days** and contain the installer and `SHA256SUMS.txt`.
+
+The installer filename depends on the build version:
 
 ```text
 suiyi-<build-version>-win-x64-unsigned.exe
 SHA256SUMS.txt
 ```
 
-工作流会校验 PE 机器类型为 `x64`（`0x8664`）、文件尺寸下限，以及
-`Get-AuthenticodeSignature` 的状态必须为 `NotSigned`。**只有 GitHub Actions 运行成功且
-artifact 上传成功后，才表示打包成功。**
+The workflow checks the PE machine type `x64` (`0x8664`), a minimum file size, and
+that `Get-AuthenticodeSignature` reports `NotSigned`. **Packaging succeeds only when the GitHub Actions run
+and artifact upload both succeed.**
 
-## 构建配置
+## Build configuration
 
-- 运行器：`windows-2025`
+- Runner: `windows-2025`
 - Node.js `24`
-- pnpm `11.28.5`（由根 `package.json` 的 `packageManager` 锁定）
-- 依赖安装：`pnpm install --frozen-lockfile`
-- 预检：`pnpm run package:desktop:win:x64:unsigned --check --build-version <version>`
-- 构建：`pnpm run package:desktop:win:x64:unsigned --build-version <version>`
+- pnpm `11.28.5` (pinned by `packageManager` in the root `package.json`)
+- Dependency installation: `pnpm install --frozen-lockfile`
+- Preflight: `pnpm run package:desktop:win:x64:unsigned --check --build-version <version>`
+- Build: `pnpm run package:desktop:win:x64:unsigned --build-version <version>`
 - `DSH_DESKTOP_FLAVOR=suiyi`
 - `DSH_DESKTOP_APP_ID=com.zzjjzz.suiyi`
 - `DSH_DESKTOP_AUTO_UPDATE_ENV=test`
 - `DSH_DESKTOP_WINDOWS_PACK_CONCURRENCY=2`
 - `DSH_DESKTOP_WINDOWS_COMPRESSION_LEVEL=3`
 - `DSH_TELEMETRY_DISABLED=1`
-- 测试策略保留域名：`https://policy.example.invalid`；登录身份中心：`https://sso.zzjjzz.top/realms/identity`
-- 权限：仅 `contents: read`
-- 触发：仅 `push` 到 `main` 与手动 `workflow_dispatch`
-- 不使用 `pull_request_target`、私有 checkout、token、self-hosted runner 或生产密钥
+- Reserved test policy domain: `https://policy.example.invalid`; identity provider: `https://sso.zzjjzz.top/realms/identity`
+- Permissions: only `contents: read`
+- Triggers: only `push` to `main` and manual `workflow_dispatch`
+- No `pull_request_target`, private checkout, token, self-hosted runner, or production keys
 
-## 安全边界与限制
+## Security limits
 
-- **未签名、未做正式发行验收。** Windows 可能显示 SmartScreen 警告；不得把此包描述为
-  已签名、生产可用或已通过真实身份提供商验收的正式版本。
-- 公开版内置真实的 HTTPS 身份中心地址，但这仅表示登录服务可发现，**不保证账号授权或桌面登录已经验收**。
-  目标身份中心仍须允许 `suiyi-desktop` 客户端的授权码与本地回调；未来变更服务地址时，
-  可通过 `suiyi-oidc-issuer.json` 覆盖默认值，不需要把任何密钥写入公开仓库。
-- 工作流只构建并做 PE、尺寸、签名状态和 SHA-256 校验，不执行真实 SSO 登录，也不替代
-  独立的 Windows 安装/运行验收。
-- 本公开仓库不上传安装包到 release、对象存储或自动更新服务。
-- 构建产物是测试工件，不应作为正式发行版分发。
+- **Unsigned and without formal release acceptance.** Windows may show a SmartScreen warning; this installer must not be described as
+  signed, production-ready, or accepted against a real identity provider.
+- The public build includes a real HTTPS identity provider address, which makes the login service discoverable; **account authorization and desktop login acceptance are not guaranteed**.
+  The identity provider must still allow the `suiyi-desktop` client's authorization code flow and local callback; future service address changes
+  can override the default with `suiyi-oidc-issuer.json` without adding keys to the public repository.
+- The workflow builds and checks PE metadata, size, signature status, and SHA-256; it does not perform real SSO login or replace
+  independent Windows installation and runtime acceptance.
+- This public repository does not upload installers to releases, object storage, or an automatic update service.
+- Build outputs are test artifacts and must not be distributed as formal releases.
 
-## 扫描记录
+## Scan record
 
-发布前在导出目录执行了：
+The following scan ran in the export directory before publication:
 
 ```text
 gitleaks 8.30.1 dir . --redact --gitleaks-ignore-path .gitleaksignore
 ```
 
-并对本地用户主目录路径、私有域名、私有仓库路径、私钥块、常见云令牌格式和内部 RFC 1918
-地址进行了文本扫描。5 条 Gitleaks 初始命中均位于测试夹具和
-`patches/lexical@0.49.0.patch` 的压缩代码块中；没有真实凭据。对应指纹记录在
-`.gitleaksignore`，不采用整目录或整类规则的宽泛豁免。最终扫描无真实秘密命中。
+Text scans also checked for local home directory paths, private domains, private repository paths, private key blocks, common cloud token formats, and internal RFC 1918
+addresses. Five initial Gitleaks matches were in test fixtures and
+compressed code in `patches/lexical@0.49.0.patch`; none contained real credentials. Their fingerprints are recorded in
+`.gitleaksignore`, without broad directory or rule exemptions. The final scan found no real secrets.
 
-扫描通过不代表对所有第三方代码、素材或依赖许可证做了穷尽审计。发现真实秘密或敏感数据时，
-应停止发布并通过仓库的私密安全渠道报告，不要在公开 issue 中粘贴秘密值。
+A passing scan does not constitute an exhaustive audit of third-party code, assets, or dependency licenses. If real secrets or sensitive data are found,
+stop publication and report through the repository's private security channel; do not paste secret values into public issues.
 
-## 许可
+## License
 
-根项目采用 MIT，见 [`LICENSE`](LICENSE)。`vendor/` 内各组件保留上游 MIT 许可；
-`plugins/dsh-generative-ui/` 保留其 Apache-2.0 `LICENSE` 与 `NOTICE`；其他第三方依赖
-分别受其自身许可证约束，详见 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)、各包内
-许可文件和锁文件。此快照不对完整许可证合规作最终法律结论。
+The root project uses MIT; see [`LICENSE`](LICENSE). Components in `vendor/` retain upstream MIT licenses;
+`plugins/dsh-generative-ui/` retains its Apache-2.0 `LICENSE` and `NOTICE`; other third-party dependencies
+remain subject to their own licenses. See [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md), package license
+files, and lockfiles. This snapshot makes no final legal determination of complete license compliance.

@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-Run [Claude Code mods](https://code.claude.com/docs/en/plugins/mods/overview) inside agent runs: wrap a mod's `register(on, options)` with `defineMod`, mount it as a plugin after this bridge, and its hooks guard tool calls, rewrite prompts, add commands and tools, read session facts, and draw a band above the prompt through the same `$`, `e`, `next` chain. The bridge requires `dsh-working-directory` and `dsh-agent`, and each `$` call rides a composed harness service. It is an alpha interface-compatibility demonstration: an unserved event is reported at load, an unserved `$` member fails naming the gap, and [the compatibility page](../../../docs/subsystems/claude-code-mods.md) lists every difference.
+Run [Claude Code mods](https://code.claude.com/docs/en/plugins/mods/overview) inside agent runs: wrap a mod's `register(on, options)` with `defineMod`, mount it as a plugin after this bridge, and its hooks guard tool calls, rewrite prompts, add commands and tools, read session facts, and draw a band above the prompt through the same `$`, `e`, `next` chain. The bridge requires `dsh-working-directory` and `dsh-agent`, and each `$` call rides a composed harness service. It is an alpha interface-compatibility demonstration: an unserved event is reported at load, an unserved `$` member fails naming the gap, and the compatibility page lists every difference.
 
 ## Table of Contents
 
@@ -53,7 +53,7 @@ export default defineMod({ name: 'token-weather', version: '0.1.0', root: import
 | `bandColumns` | `120` | Columns the band above the prompt reports to `ui.render` as `bodyColumns` and `viewport.columns` |
 | `bandRows` | `10` | Rows the band reports as `maxRows` |
 
-The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-experimental-claude-code-mods) is the exhaustive source for every accepted field. The [examples](examples/) directory holds the three mods from Anthropic's [Getting started with Claude Code mods](https://claude.dev/blog/getting-started-with-claude-code-mods/) post as plugin directories that also run under `claude --plugin-dir`: Token Weather with its published module, types, and test unchanged, and Blast Radius and Replay Theater completed from the published fragments. The [opt-in overlay](cordis.source.patch.yml) composes the bridge, the three mods, and the [Web band](../client-ui-claude-code-mods/README.md) for a source launch.
+The generated configuration catalog is the exhaustive source for every accepted field. The [examples](examples/) directory holds the three mods from Anthropic's [Getting started with Claude Code mods](https://claude.dev/blog/getting-started-with-claude-code-mods/) post as plugin directories that also run under `claude --plugin-dir`: Token Weather with its published module, types, and test unchanged, and Blast Radius and Replay Theater completed from the published fragments. The [opt-in overlay](cordis.source.patch.yml) composes the bridge, the three mods, and the [Web band](../client-ui-claude-code-mods/README.md) for a source launch.
 
 Blast Radius's DSH wrapper supplies a Node timer subprocess using the running executable, so its Proceed/Cancel hold does not require POSIX `sleep` on Windows. The wait still uses `$.process.run`, which pauses the hook's running-time budget and cancels the child with the event. The standalone Claude Code hooks module defaults to `sleep 0.25`; its dry-run commands also require the corresponding host utilities.
 
@@ -146,12 +146,12 @@ The bridge cancels detached calls when its fiber begins unloading, before depend
 <a id="further-exploration"></a>
 ## Further Exploration
 
-- [Compatibility with Claude Code mods](../../../docs/subsystems/claude-code-mods.md) — every way this bridge differs from Claude Code mods, with the fix or the reason.
+- Compatibility with Claude Code mods — every way this bridge differs from Claude Code mods, with the fix or the reason.
 - [Claude Code mods reference](https://code.claude.com/docs/en/plugins/mods/reference) — the events, methods, and limits this bridge mirrors.
 - [The Web band](../client-ui-claude-code-mods/README.md) — the Client package that draws `ui.render` trees in the input dock.
 - [Experimental packages](../README.md) — publication policy and dependency isolation.
 - [Claude Code hook bridge](../hooks-claude-code/README.md) — the settings-hook bridge; a plugin's `hooks.json` settings hooks need `dsh-hooks-claude-code`.
-- [Tool execution pipeline](../../../docs/tool-execution-pipeline.md) — the waterfalls `tool.call` runs around.
+- Tool execution pipeline — the waterfalls `tool.call` runs around.
 - [Human commands](../../interaction/commands/README.md) — the registry `$.command.register` lands on.
 
 -----
@@ -198,13 +198,13 @@ Tool results append after the reusable prefix; a dropped prompt invalidates noth
 
 <a id="known-limitations-and-deferred-work"></a>
 
-These limits describe where a Claude Code mod behaves differently through this bridge; [the compatibility page](../../../docs/subsystems/claude-code-mods.md) is the complete list. They are current package constraints, not a task backlog.
+These limits describe where a Claude Code mod behaves differently through this bridge; the compatibility page is the complete list. They are current package constraints, not a task backlog.
 
 - **One drawing surface** — `AbovePrompt` is served; `Pane`, the other render sites, `Input`, hotkeys, `ui.press`, `ui.input`, `ui.select`, `ui.focus`, and `ui.scroll` are not: `$.ui.open` answers `{ isPlaced: false }`, and `$.ui.log`, `$.ui.toast`, and `$.ui.status` reach the host log, not the GUI. A hook draws for a band `bandColumns` wide; the Web band wraps. A button's `onPress` runs without a time limit; a hanging one keeps the band's buttons disabled until it settles.
 - **`next` runs once** — a hook that calls `next` twice gets the first run; Claude Code runs the chain beneath again. A hook that answers while its `next` is still running waits for that run.
 - **Unserved events** — `tool.check`, `tool.describe`, `turn.step`, the other `prompt.*` events, `command.describe`, `config.*`, `session.compact`, `session.receive`, `session.send`, `session.append`, `session.attach`, `session.detach`, `session.measure`, `agent.*`, `plugin.register`, `engine.create`, and `telemetry.*` register, never fire, and are named in a warning at load; `classic.*` names are refused at `register` like any unknown event.
 - **Unserved `$` namespaces** — `$.model`, `$.agent`, `$.config`, `$.settings`, `$.mcp`, `$.audio`, `$.telemetry`, `$.turn`, `$.ui.notice`, `$.ui.blit`, `$.ui.copy`, `$.fs.ancestors`, `$.process.spawn`, and `$.session.repo`, `send`, `append`, `authorize`, `compact`, `surfaces` reject with `no implementation`. `$.model.complete` waits on a logged side-request event so a mod's model call stays reconstructable from the Session log.
-- **`tool.call` runs after the permission decision** — Claude Code runs mod `tool.call` hooks before its permission check; here the harness `tools/pre-execute` waterfall, including approval, settles first. A hook that rewrites the arguments it passes to `next`, or names another tool, is skipped with a report (the argument case names the [pre-tool input rewrite proposal](../../../.agents/notes/proposed/feature/2026-06-30-pre-tool-input-rewrite.md)), because the logged call runs as logged.
+- **`tool.call` runs after the permission decision** — Claude Code runs mod `tool.call` hooks before its permission check; here the harness `tools/pre-execute` waterfall, including approval, settles first. A hook that rewrites the arguments it passes to `next`, or names another tool, is skipped with a report (the argument case names the pre-tool input rewrite proposal), because the logged call runs as logged.
 - **One process, many sessions** — a mod's module-level variables and `$.env.set` writes are shared by every session and plugin in the process, where Claude Code runs one session per process; keep per-session values in `$.state`. `session.start` and `session.end` fire for root Agents only. Root classification excludes Session `origin: 'subagent'` and requires the exact live instance when the Agent registry is mounted.
 - **No sandbox, no static analysis, no hot reload** — the hooks module runs in-process with Node's globals and the process's full authority (its environment, network, filesystem, and tools); the `$`-only access rule, `claude plugin validate`, type generation, `--plugin-dir` watching, and the in-session mod authoring flow are not implemented. Mount only mods you would run as a plugin. Mounting a mod again re-runs `register` on the same evaluated module, so module-level variables keep their values.
 - **`turn.complete` text** — the `{ text }` a hook returns reaches the host log, not a line under the answer; `durationMs` counts from the turn's `turn/start`.

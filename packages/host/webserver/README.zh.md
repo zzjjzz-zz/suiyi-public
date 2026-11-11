@@ -105,10 +105,10 @@ index 启动输入分两层，按页面所代表的 Peer 计算。`collectIndexI
 
 当服务器约定不够用时阅读以下内容：先看子系统参考，再看回退持有者，以及谁注册哪条路由背后的分层决策。
 
-- [HTTP 服务器子系统](../../../docs/subsystems/web-server.zh.md)——路由、匹配顺序与服务器接受的配置。
+- HTTP 服务器子系统——路由、匹配顺序与服务器接受的配置。
 - [SPA dist 服务器](../frontend-static/README.zh.md)——回退席位的随附持有者。
 - [Web 配置树启动与传输分层](../../boot/app-boot/README.zh.md)——功能插件为何拥有每条路由。
-- [生成配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-host-webserver)——每个受支持配置字段及其源声明。
+- 生成配置目录——每个受支持配置字段及其源声明。
 
 -----
 

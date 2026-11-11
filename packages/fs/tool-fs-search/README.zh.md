@@ -68,7 +68,7 @@ kind: "package-reference"
 | `stderrMaxBytes` | `65536` | `rg` stderr 的诊断尾部预算 |
 | `searchMetaMaxBytes` | `65536` | 一次搜索序列化 `presentationMeta` 的字节上限；超出部分丢弃尾部的组/路径 |
 
-生成的[配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-tool-fs-search)是每个受支持字段及其 JSDoc 的穷尽式真源。
+生成的配置目录是每个受支持字段及其 JSDoc 的穷尽式真源。
 
 ### 部署要求
 
@@ -137,12 +137,12 @@ node tests/.dsh-build/glob-native.perf.mjs
 
 当包级约定不够用时阅读以下页面。它们从工具逐步进入 subprocess seam、spill 存储与文件系统家族。
 
-- [文件系统子系统](../../../docs/subsystems/filesystem.zh.md)——穷尽式提供方约定、策略事件与错误分类体系。
+- 文件系统子系统——穷尽式提供方约定、策略事件与错误分类体系。
 - [tool-fs](../tool-fs/README.zh.md)——用于后续读取的同级 `read`/`write`/`edit` 工具。
-- [子进程能力](../../../docs/subsystems/subprocess.zh.md)——这些工具执行所经由的 spawn seam。
+- 子进程能力——这些工具执行所经由的 spawn seam。
 - [Spill 存储](../../spill/spill/README.zh.md)——使达到上限结果可完整恢复的可选后端。
 - [超时工具](../../util/timeout/README.zh.md)——终止宽限期的 `MAX_TIMER_DELAY_MS` 上限。
-- [生成工具目录](../../../docs/tool-catalog.zh.md#deepseek-aidsh-tool-fs-search)——本包注册的穷尽式 schema。
+- 生成工具目录——本包注册的穷尽式 schema。
 
 -----
 
@@ -179,7 +179,7 @@ Use the grep tool — not shell grep or rg — to search file contents. Use read
 
 #### 模型看到的内容
 
-glob 描述声明了配置的超过上限排序方式。生成的 [`glob` 和 `grep` schema](../../../docs/tool-catalog.zh.md#deepseek-aidsh-tool-fs-search) 使用 `sampleOverCapGlobResults: true`；工具无条件注册。
+glob 描述声明了配置的超过上限排序方式。生成的 `glob` 和 `grep` schema 使用 `sampleOverCapGlobResults: true`；工具无条件注册。
 
 #### Token 影响
 

@@ -40,11 +40,11 @@ const ICON = 22
 const TINTS = [css.tintBlue, css.tintTeal, css.tintAmber] as const
 
 const STATUS_KEYS = {
-  enabled: 'statusEnabled', connecting: 'statusConnecting', error: 'statusError',
+  enabled: 'statusEnabled', connecting: 'statusConnecting', error: 'statusError', 'cleanup-error': 'statusCleanupFailed',
 } as const satisfies Record<Exclude<HubRowState, 'disabled'>, PluginHubLocaleKey>
 
 const STATUS_TONES = {
-  enabled: 'success', connecting: 'info', disabled: 'quiet', error: 'danger',
+  enabled: 'success', connecting: 'info', disabled: 'quiet', error: 'danger', 'cleanup-error': 'danger',
 } as const satisfies Record<HubRowState, TagTone>
 
 const BUSY_KEYS = {
@@ -98,6 +98,7 @@ function statusOf(plugin: CatalogPlugin, instance: PluginInstanceView | undefine
   busy: HubActionKind | undefined, failure: HubActionFailure | undefined,
   t: Translate): { readonly text: string; readonly tone: TagTone } {
   if (busy !== undefined) return { text: t(BUSY_STATUS_KEYS[busy]), tone: 'info' }
+  if (rowState(instance) === 'cleanup-error') return { text: t('statusCleanupFailed'), tone: 'danger' }
   if (failure !== undefined) return { text: t('statusError'), tone: 'danger' }
   if (!installed) return { text: t(RISK_KEYS[plugin.riskLevel]), tone: RISK_TONES[plugin.riskLevel] }
   const state = rowState(instance)
@@ -113,6 +114,7 @@ interface FailureLine {
 
 function actionFailureLine(instance: PluginInstanceView | undefined, failure: HubActionFailure | undefined,
   t: Translate): FailureLine | null {
+  if (rowState(instance) === 'cleanup-error') return { text: t('cleanupFailedDetail'), detail: instance?.error }
   if (failure !== undefined) {
     return { text: t(FAILURE_KEYS[failure.kind]), detail: failure.message }
   }
@@ -140,7 +142,19 @@ function PluginAction({ plugin, instance, installed, busy, failure, t, onAdd, on
       </Button>
     )
   }
-  if (failure !== undefined || rowState(instance) === 'error') {
+  const state = rowState(instance)
+  if (state === 'cleanup-error') {
+    return <Button variant="outline" size="sm" className={css.action}
+      aria-label={t('retryCleanupTitle', { name: plugin.name })} onClick={onDisable}>{t('retryCleanup')}</Button>
+  }
+  if (state === 'error' && installed) {
+    return <div className={css.failureActions}>
+      <Button variant="outline" size="sm" className={css.action} onClick={onRetry}>{t('retry')}</Button>
+      <Button variant="ghost" size="sm" className={css.action}
+        aria-label={t('disableTitle', { name: plugin.name })} onClick={onDisable}>{t('disable')}</Button>
+    </div>
+  }
+  if (failure !== undefined || state === 'error') {
     return <Button variant="outline" size="sm" className={css.action} onClick={onRetry}>{t('retry')}</Button>
   }
   if (installed) {
@@ -458,7 +472,7 @@ function PluginDetail({ plugin, snapshot, t, language, busy, failure, actions, o
           {installed
             ? <Button variant="ghost" className={css.dangerAction} onClick={onRemove}>{t('removeAction')}</Button>
             : null}
-          {installed
+          {installed || rowState(instance) === 'cleanup-error'
             ? (
               <PluginAction plugin={plugin} instance={instance} installed busy={busy} failure={failure} t={t}
                 onAdd={onAdd}

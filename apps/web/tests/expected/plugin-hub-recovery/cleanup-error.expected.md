@@ -1,0 +1,8 @@
+- listitem:
+  - text: Cleanup failed
+  - button "Open demo": demo
+  - paragraph: Fixture plugin demo
+  - text: test/ 1 tool/ Version 1
+  - status: Authorization was withdrawn, but the plugin instance did not unload. Retry cleanup before enabling it again. The previous plugin instance did not close cleanly.
+  - button "View permissions"
+  - button "Retry cleanup for demo": Retry cleanup

@@ -73,6 +73,28 @@ function renderTab(state: PluginHubState = ready(), dictionary: Record<PluginHub
 const open = (name: string): void => { fireEvent.click(screen.getByRole('button', { name: `Open ${name}` })) }
 
 describe('PluginHubPanel', () => {
+  it('keeps Disable beside Retry for an authorized failed instance', () => {
+    const { actions } = renderTab(ready({ snapshot: snapshot({ instances: [{
+      pluginId: 'alpha', releaseVersion: '1.0.0', state: 'error', added: true, authorized: true,
+    }] }) }))
+    fireEvent.click(screen.getByRole('button', { name: 'Disable Alpha Reader' }))
+    expect(actions.disable).toHaveBeenCalledExactlyOnceWith('alpha')
+    fireEvent.click(screen.getByRole('button', { name: en.retry }))
+    expect(actions.retry).toHaveBeenCalledExactlyOnceWith('alpha')
+  })
+
+  it.each([en, zh])('offers cleanup without enable or add after authorization was withdrawn', (dictionary) => {
+    const { actions } = renderTab(ready({ snapshot: snapshot({ instances: [{
+      pluginId: 'alpha', releaseVersion: '1.0.0', state: 'error', added: false, authorized: false,
+    }] }) }), dictionary)
+    const t = translator(dictionary)
+    expect(screen.getByText(dictionary.statusCleanupFailed)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: t('retryCleanupTitle', { name: ALPHA.name }) }))
+    expect(actions.disable).toHaveBeenCalledExactlyOnceWith('alpha')
+    expect(actions.enable).not.toHaveBeenCalled()
+    expect(actions.add).not.toHaveBeenCalled()
+  })
+
   it('shows a list skeleton until the first catalog read lands', () => {
     const { actions } = renderTab({ ...ready(), status: 'loading', snapshot: null })
     expect(actions.ensure).toHaveBeenCalledOnce()
@@ -117,7 +139,7 @@ describe('PluginHubPanel', () => {
   })
 
   it('lists the catalog with categories, risk, status, metadata, and a counted summary', () => {
-    renderTab(ready({ snapshot: snapshot({ instances: [{ pluginId: 'beta', releaseVersion: '1.0.0', state: 'enabled', added: true }] }) }))
+    renderTab(ready({ snapshot: snapshot({ instances: [{ pluginId: 'beta', releaseVersion: '1.0.0', state: 'enabled', authorized: true, added: true }] }) }))
     expect(screen.getByText('Alpha Reader')).toBeTruthy()
     expect(screen.getByText('Beta Writer')).toBeTruthy()
     expect(screen.getByText('Showing 2 available plugins')).toBeTruthy()
@@ -132,7 +154,7 @@ describe('PluginHubPanel', () => {
   })
 
   it('filters the added tab by authorized rows and keeps the count on the tab', () => {
-    renderTab(ready({ snapshot: snapshot({ instances: [{ pluginId: 'beta', releaseVersion: '1.0.0', state: 'enabled', added: true }] }) }))
+    renderTab(ready({ snapshot: snapshot({ instances: [{ pluginId: 'beta', releaseVersion: '1.0.0', state: 'enabled', authorized: true, added: true }] }) }))
     expect(screen.getByRole('tab', { name: new RegExp(en.tabInstalled) }).textContent).toContain('1')
     fireEvent.click(screen.getByRole('tab', { name: new RegExp(en.tabInstalled) }))
     expect(screen.getByText('Beta Writer')).toBeTruthy()
@@ -185,7 +207,7 @@ describe('PluginHubPanel', () => {
       allowedTools: [tool('search', 'Search the web'), tool('fetch')],
     })
     renderTab(ready({
-      snapshot: snapshot({ plugins: [detailed], instances: [{ pluginId: 'alpha', releaseVersion: '1.1.0', state: 'enabled', added: true }] }),
+      snapshot: snapshot({ plugins: [detailed], instances: [{ pluginId: 'alpha', releaseVersion: '1.1.0', state: 'enabled', authorized: true, added: true }] }),
     }))
     open('Alpha Reader')
     const dialog = screen.getByRole('dialog', { name: 'Alpha Reader' })
@@ -254,7 +276,7 @@ describe('PluginHubPanel', () => {
 
   it('keeps an added but disabled plugin in Added and enables it without adding it again', () => {
     const installedView: PluginInstanceView = {
-      pluginId: 'alpha', releaseVersion: '1.0.0', state: 'disabled', added: true,
+      pluginId: 'alpha', releaseVersion: '1.0.0', state: 'disabled', authorized: false, added: true,
     }
     const { actions } = renderTab(ready({ snapshot: snapshot({ instances: [installedView] }) }))
     expect(screen.getByText(en.statusDisabled)).toBeTruthy()
@@ -271,8 +293,8 @@ describe('PluginHubPanel', () => {
   it('disables from the card and removes from the plugin page after confirmation', () => {
     const { actions } = renderTab(ready({
       snapshot: snapshot({ instances: [
-        { pluginId: 'alpha', releaseVersion: '1.0.0', state: 'enabled', added: true },
-        { pluginId: 'beta', releaseVersion: '1.0.0', state: 'enabled', added: true },
+        { pluginId: 'alpha', releaseVersion: '1.0.0', state: 'enabled', authorized: true, added: true },
+        { pluginId: 'beta', releaseVersion: '1.0.0', state: 'enabled', authorized: true, added: true },
       ] }),
     }))
     fireEvent.click(screen.getByRole('button', { name: 'Disable Alpha Reader' }))
@@ -287,7 +309,7 @@ describe('PluginHubPanel', () => {
   })
 
   it('offers disable while a plugin connects', () => {
-    const { actions } = renderTab(ready({ snapshot: snapshot({ instances: [{ pluginId: 'alpha', releaseVersion: '1.0.0', state: 'connecting', added: true }] }) }))
+    const { actions } = renderTab(ready({ snapshot: snapshot({ instances: [{ pluginId: 'alpha', releaseVersion: '1.0.0', state: 'connecting', authorized: true, added: true }] }) }))
     expect(screen.getByText(en.statusConnecting)).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Disable Alpha Reader' }))
     expect(actions.disable).toHaveBeenCalledWith('alpha')
@@ -299,8 +321,8 @@ describe('PluginHubPanel', () => {
     expect(screen.getByRole('button', { name: en.removing }).hasAttribute('disabled')).toBe(true)
     cleanup()
     renderTab(ready({ snapshot: snapshot({ instances: [
-      { pluginId: 'alpha', releaseVersion: '1.0.0', state: 'disabled', added: true },
-      { pluginId: 'beta', releaseVersion: '1.0.0', state: 'enabled', added: true },
+      { pluginId: 'alpha', releaseVersion: '1.0.0', state: 'disabled', authorized: false, added: true },
+      { pluginId: 'beta', releaseVersion: '1.0.0', state: 'enabled', authorized: true, added: true },
     ] }), busy: { alpha: 'enable', beta: 'disable' } }))
     expect(screen.getByRole('button', { name: en.enabling }).hasAttribute('disabled')).toBe(true)
     expect(screen.getByRole('button', { name: en.disabling }).hasAttribute('disabled')).toBe(true)
@@ -308,7 +330,7 @@ describe('PluginHubPanel', () => {
 
   it('surfaces a failed instance and retries it', () => {
     const { actions } = renderTab(ready({
-      snapshot: snapshot({ instances: [{ pluginId: 'alpha', releaseVersion: '1.0.0', state: 'error', error: 'adapter crashed', added: true }] }),
+      snapshot: snapshot({ instances: [{ pluginId: 'alpha', releaseVersion: '1.0.0', state: 'error', authorized: true, error: 'adapter crashed', added: true }] }),
     }))
     expect(screen.getAllByText(en.statusError).length).toBeGreaterThan(1)
     expect(screen.getByText('adapter crashed')).toBeTruthy()
@@ -317,7 +339,7 @@ describe('PluginHubPanel', () => {
   })
 
   it('shows an instance error without a Host message on the card and the page', () => {
-    renderTab(ready({ snapshot: snapshot({ instances: [{ pluginId: 'alpha', releaseVersion: '1.0.0', state: 'error', added: true }] }) }))
+    renderTab(ready({ snapshot: snapshot({ instances: [{ pluginId: 'alpha', releaseVersion: '1.0.0', state: 'error', authorized: true, added: true }] }) }))
     expect(screen.getByRole('status').textContent).toBe(en.statusError)
     open('Alpha Reader')
     expect(within(screen.getByRole('dialog')).getByRole('status').textContent).toBe(en.statusError)
@@ -333,7 +355,7 @@ describe('PluginHubPanel', () => {
 
   it('shows a disable failure and retries it from the plugin page', () => {
     const { actions } = renderTab(ready({
-      snapshot: snapshot({ instances: [{ pluginId: 'alpha', releaseVersion: '1.0.0', state: 'enabled', added: true }] }),
+      snapshot: snapshot({ instances: [{ pluginId: 'alpha', releaseVersion: '1.0.0', state: 'enabled', authorized: true, added: true }] }),
       actionFailures: { alpha: { kind: 'disable', message: 'still running' } },
     }))
     expect(screen.getByText(en.disableFailed)).toBeTruthy()

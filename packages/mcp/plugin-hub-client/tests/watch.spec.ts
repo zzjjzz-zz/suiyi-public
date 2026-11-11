@@ -29,7 +29,7 @@ describe('plugin hub catalog stream', () => {
       platform.publish([{ pluginId: 'other', releaseVersion: '2+review', tools: ['ping'] }], 'next')
       await booted.hub.refresh()
       await vi.waitFor(() => {
-        expect(frames.at(-1)).toMatchObject({ catalogVersion: 'next', instances: [{ pluginId: 'other', releaseVersion: '2+review', state: 'disabled' }] })
+        expect(frames.at(-1)).toMatchObject({ catalogVersion: 'next', instances: [{ pluginId: 'other', releaseVersion: '2+review', state: 'disabled', authorized: false }] })
       })
       abort.abort()
       await read

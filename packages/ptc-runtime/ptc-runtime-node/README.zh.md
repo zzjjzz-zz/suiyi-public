@@ -59,7 +59,7 @@ kind: "package-reference"
 | `graceMs` | `3,000` | 受管终止与输出排空宽限时间 |
 | `launch` | 本地载体 | 子进程环境中显式的 `{ kind: "node-script", executable, bootstrapPath? }` 或 `{ kind: "embedded", executable }` |
 
-[配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-ptc-runtime-node)定义可接受的配置字段。`resolve(request)` 将 cwd 默认设为沙箱策略的工作区根目录，并补全数值或 null 截止选择与执行策略；`run(spec)` 接受这些已解析输入，不补缺省值。
+配置目录定义可接受的配置字段。`resolve(request)` 将 cwd 默认设为沙箱策略的工作区根目录，并补全数值或 null 截止选择与执行策略；`run(spec)` 接受这些已解析输入，不补缺省值。
 
 profile 编辑器可从 `@deepseek-ai/dsh-ptc-runtime-node/configuration` 导入 `resolvePersistentExecution`，根据当前有效程序格式选择持久执行设置。返回的两个设置必须原子合入：Script 保留原语法，函数体切换为 REPL。
 
@@ -193,8 +193,8 @@ AsyncFunction 和 Node REPL 共用同步 `registerHooks` 和以 symbol 为键的
 直接使用提供方前先读服务约定；决策记录解释策略与消费方职责。
 
 - [PTC 运行时服务](../ptc-runtime/README.zh.md)——请求、已解析 spec 与结果。
-- [沙箱 Node 决策](../../../.agents/notes/implemented/architecture/2026-09-11-sandboxed-node-ptc-runtime.zh.md)——安全、生命周期与 timeout 取舍。
-- [PTC 基础](../../../.agents/notes/implemented/feature/2026-06-15-ptc.zh.md)——注册表呈现与嵌套工具分派。
+- 沙箱 Node 决策——安全、生命周期与 timeout 取舍。
+- PTC 基础——注册表呈现与嵌套工具分派。
 - [子进程提供方](../../subprocess/subprocess-local/README.zh.md)——受管进程范围与平台限制。
 
 -----
@@ -234,6 +234,6 @@ AsyncFunction 和 Node REPL 共用同步 `registerHooks` 和以 symbol 为键的
 <details>
 <summary>维护者工作上下文——点击展开</summary>
 
-[timeout 讨论](../../../.agents/notes/implemented/architecture/2026-09-11-sandboxed-node-ptc-runtime.zh.md#deferred-timeout-design)记录 yield、总生命周期、审批等待计时和进程树 CPU/RSS 上限的开放选择。这些选择不改变数值截止的默认值或显式的不设截止服务选项。
+timeout 讨论记录 yield、总生命周期、审批等待计时和进程树 CPU/RSS 上限的开放选择。这些选择不改变数值截止的默认值或显式的不设截止服务选项。
 
 </details>

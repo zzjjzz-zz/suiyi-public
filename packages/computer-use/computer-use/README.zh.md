@@ -52,7 +52,7 @@ kind: "package-reference"
 <a id="further-exploration"></a>
 ## 延伸阅读
 
-- [计算机操作](../../../docs/subsystems/computer-use.zh.md) — 提供方选择和共享桌面限制。
+- 计算机操作 — 提供方选择和共享桌面限制。
 - [Computer Use 组合包](../../experimental/cua-bundle/README.zh.md)：启用 DSH 原生 CUA 和权限管理功能。
 - [共享 CUA 库](../../experimental/cua/README.zh.md)：应用与窗口对象、工具执行和应用授权。
 - [macOS CUA 提供方](../../experimental/cua-macos/README.zh.md)：DSH 的 Swift 实现和原生辅助进程生命周期。

@@ -1,0 +1,25 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write README.md
+/suiyi-public-source-snapshot:
+  en: 39737485f2655a78
+  zh: 2f3bb010a96ffbcd
+/suiyi-public-source-snapshot/baseline:
+  en: 480b198816786b03
+  zh: b4a2c416bb659525
+/suiyi-public-source-snapshot/download-test-installers:
+  en: c96e2e27ed3b9afa
+  zh: 2544fa898941e708
+/suiyi-public-source-snapshot/build-configuration:
+  en: 44e06fd9bbf5d9ed
+  zh: e7ef8d3a10882fc7
+/suiyi-public-source-snapshot/security-limits:
+  en: bb65dd33211392f8
+  zh: 01f51c459a3e9f18
+/suiyi-public-source-snapshot/scan-record:
+  en: a93c436ed7a12d6b
+  zh: 7a0c1b90b1058b1b
+/suiyi-public-source-snapshot/license:
+  en: 12725a1fc1c1f66c
+  zh: 9567473c41d0ba5e

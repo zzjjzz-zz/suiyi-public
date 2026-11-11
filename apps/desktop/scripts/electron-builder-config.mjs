@@ -120,6 +120,7 @@ export function createElectronBuilderConfig(
       ...(identity.suiyi ? { name: 'suiyi-desktop' } : {}),
       dshDesktopAppId: appId,
       dshDesktopFlavor: identity.flavor,
+      dshDesktopUpdatesEnabled: update !== undefined,
       dshDesktopUpdateChannel: update?.channel ?? 'nightly',
       ...(policy === undefined ? {} : { dshMandatoryUpdatePolicy: policy }),
       ...buildVersion === productVersion ? {} : { version: buildVersion },

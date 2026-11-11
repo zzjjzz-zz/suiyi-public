@@ -69,10 +69,10 @@ describe('categoriesOf', () => {
 
 describe('instanceOf and rowState', () => {
   const instances: PluginInstanceView[] = [
-    { pluginId: 'alpha', releaseVersion: '1.0.0', state: 'enabled', added: true },
-    { pluginId: 'beta', releaseVersion: '0.9.0', state: 'error', error: 'starting failed', added: true },
-    { pluginId: 'gamma', releaseVersion: '1.0.0', state: 'connecting', added: true },
-    { pluginId: 'delta', releaseVersion: '1.0.0', state: 'disabled', added: false },
+    { pluginId: 'alpha', releaseVersion: '1.0.0', state: 'enabled', authorized: true, added: true },
+    { pluginId: 'beta', releaseVersion: '0.9.0', state: 'error', authorized: true, error: 'starting failed', added: true },
+    { pluginId: 'gamma', releaseVersion: '1.0.0', state: 'connecting', authorized: true, added: true },
+    { pluginId: 'delta', releaseVersion: '1.0.0', state: 'disabled', authorized: false, added: false },
   ]
 
   it('finds the instance of a plugin and reports a missing one as not enabled', () => {
@@ -97,10 +97,10 @@ describe('instanceOf and rowState', () => {
 
   it('keeps an added but disabled row and treats a removed row as not added', () => {
     const paused: PluginInstanceView = {
-      pluginId: 'paused', releaseVersion: '1.0.0', state: 'disabled', added: true,
+      pluginId: 'paused', releaseVersion: '1.0.0', state: 'disabled', authorized: false, added: true,
     }
     const removed: PluginInstanceView = {
-      pluginId: 'removed', releaseVersion: '1.0.0', state: 'disabled', added: false,
+      pluginId: 'removed', releaseVersion: '1.0.0', state: 'disabled', authorized: false, added: false,
     }
     const catalog = snapshot([plugin('paused'), plugin('removed')], [paused, removed])
     expect(isAdded(catalog, 'paused')).toBe(true)

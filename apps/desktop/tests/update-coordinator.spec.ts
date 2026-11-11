@@ -47,7 +47,7 @@ describe('desktop release metadata', () => {
 const coordinators: InstanceType<typeof DesktopUpdateCoordinator>[] = []
 afterEach(() => { for (const item of coordinators.splice(0)) item.dispose() })
 
-function fixture(channel: 'nightly' | 'stable' = 'nightly', version = '1.1.0-alpha.1', discard?: (updater: AppUpdater) => Promise<void>) {
+function fixture(channel: 'nightly' | 'stable' = 'nightly', version = '1.1.0-alpha.1', discard?: (updater: AppUpdater) => Promise<void>, enabled = true) {
   const events = new EventEmitter()
   const checkForUpdates = vi.fn(async () => ({
     isUpdateAvailable: true,
@@ -66,13 +66,33 @@ function fixture(channel: 'nightly' | 'stable' = 'nightly', version = '1.1.0-alp
   const updater = Object.assign(events, { checkForUpdates, downloadUpdate, quitAndInstall }) as unknown as AppUpdater
   const coordinator = new DesktopUpdateCoordinator(
     (state) => { states.push(state); return state },
-    beforeRestart, updater, () => true, () => version, downloadResult, channel, discard,
+    beforeRestart, updater, () => enabled, () => version, downloadResult, channel, discard,
   )
   coordinators.push(coordinator)
   return { coordinator, updater, events, states, checkForUpdates, downloadUpdate, quitAndInstall, beforeRestart, downloadResult }
 }
 
 describe('desktop update coordinator', () => {
+  it('keeps disabled updates unavailable across every operation without touching the updater or settings', async () => {
+    const discard = vi.fn(async () => {})
+    const persist = vi.fn(async () => {})
+    const f = fixture('nightly', '1.0.0', discard, false)
+    expect(f.coordinator.state).toEqual({ phase: 'unavailable' })
+    expect(await f.coordinator.check()).toEqual({ phase: 'unavailable' })
+    expect(await f.coordinator.check(true)).toEqual({ phase: 'unavailable' })
+    expect(await f.coordinator.switchChannel('stable', persist)).toBe('unavailable')
+    expect(await f.coordinator.download('1.1.0')).toEqual({ phase: 'unavailable' })
+    expect(await f.coordinator.install('1.1.0')).toEqual({ phase: 'unavailable' })
+    f.coordinator.suspendConfiguration('unreadable settings')
+    expect(f.coordinator.state).toEqual({ phase: 'unavailable' })
+    expect(f.coordinator.configurationFailure).toBeUndefined()
+    expect(f.states).toEqual([])
+    expect(f.events.eventNames()).toEqual([])
+    for (const operation of [persist, discard, f.checkForUpdates, f.downloadUpdate, f.quitAndInstall, f.beforeRestart, f.downloadResult]) {
+      expect(operation).not.toHaveBeenCalled()
+    }
+  })
+
   it.each(['stop-failed', 'fullscreen-timeout'] as const)('keeps safe %s diagnostics separate and clears them on an explicit retry', async (kind) => {
     const f = fixture()
     await f.coordinator.check()

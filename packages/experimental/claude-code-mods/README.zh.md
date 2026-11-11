@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-在智能体运行中执行 [Claude Code 模组](https://code.claude.com/docs/en/plugins/mods/overview)：用 `defineMod` 包装模组的 `register(on, options)`，在本桥接之后作为插件挂载，其钩子即可通过同一套 `$`、`e`、`next` 链守卫工具调用、改写提示词、添加命令与工具、读取会话事实，并在提示框上方绘制一条横幅。桥接需要 `dsh-working-directory` 和 `dsh-agent`，每次 `$` 调用都落在一个已组合的 harness 服务上。它是 alpha 阶段的接口兼容性演示：未服务的事件在加载时报告，未服务的 `$` 成员以指明缺口的消息失败，[兼容性页面](../../../docs/subsystems/claude-code-mods.zh.md) 列出了全部差异。
+在智能体运行中执行 [Claude Code 模组](https://code.claude.com/docs/en/plugins/mods/overview)：用 `defineMod` 包装模组的 `register(on, options)`，在本桥接之后作为插件挂载，其钩子即可通过同一套 `$`、`e`、`next` 链守卫工具调用、改写提示词、添加命令与工具、读取会话事实，并在提示框上方绘制一条横幅。桥接需要 `dsh-working-directory` 和 `dsh-agent`，每次 `$` 调用都落在一个已组合的 harness 服务上。它是 alpha 阶段的接口兼容性演示：未服务的事件在加载时报告，未服务的 `$` 成员以指明缺口的消息失败，兼容性页面 列出了全部差异。
 
 ## 目录
 
@@ -53,7 +53,7 @@ export default defineMod({ name: 'token-weather', version: '0.1.0', root: import
 | `bandColumns` | `120` | 提示框上方横幅向 `ui.render` 报告的列数（`bodyColumns` 与 `viewport.columns`） |
 | `bandRows` | `10` | 横幅报告的 `maxRows` 行数 |
 
-生成的[配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-experimental-claude-code-mods)是所有可接受字段的完整来源。[examples](examples/) 目录以插件目录的形式收录了 Anthropic [Getting started with Claude Code mods](https://claude.dev/blog/getting-started-with-claude-code-mods/) 一文中的三个模组，它们同样可在 `claude --plugin-dir` 下运行：Token Weather 的已发布模块、类型与测试原样保留，Blast Radius 与 Replay Theater 则由已发布片段补全。[可选叠加层](cordis.source.patch.yml)把桥接、三个模组与 [Web 横幅](../client-ui-claude-code-mods/README.zh.md)组合起来用于源码启动。
+生成的配置目录是所有可接受字段的完整来源。[examples](examples/) 目录以插件目录的形式收录了 Anthropic [Getting started with Claude Code mods](https://claude.dev/blog/getting-started-with-claude-code-mods/) 一文中的三个模组，它们同样可在 `claude --plugin-dir` 下运行：Token Weather 的已发布模块、类型与测试原样保留，Blast Radius 与 Replay Theater 则由已发布片段补全。[可选叠加层](cordis.source.patch.yml)把桥接、三个模组与 [Web 横幅](../client-ui-claude-code-mods/README.zh.md)组合起来用于源码启动。
 
 Blast Radius 的 DSH 包装使用当前运行的可执行文件提供 Node 计时子进程，因此 Proceed/Cancel 等待在 Windows 上不依赖 POSIX `sleep`。等待仍通过 `$.process.run` 执行，暂停钩子自身的运行时间预算，并随事件取消子进程。独立的 Claude Code hooks 模块默认使用 `sleep 0.25`；其预演命令也需要宿主机提供相应工具。
 
@@ -146,12 +146,12 @@ Blast Radius 的 DSH 包装使用当前运行的可执行文件提供 Node 计�
 <a id="further-exploration"></a>
 ## 进一步探索
 
-- [与 Claude Code 模组的兼容性](../../../docs/subsystems/claude-code-mods.zh.md) — 本桥接与 Claude Code 模组的每一处差异，以及修复或原因。
+- 与 Claude Code 模组的兼容性 — 本桥接与 Claude Code 模组的每一处差异，以及修复或原因。
 - [Claude Code 模组参考](https://code.claude.com/docs/en/plugins/mods/reference) — 本桥接镜像的事件、方法与限制。
 - [Web 横幅](../client-ui-claude-code-mods/README.zh.md) — 在输入停靠区绘制 `ui.render` 树的 Client 包。
 - [实验性包](../README.zh.md) — 发布策略与依赖隔离。
 - [Claude Code 钩子桥接](../hooks-claude-code/README.zh.md) — 设置钩子桥接；插件 `hooks.json` 中的设置钩子需要 `dsh-hooks-claude-code`。
-- [工具执行流水线](../../../docs/tool-execution-pipeline.zh.md) — `tool.call` 所包裹的瀑布流。
+- 工具执行流水线 — `tool.call` 所包裹的瀑布流。
 - [人类命令](../../interaction/commands/README.zh.md) — `$.command.register` 落到的注册表。
 
 -----
@@ -198,13 +198,13 @@ Message from the "<plugin>" mod:
 
 <a id="known-limitations-and-deferred-work"></a>
 
-这些限制描述 Claude Code 模组经本桥接运行时行为不同之处；[兼容性页面](../../../docs/subsystems/claude-code-mods.zh.md) 是完整清单。它们是当前的包约束，不是任务积压。
+这些限制描述 Claude Code 模组经本桥接运行时行为不同之处；兼容性页面 是完整清单。它们是当前的包约束，不是任务积压。
 
 - **一个绘制表面** — 服务 `AbovePrompt`；`Pane`、其他渲染位点、`Input`、热键、`ui.press`、`ui.input`、`ui.select`、`ui.focus`、`ui.scroll` 不服务：`$.ui.open` 回答 `{ isPlaced: false }`，`$.ui.log`、`$.ui.toast`、`$.ui.status` 到达宿主日志而非 GUI。钩子按 `bandColumns` 列宽的横幅绘制；Web 横幅会换行。按钮的 `onPress` 没有时间限制；挂起的 `onPress` 会让横幅的按钮保持禁用直到它结束。
 - **`next` 只运行一次** — 调用 `next` 两次的钩子得到第一次的运行；Claude Code 会再次运行下层链。在其 `next` 仍在运行时作答的钩子会等待该次运行。
 - **未服务的事件** — `tool.check`、`tool.describe`、`turn.step`、其他 `prompt.*` 事件、`command.describe`、`config.*`、`session.compact`、`session.receive`、`session.send`、`session.append`、`session.attach`、`session.detach`、`session.measure`、`agent.*`、`plugin.register`、`engine.create`、`telemetry.*` 可注册、永不触发，并在加载时以警告点名；`classic.*` 名字与任何未知事件一样在 `register` 时被拒绝。
 - **未服务的 `$` 命名空间** — `$.model`、`$.agent`、`$.config`、`$.settings`、`$.mcp`、`$.audio`、`$.telemetry`、`$.turn`、`$.ui.notice`、`$.ui.blit`、`$.ui.copy`、`$.fs.ancestors`、`$.process.spawn` 以及 `$.session.repo`、`send`、`append`、`authorize`、`compact`、`surfaces` 以 `no implementation` 拒绝。`$.model.complete` 等待一个写入日志的副请求事件，以便模组的模型调用仍可从 Session 日志重建。
-- **`tool.call` 在权限决定之后运行** — Claude Code 在其权限检查之前运行模组的 `tool.call` 钩子；此处 harness 的 `tools/pre-execute` 瀑布流（含审批）先行结束。改写传给 `next` 的参数或改名工具的钩子会被跳过并报告（参数情形指向[工具前输入改写提案](../../../.agents/notes/proposed/feature/2026-06-30-pre-tool-input-rewrite.zh.md)），因为已写入日志的调用按原样运行。
+- **`tool.call` 在权限决定之后运行** — Claude Code 在其权限检查之前运行模组的 `tool.call` 钩子；此处 harness 的 `tools/pre-execute` 瀑布流（含审批）先行结束。改写传给 `next` 的参数或改名工具的钩子会被跳过并报告（参数情形指向工具前输入改写提案），因为已写入日志的调用按原样运行。
 - **一个进程，多个会话** — 模组的模块级变量与 `$.env.set` 写入由进程内所有会话与插件共享，而 Claude Code 每进程一个会话；按会话的值请放在 `$.state`。`session.start` 与 `session.end` 只为根 Agent 触发。根身份判定排除 Session `origin: 'subagent'`，挂载 Agent 注册表时还要求精确的在线实例。
 - **无沙箱、无静态分析、无热重载** — 钩子模块以 Node 全局对象在进程内运行，拥有本进程的全部权限（环境变量、网络、文件系统与工具）；仅 `$` 访问规则、`claude plugin validate`、类型生成、`--plugin-dir` 监视与会话内模组编写流程均未实现。只挂载你愿意作为插件运行的模组。再次挂载模组会在同一已求值模块上重新运行 `register`，模块级变量保留其值。
 - **`turn.complete` 文本** — 钩子返回的 `{ text }` 到达宿主日志，而非答案下方的一行；`durationMs` 从该轮的 `turn/start` 起算。

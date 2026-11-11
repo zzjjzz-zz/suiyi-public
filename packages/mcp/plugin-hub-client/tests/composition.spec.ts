@@ -80,8 +80,8 @@ describe('plugin hub real composition', () => {
       expect(initial.plugins.map(plugin => plugin.pluginId)).toEqual(['demo', 'other'])
       expect(initial.plugins[1]?.allowedTools[0]?.description).toBeUndefined()
       expect(initial.instances).toEqual([
-        { pluginId: 'demo', releaseVersion: '1.0.0', state: 'disabled', added: false },
-        { pluginId: 'other', releaseVersion: '1.0.0', state: 'disabled', added: false },
+        { pluginId: 'demo', releaseVersion: '1.0.0', state: 'disabled', authorized: false, added: false },
+        { pluginId: 'other', releaseVersion: '1.0.0', state: 'disabled', authorized: false, added: false },
       ])
       expect(platform.catalogAuthorization).toContain('Bearer fixture-secret')
 
@@ -173,7 +173,7 @@ describe('plugin hub real composition', () => {
     try {
       const catalog = await third.hub.refresh()
       expect(catalog.plugins[0]?.releaseVersion).toBe('2.0.0')
-      expect(catalog.instances).toEqual([{ pluginId: 'demo', releaseVersion: '2.0.0', state: 'disabled', added: false }])
+      expect(catalog.instances).toEqual([{ pluginId: 'demo', releaseVersion: '2.0.0', state: 'disabled', authorized: false, added: false }])
       expect(third.ctx.tools.get(toolName('demo', 'ping'))).toBeUndefined()
       expect(await persistedAuthorizations(prepared.profile.patchPath)).toEqual([])
 
@@ -216,7 +216,7 @@ describe('plugin hub real composition', () => {
       // Host; this account starts from an empty published catalog.
       expect(await second.hub.catalog()).toEqual({ plugins: [], catalogVersion: '', instances: [], enabled: true })
       const refreshed = await second.hub.refresh()
-      expect(refreshed.instances).toEqual([{ pluginId: 'demo', releaseVersion: '1.0.0', state: 'disabled', added: false }])
+      expect(refreshed.instances).toEqual([{ pluginId: 'demo', releaseVersion: '1.0.0', state: 'disabled', authorized: false, added: false }])
       expect(second.ctx.tools.get(toolName('demo', 'ping'))).toBeUndefined()
       // The refresh also removes the previous account's decision from Settings.
       expect(await persistedAuthorizations(prepared.profile.patchPath)).toEqual([])
@@ -288,8 +288,10 @@ describe('plugin hub real composition', () => {
       unregister = booted.ctx.tools.register(stale)
       await expect(booted.hub.disable('demo')).rejects.toMatchObject({ code: 'plugin-hub/instance-failed' })
       expect((await booted.hub.catalog()).instances).toMatchObject([
-        { pluginId: 'demo', state: 'error', error: 'The previous plugin instance did not close cleanly.' },
+        { pluginId: 'demo', state: 'error', authorized: false, error: 'The previous plugin instance did not close cleanly.' },
       ])
+      await expect(booted.hub.disable('demo')).rejects.toMatchObject({ code: 'plugin-hub/instance-failed' })
+      expect((await booted.hub.catalog()).instances).toMatchObject([{ state: 'error', authorized: false }])
       unregister()
       unregister = undefined
       await booted.hub.disable('demo')
@@ -325,7 +327,7 @@ describe('plugin hub real composition', () => {
       platform.publish([{ pluginId: 'demo', releaseVersion: '2.0.0', tools: ['ping'], advertisedTools: [] }], 'catalog-2')
       const reconciled = await booted.hub.refresh()
       expect(reconciled.instances).toMatchObject([
-        { pluginId: 'demo', releaseVersion: '1.0.0', state: 'error', error: 'The previous plugin instance did not close cleanly.' },
+        { pluginId: 'demo', releaseVersion: '1.0.0', state: 'error', authorized: false, error: 'The previous plugin instance did not close cleanly.' },
       ])
       unregister()
       unregister = undefined
@@ -418,12 +420,12 @@ describe('plugin hub real composition', () => {
     try {
       await first.hub.refresh()
       expect((await first.hub.catalog()).instances).toEqual([
-        { pluginId: 'demo', releaseVersion: '1.0.0', state: 'disabled', added: false },
+        { pluginId: 'demo', releaseVersion: '1.0.0', state: 'disabled', authorized: false, added: false },
       ])
 
       await first.hub.add('demo')
       expect((await first.hub.catalog()).instances).toEqual([
-        { pluginId: 'demo', releaseVersion: '1.0.0', state: 'disabled', added: true },
+        { pluginId: 'demo', releaseVersion: '1.0.0', state: 'disabled', authorized: false, added: true },
       ])
       expect(first.ctx.tools.get(toolName('demo', 'ping'))).toBeUndefined()
       expect(await persistedAuthorizations(prepared.profile.patchPath)).toEqual([
@@ -470,7 +472,7 @@ describe('plugin hub real composition', () => {
       await third.hub.removeInstance('demo')
       expect(await persistedAuthorizations(prepared.profile.patchPath)).toEqual([])
       expect((await third.hub.catalog()).instances).toEqual([
-        { pluginId: 'demo', releaseVersion: '1.0.0', state: 'disabled', added: false },
+        { pluginId: 'demo', releaseVersion: '1.0.0', state: 'disabled', authorized: false, added: false },
       ])
     } finally {
       await third.ctx.fiber.dispose()
@@ -577,6 +579,72 @@ describe('plugin hub real composition', () => {
       await booted.ctx.fiber.dispose()
       await removeHubProfile(prepared.home)
       if (!platformClosed) await platform.close()
+    }
+  })
+})
+
+/** Number of hub guard effects registered on the root tools registry. */
+function rootGuardCount(ctx: Context): number {
+  return ctx.root.fiber.getEffects().filter(effect => effect.label === 'tools.guard()').length
+}
+
+describe('plugin hub guard lifetime across whole-service disposal', () => {
+  it('removes the root-owned guard after a clean disposal and every hub tool is gone', { timeout: 20_000 }, async () => {
+    const platform = await startPlatformFixture({ authorization: 'Bearer fixture-secret', plugins: [DEMO] })
+    const prepared = await prepareHubProfile(platform.url)
+    const credentials = fixtureCredentials({ PLUGIN_HUB_TOKEN: 'fixture-secret' })
+    const booted = await bootHubProfile(prepared.profile, credentials)
+    try {
+      await booted.hub.refresh()
+      await booted.hub.enable('demo')
+      await waitForTool(booted.ctx, toolName('demo', 'ping'), true)
+      expect(rootGuardCount(booted.ctx)).toBe(1)
+      await booted.hubEntry.fiber?.dispose()
+      expect(booted.ctx.tools.get(toolName('demo', 'ping'))).toBeUndefined()
+      expect(rootGuardCount(booted.ctx)).toBe(0)
+    } finally {
+      await booted.ctx.fiber.dispose()
+      await removeHubProfile(prepared.home)
+      await platform.close()
+    }
+  })
+
+  it('retains the guard while a hub-namespaced tool survives disposal', { timeout: 20_000 }, async () => {
+    const platform = await startPlatformFixture({ authorization: 'Bearer fixture-secret', plugins: [DEMO] })
+    const prepared = await prepareHubProfile(platform.url)
+    const credentials = fixtureCredentials({ PLUGIN_HUB_TOKEN: 'fixture-secret' })
+    const booted = await bootHubProfile(prepared.profile, credentials)
+    const orphan = `mcp__${namespaceForPlugin('demo')}__orphan`
+    let executed = false
+    let unregister: (() => void) | undefined
+    try {
+      await booted.hub.refresh()
+      await booted.hub.enable('demo')
+      await waitForTool(booted.ctx, toolName('demo', 'ping'), true)
+      unregister = booted.ctx.tools.register({
+        name: orphan,
+        description: 'tool that outlives the disposed service',
+        parameters: { type: 'object', properties: {} },
+        output: { schema: { type: 'string' }, render: () => [{ type: 'text', text: 'orphan' }] },
+        execute: () => { executed = true; return Promise.resolve('orphan') },
+      })
+      await booted.hubEntry.fiber?.dispose()
+      expect(booted.ctx.tools.get(orphan)).toBeDefined()
+      expect(rootGuardCount(booted.ctx)).toBe(1)
+      const denied = await executeToolFixture(booted.ctx, {
+        signal: TEST_SIGNAL,
+        callId: ToolCallId('orphan-call'),
+        name: orphan,
+        arguments: {},
+      })
+      expect(executed).toBe(false)
+      expect(denied.isError).toBe(true)
+      expect(platform.calls).toEqual([])
+    } finally {
+      unregister?.()
+      await booted.ctx.fiber.dispose()
+      await removeHubProfile(prepared.home)
+      await platform.close()
     }
   })
 })

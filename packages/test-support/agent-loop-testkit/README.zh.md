@@ -103,7 +103,7 @@ harness 不会挂载任何 LLM（大语言模型）适配器。若测试发送�
 - [Agent loop 包](../../core/agent-loop/README.zh.md)——本辅助函数为生产行为挂载的具体 loop。
 - [会话包](../../core/session/README.zh.md)——生产 Inbox 行为使用的持久事件日志。
 - [LLM 包](../../llm/llm/README.zh.md)——本辅助函数准备的 LLM 运行时与适配器接口。
-- [测试策略](../../../docs/testing.zh.md)——这些测试对应的覆盖层级。
+- 测试策略——这些测试对应的覆盖层级。
 - [test-support 组索引](../README.zh.md)——兄弟 harness 与支持包。
 
 -----

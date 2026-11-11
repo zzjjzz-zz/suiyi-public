@@ -1,0 +1,9 @@
+- listitem:
+  - text: Needs retry
+  - button "Open demo": demo
+  - paragraph: Fixture plugin demo
+  - text: test/ 1 tool/ Version 1
+  - status: Needs retry The plugin failed to load.
+  - button "View permissions"
+  - button "Retry"
+  - button "Disable demo": Disable

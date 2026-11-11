@@ -181,14 +181,17 @@ export class PluginInstances {
     // Deny new calls before the transport starts closing; an in-flight call is
     // refused by the hub endpoint's own per-request authorization check.
     this.revokedNamespaces.set(record.namespace, pluginId)
-    this.records.delete(pluginId)
     try {
       await record.fiber.dispose()
     } finally {
       this.namespaceOwners.delete(record.namespace)
     }
     const left = [...record.publicToolNames].filter(name => this.owner.tools.get(name) !== undefined)
-    if (left.length > 0) throw new InstanceCleanupError(pluginId, left)
+    if (left.length > 0) {
+      record.state = 'error'
+      throw new InstanceCleanupError(pluginId, left)
+    }
+    this.records.delete(pluginId)
   }
 
   /**
@@ -243,19 +246,22 @@ export class PluginInstances {
   /**
    * One view per live or failed instance. Catalog rows without an entry are
    * reported by the service as `disabled`.
+   * @param authorized - approved releases keyed by plugin id; omission reports every instance unauthorized.
    * @returns instance views in insertion order.
    */
-  views(): PluginInstanceView[] {
+  views(authorized: ReadonlyMap<string, string> = new Map()): PluginInstanceView[] {
     const live = [...this.records.values()].map((record): PluginInstanceView => ({
       pluginId: record.pluginId,
       releaseVersion: record.releaseVersion,
       state: record.state,
+      authorized: authorized.get(record.pluginId) === record.releaseVersion,
       ...record.error === undefined ? {} : { error: record.error },
     }))
     const failed = [...this.failures.values()].map((failure): PluginInstanceView => ({
       pluginId: failure.pluginId,
       releaseVersion: failure.releaseVersion,
       state: 'error',
+      authorized: authorized.get(failure.pluginId) === failure.releaseVersion,
       error: failure.error,
     }))
     return [...live, ...failed]

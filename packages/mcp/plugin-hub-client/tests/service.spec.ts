@@ -124,7 +124,7 @@ describe('plugin hub service edges', () => {
       platform.publish([{ pluginId: 'demo', releaseVersion: '2.0.0', tools: ['ping'] }], 'catalog-2')
       const catalog = await hub.refresh()
       expect(catalog.plugins.map(plugin => plugin.releaseVersion)).toEqual(['2.0.0'])
-      expect(catalog.instances).toEqual([{ pluginId: 'demo', releaseVersion: '2.0.0', state: 'disabled', added: false }])
+      expect(catalog.instances).toEqual([{ pluginId: 'demo', releaseVersion: '2.0.0', state: 'disabled', authorized: false, added: false }])
       expect(errors).toHaveBeenCalled()
       await expect(hub.enable('demo')).rejects.toMatchObject({ code: 'plugin-hub/settings-unavailable' })
       await expect(hub.enable('absent')).rejects.toMatchObject({ code: 'plugin-hub/unknown-plugin' })

@@ -60,7 +60,7 @@ The bundle patch mounts the native provider and permission UI with `agentPreset:
 <a id="further-exploration"></a>
 ## Further Exploration
 
-[Computer use](../../../docs/subsystems/computer-use.md)
+Computer use
 
 -----
 

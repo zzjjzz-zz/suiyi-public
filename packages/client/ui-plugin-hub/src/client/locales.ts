@@ -7,6 +7,8 @@ export const en = {
   search: 'Search plugins',
   refresh: 'Refresh catalog',
   retry: 'Retry',
+  retryCleanup: 'Retry cleanup',
+  retryCleanupTitle: 'Retry cleanup for {name}',
   loading: 'Reading the plugin catalog',
   loadFailed: 'Could not read the plugin catalog',
   refreshFailed: 'Could not refresh the plugin catalog',
@@ -35,6 +37,7 @@ export const en = {
   statusConnecting: 'Adding',
   statusDisabled: 'Disabled',
   statusError: 'Needs retry',
+  statusCleanupFailed: 'Cleanup failed',
 
   statusEnabling: 'Enabling',
   statusRemoving: 'Removing',
@@ -62,6 +65,7 @@ export const en = {
   enableFailed: 'Could not enable this plugin',
 
   disableFailed: 'Could not disable this plugin',
+  cleanupFailedDetail: 'Authorization was withdrawn, but the plugin instance did not unload. Retry cleanup before enabling it again.',
 
   openPlugin: 'Open {name}',
   viewPermissions: 'View permissions',
@@ -109,6 +113,8 @@ export const zh = {
   search: '搜索插件',
   refresh: '刷新目录',
   retry: '重试',
+  retryCleanup: '重试清理',
+  retryCleanupTitle: '重试清理 {name}',
   loading: '正在读取插件目录',
   loadFailed: '无法读取插件目录',
   refreshFailed: '无法刷新插件目录',
@@ -137,6 +143,7 @@ export const zh = {
   statusConnecting: '添加中',
   statusDisabled: '已停用',
   statusError: '需重试',
+  statusCleanupFailed: '清理失败',
 
   statusEnabling: '正在启用',
   statusRemoving: '正在移除',
@@ -164,6 +171,7 @@ export const zh = {
   enableFailed: '无法启用此插件',
 
   disableFailed: '无法停用此插件',
+  cleanupFailedDetail: '授权已撤销，但插件实例未能卸载。再次启用前请重试清理',
 
   openPlugin: '查看 {name}',
   viewPermissions: '查看权限',
@@ -211,6 +219,8 @@ export const ja = {
   search: 'プラグインを検索',
   refresh: 'カタログを更新',
   retry: '再試行',
+  retryCleanup: 'クリーンアップを再試行',
+  retryCleanupTitle: '{name} のクリーンアップを再試行',
   loading: 'プラグインカタログを読み込み中',
   loadFailed: 'プラグインカタログを読み込めませんでした',
   refreshFailed: 'プラグインカタログを更新できませんでした',
@@ -239,6 +249,7 @@ export const ja = {
   statusConnecting: '追加中',
   statusDisabled: '無効',
   statusError: '再試行が必要',
+  statusCleanupFailed: 'クリーンアップに失敗',
 
   statusEnabling: '有効化中',
   statusRemoving: '削除中',
@@ -266,6 +277,7 @@ export const ja = {
   enableFailed: 'このプラグインを有効にできませんでした',
 
   disableFailed: 'このプラグインを無効化できませんでした',
+  cleanupFailedDetail: '認可は取り消されましたが、プラグインインスタンスをアンロードできませんでした。再度有効にする前にクリーンアップを再試行してください。',
 
   openPlugin: '{name} を開く',
   viewPermissions: '権限を表示',
@@ -313,6 +325,8 @@ export const es = {
   search: 'Buscar plugins',
   refresh: 'Actualizar catálogo',
   retry: 'Reintentar',
+  retryCleanup: 'Reintentar limpieza',
+  retryCleanupTitle: 'Reintentar limpieza de {name}',
   loading: 'Leyendo el catálogo de plugins',
   loadFailed: 'No se pudo leer el catálogo de plugins',
   refreshFailed: 'No se pudo actualizar el catálogo de plugins',
@@ -341,6 +355,7 @@ export const es = {
   statusConnecting: 'Añadiendo',
   statusDisabled: 'Desactivado',
   statusError: 'Requiere reintento',
+  statusCleanupFailed: 'Error de limpieza',
 
   statusEnabling: 'Activando',
   statusRemoving: 'Retirando',
@@ -368,6 +383,7 @@ export const es = {
   enableFailed: 'No se pudo activar este plugin',
 
   disableFailed: 'No se pudo desactivar este plugin',
+  cleanupFailedDetail: 'La autorización se retiró, pero la instancia del plugin no se descargó. Reintenta la limpieza antes de volver a activarlo.',
 
   openPlugin: 'Abrir {name}',
   viewPermissions: 'Ver permisos',
@@ -415,6 +431,8 @@ export const fr = {
   search: 'Rechercher des plugins',
   refresh: 'Actualiser le catalogue',
   retry: 'Réessayer',
+  retryCleanup: 'Réessayer le nettoyage',
+  retryCleanupTitle: 'Réessayer le nettoyage de {name}',
   loading: 'Lecture du catalogue de plugins',
   loadFailed: 'Impossible de lire le catalogue de plugins',
   refreshFailed: 'Impossible d’actualiser le catalogue de plugins',
@@ -443,6 +461,7 @@ export const fr = {
   statusConnecting: 'Ajout',
   statusDisabled: 'Désactivé',
   statusError: 'Nouvel essai requis',
+  statusCleanupFailed: 'Échec du nettoyage',
 
   statusEnabling: 'Activation',
   statusRemoving: 'Retrait',
@@ -470,6 +489,7 @@ export const fr = {
   enableFailed: 'Impossible d’activer ce plugin',
 
   disableFailed: 'Impossible de désactiver ce plugin',
+  cleanupFailedDetail: 'L’autorisation a été retirée, mais l’instance du plugin n’a pas été déchargée. Réessayez le nettoyage avant de le réactiver.',
 
   openPlugin: 'Ouvrir {name}',
   viewPermissions: 'Voir les autorisations',
@@ -517,6 +537,8 @@ export const de = {
   search: 'Plugins durchsuchen',
   refresh: 'Katalog aktualisieren',
   retry: 'Erneut versuchen',
+  retryCleanup: 'Bereinigung erneut versuchen',
+  retryCleanupTitle: 'Bereinigung für {name} erneut versuchen',
   loading: 'Plugin-Katalog wird gelesen',
   loadFailed: 'Der Plugin-Katalog konnte nicht gelesen werden',
   refreshFailed: 'Der Plugin-Katalog konnte nicht aktualisiert werden',
@@ -545,6 +567,7 @@ export const de = {
   statusConnecting: 'Wird hinzugefügt',
   statusDisabled: 'Deaktiviert',
   statusError: 'Erneut versuchen',
+  statusCleanupFailed: 'Bereinigung fehlgeschlagen',
 
   statusEnabling: 'Wird aktiviert',
   statusRemoving: 'Wird entfernt',
@@ -572,6 +595,7 @@ export const de = {
   enableFailed: 'Dieses Plugin konnte nicht aktiviert werden',
 
   disableFailed: 'Dieses Plugin konnte nicht deaktiviert werden',
+  cleanupFailedDetail: 'Die Autorisierung wurde zurückgezogen, aber die Plugin-Instanz wurde nicht entladen. Versuchen Sie die Bereinigung erneut, bevor Sie das Plugin wieder aktivieren.',
 
   openPlugin: '{name} öffnen',
   viewPermissions: 'Berechtigungen anzeigen',
@@ -619,6 +643,8 @@ export const ru = {
   search: 'Поиск плагинов',
   refresh: 'Обновить каталог',
   retry: 'Повторить',
+  retryCleanup: 'Повторить очистку',
+  retryCleanupTitle: 'Повторить очистку {name}',
   loading: 'Чтение каталога плагинов',
   loadFailed: 'Не удалось прочитать каталог плагинов',
   refreshFailed: 'Не удалось обновить каталог плагинов',
@@ -647,6 +673,7 @@ export const ru = {
   statusConnecting: 'Добавление',
   statusDisabled: 'Отключён',
   statusError: 'Нужен повтор',
+  statusCleanupFailed: 'Ошибка очистки',
 
   statusEnabling: 'Включение',
   statusRemoving: 'Удаление',
@@ -674,6 +701,7 @@ export const ru = {
   enableFailed: 'Не удалось включить этот плагин',
 
   disableFailed: 'Не удалось отключить этот плагин',
+  cleanupFailedDetail: 'Авторизация отозвана, но экземпляр плагина не был выгружен. Повторите очистку перед повторным включением.',
 
   openPlugin: 'Открыть {name}',
   viewPermissions: 'Показать разрешения',
@@ -721,6 +749,8 @@ export const pt = {
   search: 'Pesquisar plugins',
   refresh: 'Atualizar catálogo',
   retry: 'Tentar novamente',
+  retryCleanup: 'Tentar limpeza novamente',
+  retryCleanupTitle: 'Tentar limpeza de {name} novamente',
   loading: 'Lendo o catálogo de plugins',
   loadFailed: 'Não foi possível ler o catálogo de plugins',
   refreshFailed: 'Não foi possível atualizar o catálogo de plugins',
@@ -749,6 +779,7 @@ export const pt = {
   statusConnecting: 'Adicionando',
   statusDisabled: 'Desativado',
   statusError: 'Precisa de nova tentativa',
+  statusCleanupFailed: 'Falha na limpeza',
 
   statusEnabling: 'Ativando',
   statusRemoving: 'Removendo',
@@ -776,6 +807,7 @@ export const pt = {
   enableFailed: 'Não foi possível ativar este plugin',
 
   disableFailed: 'Não foi possível desativar este plugin',
+  cleanupFailedDetail: 'A autorização foi retirada, mas a instância do plugin não foi descarregada. Tente a limpeza novamente antes de ativá-lo de novo.',
 
   openPlugin: 'Abrir {name}',
   viewPermissions: 'Ver permissões',

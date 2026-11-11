@@ -48,7 +48,7 @@ The task and run options use these settings:
 | `json` | `false` | Project the run as newline-delimited events on stdout |
 | `permissionMode` | session policy | Apply a configured permission preset before submitting the task, including on resume |
 
-The generated [configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-headless) is the exhaustive source for every accepted field and its JSDoc.
+The generated configuration catalog is the exhaustive source for every accepted field and its JSDoc.
 
 <a id="credentials"></a>
 ### Credentials
@@ -160,7 +160,7 @@ Read these pages when you want to go deeper into the shared core, the sibling GU
 - [dsh-base](../base/README.md) — the shared core headless runs on.
 - [dsh-web-app](../web-app/README.md) — the interactive browser sibling for multi-turn work.
 - [dsh-cmdline](../../boot/cmdline/README.md) — how the launcher hands the command line to the app.
-- [Generated configuration catalog](../../../docs/config-catalog.md#deepseek-aidsh-headless) — every accepted config field and its source declaration.
+- Generated configuration catalog — every accepted config field and its source declaration.
 
 -----
 
@@ -181,8 +181,8 @@ The runner adds nothing to the request prefix; it only drives one user message t
 These limits tell you when headless does not fit and what it needs from the `dsh` launcher. They are current package constraints, not a general CLI comparison or a task backlog.
 
 - **One task per run** — after the task is answered the process exits; there is no interactive follow-up, so split multi-step work into separate runs.
-- **Final background-job settlement may be absent from persisted history** — process teardown can end Session routing or close its writer before an owned job settles, including normal completion and signal shutdown; the [job lifecycle contract](../../../docs/subsystems/jobs.md#session-lifecycle-records) defines how consumers retain incomplete intervals.
-- **Custom startup** — compositions that disable `headless-startup` must [configure the policy directly](../../../docs/upgrade-guide/v0.2.1-rc.2/headless-policy-composition/guide.md).
+- **Final background-job settlement may be absent from persisted history** — process teardown can end Session routing or close its writer before an owned job settles, including normal completion and signal shutdown; the job lifecycle contract defines how consumers retain incomplete intervals.
+- **Custom startup** — compositions that disable `headless-startup` must configure the policy directly.
 - **Windows extra roots** — the ACL backend rejects subprocess calls with extra roots when a tool executes; it does not stop the model request. Filesystem tools enforce the grants independently. See [platform limits](../../sandbox/sandbox-local/README.md).
 - **Runs through the `dsh` launcher** — starting the headless profile another way fails at startup, because only the launcher can request the process exit.
 - **No pre-token heartbeat** — in default mode stderr stays silent until the provider emits a non-empty reasoning delta; a delayed first token exposes no earlier progress signal.

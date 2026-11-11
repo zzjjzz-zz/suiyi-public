@@ -47,6 +47,8 @@ kind: "package-reference"
 
 ### 「通用」分区
 
+Desktop 报告更新不可用时，更新渠道行和桌面设置会说明需要手动安装新版。它们不提供更新操作，侧栏的两种更新指示也不会显示。更新不可用与检查失败、已确认当前版本为最新版是不同状态。
+
 完成提醒默认关闭。点击开关后申请当前浏览器的通知权限，再将意图保存到 `ui-settings-general.turnCompleteNotification`。仅实时成功完成的回答发送包含会话标题的通知；历史重放、取消和错误不通知。权限撤销或投递失败显示为未启用，但保留原有意图，设置行可清除该意图。连接中断、Host 重置和卸载会关闭通知，并使尚未结束的权限申请失效。
 
 遂意通过共用导航和设置快捷键离开整页设置。账号行使用原型的人形和下拉箭头轮廓；箭头保持各主题的弱化颜色与行内对齐。卡片间距为 20 px，标题高 44 px，设置行至少高 77 px（视口窄于 768 px 时为 73 px）；状态和错误提示可撑高行，控件不会被裁切。
@@ -120,7 +122,7 @@ Web 与桌面端的通用设置底部显示当前发布版本，使用构建注�
 - [ui-sidebar](../ui-sidebar/README.zh.md)——承载 `sidebar.settings` 席位的侧边栏外壳。
 - [ui-settings-models](../ui-settings-models/README.zh.md)——贡献 DeepSeek 引导步骤的功能包。
 - [settings](../../settings/README.zh.md)——持久化用户设置 seam 及其文件提供方。
-- [slot 系统标准](../../../.agents/notes/implemented/architecture/2026-07-22-slot-type-chain-implementation.zh.md)——账本背后的组合模型。
+- slot 系统标准——账本背后的组合模型。
 
 -----
 

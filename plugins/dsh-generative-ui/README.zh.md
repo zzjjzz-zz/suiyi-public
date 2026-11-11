@@ -70,7 +70,7 @@ dsh plugin --profile web add link:/path/to/dsh-generative-ui
 - **`src/prompt.ts`** 随每次请求发送，因此只携带触发条件、围栏语法、画布路径与颜色 token。
 - **`skill/SKILL.md`** 通过 `ctx.skills.register()` 注册，只在模型主动取用时加载。它承载 UI 与行内／画布的选择，再指向 `skill/references/` 中按主题拆分的文件以给出编写细节。
 
-这种拆分是实测出来的，不是假设——见 [CLAUDE.md](./CLAUDE.md) §4.5 中支撑它的 40 条提示词评测。
+这种拆分是实测出来的，不是假设——见 CLAUDE.md §4.5 中支撑它的 40 条提示词评测。
 
 ## 开发
 
@@ -79,7 +79,7 @@ bun install
 bun run check     # lint + typecheck + build + smoke
 ```
 
-`bun run build` 用 `Bun.build` 打包两半。[CLAUDE.md](./CLAUDE.md) 是设计文档——它记录本插件开发时所依据的宿主约束，每一条都是实际踩出来的。
+`bun run build` 用 `Bun.build` 打包两半。CLAUDE.md 是设计文档——它记录本插件开发时所依据的宿主约束，每一条都是实际踩出来的。
 
 ## 许可
 

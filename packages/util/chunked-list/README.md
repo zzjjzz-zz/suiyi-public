@@ -60,7 +60,7 @@ The newest chunk stores up to 64 values. Appends copy at most that chunk and sha
 ## Further Exploration
 
 - [Utility package map](../README.md) — shared primitives.
-- [Subagent catalog decision](../../../.agents/notes/implemented/architecture/2026-09-01-parent-owned-subagent-catalog.md) — why projection state uses chunks.
+- Subagent catalog decision — why projection state uses chunks.
 
 -----
 

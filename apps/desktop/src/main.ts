@@ -8,7 +8,7 @@ import { isDesktopUpdateChannel } from './settings-file.ts'
 import type { ProductEventMap, ProductEvent } from '@deepseek-ai/dsh-client-product-analytics/types'
 import { SUIYI_WINDOWS_TITLEBAR_HEIGHT, WINDOWS_TITLEBAR_HEIGHT } from './windows-layout.ts'
 import { desktopIdentity, isDesktopOpenUrl } from './product-identity.ts'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { access, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -47,8 +47,9 @@ import {
 import { readDeviceInfo } from './device-info.ts'
 import { desktopUpdateReadyConfirmation, formatDesktopMessage, resolveDesktopLocale, resolveDesktopStartupLocale } from './locale.ts'
 import type { DesktopMessages } from './locale.ts'
-import { claimDesktopSingleInstance } from './single-instance.ts'
+import { claimDesktopSingleInstance, requestsUninstallQuit } from './single-instance.ts'
 import { desktopUpdateChannel } from './update-channel.ts'
+import { desktopUpdatesEnabled } from './update-capability.ts'
 import { DesktopUpdateCoordinator } from './update-coordinator.ts'
 import { prepareDesktopUpdateWindow } from './update-window.ts'
 import { DesktopCommandManager } from './command-management.ts'
@@ -401,6 +402,8 @@ function createWindow(preload: string, show = false, primary = false): BrowserWi
 }
 
 async function main(): Promise<void> {
+  const manifest: unknown = JSON.parse(await readFile(join(app.getAppPath(), 'package.json'), 'utf8'))
+  const updatesEnabled = desktopUpdatesEnabled(manifest, app.isPackaged, existsSync(join(process.resourcesPath, 'app-update.yml')))
   // Suiyi runs one verified identity-center login before any window, Host, or
   // settings read exists; the DeepSeek account login below stays untouched.
   let suiyiIdentity: SuiyiVerifiedIdentity | undefined
@@ -559,7 +562,8 @@ async function main(): Promise<void> {
     stopHost: async (): Promise<void> => {},
     clearBrowserStorage: async (): Promise<void> => {},
   }
-  const desktopSettings = await readDesktopSettings(app.getPath('userData'))
+  const desktopSettings = updatesEnabled ? await readDesktopSettings(app.getPath('userData'))
+    : { updates: { allowTestAuthPopupWindow: false } }
   void pruneCrashReports(app.getPath('logs'))
   const journalDirectory = process.env.DSH_DESKTOP_UPDATE_JOURNAL_DIR
   const updateJournal = journalDirectory === undefined ? undefined : new DesktopUpdateJournal(journalDirectory, app.getVersion())
@@ -1053,12 +1057,12 @@ async function main(): Promise<void> {
     return startup
   }
 
-  const manifest: unknown = JSON.parse(await readFile(join(app.getAppPath(), 'package.json'), 'utf8'))
   const packagedChannel = desktopUpdateChannel(manifest)
   const channelSettings = new DesktopUpdateSettings(app.getPath('userData'), packagedChannel)
-  const initialChannel = await channelSettings.load()
-  channelState = { channel: initialChannel.kind === 'ready' ? initialChannel.channel : null,
+  const initialChannel = updatesEnabled ? await channelSettings.load() : { kind: 'ready' as const, channel: packagedChannel }
+  channelState = { channel: updatesEnabled && initialChannel.kind === 'ready' ? initialChannel.channel : null,
     packagedChannel, changing: false,
+    ...updatesEnabled ? {} : { unavailable: true as const },
     ...(initialChannel.kind === 'error' ? { error: configurationFailure(initialChannel.error) } : {}) }
   const updateChannel = initialChannel.kind === 'ready' ? initialChannel.channel : packagedChannel
   const updates = new DesktopUpdateCoordinator(
@@ -1116,10 +1120,11 @@ async function main(): Promise<void> {
       }
       return true
     },
-    undefined, desktopIdentity.suiyi ? () => false : undefined, undefined,
+    undefined, () => updatesEnabled, undefined,
     (success, reason) => { void track('desktop_upgrade_download_result', { is_success: success, ...reason === undefined ? {} : { error_reason: reason } }) },
     updateChannel,
   )
+  updateState = updates.state
 
   if (initialChannel.kind === 'error') updates.suspendConfiguration(initialChannel.error.path)
   const publishChannel = (state: DesktopChannelState): DesktopChannelState => {
@@ -1294,6 +1299,7 @@ async function main(): Promise<void> {
     assertProductSender(event)
     if (!isDesktopUpdateChannel(channel)) throw new Error('desktop update: unsupported channel')
     if (channelState === undefined) throw new Error('desktop update: settings are not initialized')
+    if (!updates.available) return { kind: 'unavailable', state: channelState }
     channelRequests++
     publishChannel({ ...channelState, changing: true })
     try {
@@ -1428,6 +1434,7 @@ async function main(): Promise<void> {
   let policyAuthenticationQueued = false
   /** Present check results only while their captured channel revision remains current. */
   const openUpdatePrompt = (manual = false): Promise<void> => {
+    if (!updates.available) return Promise.resolve()
     if (channelState?.error !== undefined) {
       return showConfigurationError()
     }
@@ -1553,9 +1560,9 @@ async function main(): Promise<void> {
 
   const automaticCheck = (): void => {
     if (!quitting) void mandatoryPolicy?.check('foreground-or-resume').catch((error: unknown) => { console.error(error) })
-    if (!quitting) void updateSchedule.check().catch((error: unknown) => { console.error(error) })
+    if (!quitting && updates.available) void updateSchedule.check().catch((error: unknown) => { console.error(error) })
   }
-  powerMonitor.on('resume', automaticCheck)
+  if (updates.available) powerMonitor.on('resume', automaticCheck)
   app.on('will-quit', () => {
     updateSchedule.dispose()
     powerMonitor.off('resume', automaticCheck)
@@ -1607,6 +1614,7 @@ async function main(): Promise<void> {
       { role: 'hideOthers', label: currentDesktopLocale().messages.hideOtherApplications },
       { role: 'unhide', label: currentDesktopLocale().messages.showAllApplications }, { type: 'separator' }]
     : []
+  const showCliMenu = !desktopIdentity.suiyi && (darwin || process.platform === 'win32')
   const applicationItems = (): MenuItemConstructorOptions[] => [
     // Windows has no system About panel; Electron's fallback is a plain
     // message box, so the shell shows its own dimmed dialog instead.
@@ -1614,9 +1622,9 @@ async function main(): Promise<void> {
       ? { label: currentDesktopLocale().messages.aboutMenu,
         click: () => { void showAbout().catch((error: unknown) => { console.error(error) }) } }
       : { label: currentDesktopLocale().messages.aboutMenu, role: 'about' },
-    { type: 'separator' },
-    { label: currentDesktopLocale().messages.checkUpdatesMenu, click: () => { void openUpdatePrompt(true) } },
-    ...!desktopIdentity.suiyi && (process.platform === 'darwin' || process.platform === 'win32')
+    ...(updates.available || showCliMenu) ? [{ type: 'separator' as const }] : [],
+    ...updates.available ? [{ label: currentDesktopLocale().messages.checkUpdatesMenu, click: () => { void openUpdatePrompt(true) } }] : [],
+    ...showCliMenu
       ? [{ label: currentDesktopLocale().messages.cliCommandMenu, click: () => { void commandManager.show() } }] : [],
     { type: 'separator' },
     ...development ? [
@@ -1974,7 +1982,7 @@ async function main(): Promise<void> {
   const policyInput: unknown = app.isPackaged
     ? ('dshMandatoryUpdatePolicy' in manifest ? manifest.dshMandatoryUpdatePolicy : undefined)
     : developmentPolicy === undefined ? undefined : JSON.parse(developmentPolicy) as unknown
-  const policyConfig = desktopIdentity.suiyi ? undefined : resolveDesktopPolicyConfig(policyInput, !app.isPackaged)
+  const policyConfig = updates.available ? resolveDesktopPolicyConfig(policyInput, !app.isPackaged) : undefined
   if (policyConfig !== undefined) {
     if (policyConfig.authentication === 'feishu-test') {
       policyAuth = new DesktopPolicyTestAuth(policyConfig.origin, policyConfig.allowedAuthOrigins, locale,
@@ -2033,9 +2041,14 @@ async function main(): Promise<void> {
   publishUpdate(updateState)
 }
 
-const ownsDesktopInstance = claimDesktopSingleInstance(app, () => { focusPrimaryWindow() })
+const ownsDesktopInstance = claimDesktopSingleInstance(app, (argv) => {
+  if (requestsUninstallQuit(argv, process.execPath)) { app.quit(); return }
+  focusPrimaryWindow()
+})
 
-if (ownsDesktopInstance) void app.whenReady().then(main).catch(async (error: unknown) => {
+if (ownsDesktopInstance && requestsUninstallQuit(process.argv, process.execPath)) {
+  app.exit(0)
+} else if (ownsDesktopInstance) void app.whenReady().then(main).catch(async (error: unknown) => {
   const message = error instanceof Error ? error.message : String(error)
   console.error(error)
   const diagnosticFile = process.env.DSH_DESKTOP_DIAGNOSTIC_FILE

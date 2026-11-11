@@ -31,7 +31,7 @@ kind: "package-group"
 <a id="related-documentation"></a>
 ## 相关文档
 
-- [计算机操作](../../docs/subsystems/computer-use.zh.md) — 能力归属和提供方选择。
+- 计算机操作 — 能力归属和提供方选择。
 - [Computer Use 组合包](../experimental/cua-bundle/README.zh.md)：启用原生 CUA 并使用权限管理功能。
 - [实验性包](../experimental/README.zh.md)：原生 CUA 包和 Cua Driver 适配包。
 

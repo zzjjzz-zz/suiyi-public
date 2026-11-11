@@ -93,12 +93,12 @@ kind: "package-reference"
 
 当包级约定不够用时阅读以下页面。它们从穷尽式约定逐步进入构建于其上的后端与消费方。
 
-- [文件系统子系统](../../../docs/subsystems/filesystem.zh.md)——穷尽式提供方约定、策略事件与错误分类体系。
+- 文件系统子系统——穷尽式提供方约定、策略事件与错误分类体系。
 - [fs-local](../fs-local/README.zh.md)——实现该约定的宿主文件系统后端。
 - [fs-sandbox](../fs-sandbox/README.zh.md)——实现该约定的沙箱强制后端。
 - [tool-fs](../tool-fs/README.zh.md)——消费 `ctx.fs` 的面向模型工具。
 - [fs-observation-policy](../fs-observation-policy/README.zh.md)——通过 `fs/*` 事件防护变更的策略插件。
-- [能力 seam 笔记](../../../.agents/notes/implemented/architecture/2026-06-13-capability-seams.zh.md)——文件系统栈为何拆分为约定、提供方、策略与工具。
+- 能力 seam 笔记——文件系统栈为何拆分为约定、提供方、策略与工具。
 
 -----
 

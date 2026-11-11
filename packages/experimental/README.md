@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-Install and compose experimental capabilities explicitly, without a product-support commitment. Package naming and publication follow the [experimental package policy](../../scripts/experimental-package-policy.ts). The [optional-bundle rule](../../.agents/notes/implemented/architecture/2026-09-21-experimental-capabilities-as-optional-bundles.md) determines which capabilities ship switched off with the installation for explicit selection in the GUI plugin manager’s Official group; the Liveshare owner bundle and its shared protocol package are among them. The [plugin manager page](../client/ui-plugin-manager/README.md#use-this-package) owns which bundles appear by default and how to enable hidden ones.
+Install and compose experimental capabilities explicitly, without a product-support commitment. Package naming and publication follow the [experimental package policy](../../scripts/experimental-package-policy.ts). The optional-bundle rule determines which capabilities ship switched off with the installation for explicit selection in the GUI plugin manager’s Official group; the Liveshare owner bundle and its shared protocol package are among them. The [plugin manager page](../client/ui-plugin-manager/README.md#use-this-package) owns which bundles appear by default and how to enable hidden ones.
 
 ## Table of Contents
 
@@ -27,7 +27,7 @@ Install and compose experimental capabilities explicitly, without a product-supp
 
 **Optional** means a user explicitly selects the capability. **Official** means the project maintains and lists the package in the Plugins page. Neither describes maturity; publication, default installation, and GUI visibility do not determine maturity either. Product packages outside this group have maintained product roles, while their public APIs still follow the repository's pre-stable policy.
 
-Promotion requires a named product role, documented public behavior and limitations, current consumers, release contents, and test evidence. Move the package to its product group and update affected consumers together. The [subtree rules](AGENTS.md) govern package naming, dependency isolation, and publication.
+Promotion requires a named product role, documented public behavior and limitations, current consumers, release contents, and test evidence. Move the package to its product group and update affected consumers together. The subtree rules govern package naming, dependency isolation, and publication.
 
 -----
 
@@ -104,12 +104,12 @@ Promotion requires a named product role, documented public behavior and limitati
 ## Related documentation
 
 - [Experimental publication reference](../../scripts/experimental-package-policy.ts) — public defaults and private exceptions.
-- [Worktrees](../../docs/subsystems/worktrees.md) — explicit branch and checkout creation.
-- [Forges](../../docs/subsystems/forge.md) — change request providers, status polling, Session bindings, and the panel.
-- [Computer use](../../docs/subsystems/computer-use.md) — desktop provider choices.
-- [Browser use](../../docs/subsystems/browser-use.md) — browser provider choices and Session ownership.
-- [Agent Teams subsystem](../../docs/subsystems/agent-team.md) — durable Team types and the `ctx.agentTeams` service API.
-- [Experimental subtree rules](AGENTS.md) — what experimental status does and does not relax.
+- Worktrees — explicit branch and checkout creation.
+- Forges — change request providers, status polling, Session bindings, and the panel.
+- Computer use — desktop provider choices.
+- Browser use — browser provider choices and Session ownership.
+- Agent Teams subsystem — durable Team types and the `ctx.agentTeams` service API.
+- Experimental subtree rules — what experimental status does and does not relax.
 
 -----
 

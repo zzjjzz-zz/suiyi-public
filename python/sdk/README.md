@@ -8,6 +8,8 @@ Python subprocess SDK for driving DeepSeek Harness over newline-delimited JSON-R
 python -m pip install deepseek-harness-sdk
 ```
 
+Requires Python 3.10 or newer and `pydantic>=2.14.1,<3`. Existing dependency constraints must allow this range; see the Pydantic upgrade guide.
+
 ## Optional Office operations
 
 Download the Office runtime explicitly, then call the local API without an agent, Session, model request, API key, or Harness home:
@@ -147,6 +149,6 @@ For ordinary prompts, `Session.run()` owns an activity interval from its prompt'
 
 The selected home stores profiles, plugins, and every profile-owned durable resource. The full `sdk` profile uses its credentials, settings, and session stores; `sdk-minimal` uses JSONL session storage and stores images under `$DSH_HOME/attachments/v1`, with request-image cache under `$DSH_HOME/cache/attachments`. Use a fresh home when those resources must be isolated, and a fresh session id for independent work. Reusing both a harness and session id continues the durable conversation and session-owned resources.
 
-See the [Python tutorial](../../docs/user/guide/python-sdk.md), [runnable example](examples/README.md), and [runtime wheel reference](../sdk-runtime/README.md).
+See the Python tutorial, [runnable example](examples/README.md), and [runtime wheel reference](../sdk-runtime/README.md).
 
 `Session.get_working_directory()` reads the effective working directory; `set_working_directory(path)` changes it and returns the validated absolute path. Both create an unknown Session without running a model turn. Relative paths use that Session's current directory. Origin metadata, permissions, and existing processes remain unchanged. The low-level client provides the same methods with a leading `session_id` argument.

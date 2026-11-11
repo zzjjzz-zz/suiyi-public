@@ -54,7 +54,7 @@ Host 在页面和 Session 变化期间拥有准备任务：检查资源、下载
 <a id="further-exploration"></a>
 ## 进一步探索
 
-[语音输入子系统](../../../docs/subsystems/voice-input.zh.md)
+语音输入子系统
 
 -----
 

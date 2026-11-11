@@ -77,7 +77,7 @@ Auto 在每个受支持调用的 body 执行前审查一次，包括每个已开
 
 [`cordis.patch.yml`](cordis.patch.yml)把本包自身插入为 `auto-review` 行。[`src/index.ts`](src/index.ts)要求 approval、LLM、permission、Session 与 tools 服务，然后在同一个 effect 中安装 preset contribution 和置前的 pre-execute listener。Review 结束后，拒绝会读取 Session 的审批策略：`never` 下为最终拒绝；`ask` 下 listener 先交给后续 pre-execute listener，只有它们放行调用时才返回 tools 流水线的 `ask` 决定，因此后续的拒绝、取消或 `ask`（带自己的理由）优先。`ask` 决定携带英文审计理由，以及由 `src/locales.ts` 提供且保留原始 reviewer 理由的中英日提示文本。[权限 owner](../../interaction/permission-presets/README.zh.md)提供当前身份和进程目录；Auto 使用 Full access 的沙箱值与 `ask` 审批策略，不改变工具定义。
 
-Reviewer 以固定策略作为 system prompt，随后依次发送：一条仅含 cwd 的环境 user 消息、按 surface 顺序每个保留 Session 条目一条消息，最后是待审调用。项目指令出现在其进入 surface 的位置，并带约束角色。首次使用某个已审 schema 的调用之前有一条 `tool-schema` 条目；integration 为存活 Session 记住每次已审调用的 schema，使后续评审在同一位置重复它。原生 schema 来自最新 request header。PTC binding 冻结其 schema，经由调度器传入临时执行元数据；开始与结算事件都不序列化描述或参数 schema。主 agent 的 `system/message` 节点、assistant 正文与 reasoning、tool results 全部排除。外层评审输入是冻结的 `RequestUserInput`，不含持久身份或来源；保留历史在评审文本中仍携带原始来源。[决策记录](../../../.agents/notes/implemented/feature/2026-08-28-auto-review.zh.md)拥有权威、生命周期与 child 继承的理由。
+Reviewer 以固定策略作为 system prompt，随后依次发送：一条仅含 cwd 的环境 user 消息、按 surface 顺序每个保留 Session 条目一条消息，最后是待审调用。项目指令出现在其进入 surface 的位置，并带约束角色。首次使用某个已审 schema 的调用之前有一条 `tool-schema` 条目；integration 为存活 Session 记住每次已审调用的 schema，使后续评审在同一位置重复它。原生 schema 来自最新 request header。PTC binding 冻结其 schema，经由调度器传入临时执行元数据；开始与结算事件都不序列化描述或参数 schema。主 agent 的 `system/message` 节点、assistant 正文与 reasoning、tool results 全部排除。外层评审输入是冻结的 `RequestUserInput`，不含持久身份或来源；保留历史在评审文本中仍携带原始来源。决策记录拥有权威、生命周期与 child 继承的理由。
 
 卸载时先关闭选择与 review admission。如果应用根 context 仍活跃，卸载随后经由既有 preset writer 将存活 Auto Session 迁移到 Full access；这包括移除和重载插件。迁移写入 `never` 审批策略，不排入策略变更通知；模型在下一次 runtime-context 快照中看到新策略。沙箱值与持久终端在迁移中保持不变。应用关闭保留选中的预设与审批策略。两种路径都会先中止并等待在途 review 结清，再撤回 listener 与 contribution。持久 Auto Session 缺少完整 integration 时不能发布，即使重新打开的请求选择了其他预设也一样。重新打开前须再次加载 integration。重装只恢复选项，不把存活 Session 切回 Auto。
 
@@ -90,7 +90,7 @@ Reviewer 以固定策略作为 system prompt，随后依次发送：一条仅含
 
 - [实验包](../README.zh.md)——发布策略与依赖隔离。
 - [Web bundle](../../bundle/web-app/README.zh.md)——此 patch 扩展的稳定 profile。
-- [Auto review 决策](../../../.agents/notes/implemented/feature/2026-08-28-auto-review.zh.md)——固定风险策略、权威与生命周期。
+- Auto review 决策——固定风险策略、权威与生命周期。
 - [Tools](../../core/tools/README.zh.md)——执行、取消与 PTC 结果传播。
 
 -----
@@ -135,7 +135,7 @@ Reviewer 使用最新 `request/header.config` 的 provider 与模型，并沿用
 - Auto 不提供文件沙箱。外层 `run_code` transport 及PTC 程序内直接 Node 效果不经过 inner-tool review。
 - 模型分类可能出错。不提供确定性工具豁免、持久 grant、可配置策略或重试层。
 - 进程内 Auto child 独立审查自身调用。进程外 child 在父委派调用获准后保留原生权限系统。
-- reviewer 在带行级豁免的情况下，通过已废弃的同步 `snapshotEvents()` 读取 Session 动作历史。此前的调用、PTC start 与直接父级的初始 prompt 目前都没有投影或分页读取方，因此迁移按[同步读取决策](../../../.agents/notes/implemented/architecture/2026-09-09-deprecate-synchronous-session-event-reads.zh.md)继续延期。
+- reviewer 在带行级豁免的情况下，通过已废弃的同步 `snapshotEvents()` 读取 Session 动作历史。此前的调用、PTC start 与直接父级的初始 prompt 目前都没有投影或分页读取方，因此迁移按同步读取决策继续延期。
 
 <a id="dev-note"></a>
 ### 开发备注

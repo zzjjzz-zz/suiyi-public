@@ -48,7 +48,7 @@ kind: "package-reference"
 <a id="further-exploration"></a>
 ## 进一步探索
 
-- [文件系统子系统](../../../docs/subsystems/filesystem.zh.md) — 共享操作及错误含义。
+- 文件系统子系统 — 共享操作及错误含义。
 - [SSH 连接](../ssh/README.zh.md) — 部署与断连行为。
 
 -----

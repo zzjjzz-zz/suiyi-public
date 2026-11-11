@@ -58,7 +58,7 @@ const tool = defineContentToolFixture({
 ## 进一步探索
 
 - [工具包](../../core/tools/README.zh.md)——工具定义、注册表和执行策略。
-- [测试策略](../../../docs/testing.zh.md)——为生产行为选择验证方式。
+- 测试策略——为生产行为选择验证方式。
 - [test-support 分组地图](../README.zh.md)——同组测试工具。
 
 -----

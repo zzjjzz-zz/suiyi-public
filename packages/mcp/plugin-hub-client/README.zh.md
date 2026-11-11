@@ -65,7 +65,7 @@ kind: "package-reference"
 
 ### Remote 方法
 
-`catalog()` 返回最后一次已提交的目录，不访问平台。`refresh()` 使用当前账号的令牌读取并验证目录，清理已缺失或发布版本已变化的决定，然后协调实例。两者都返回 `{plugins, catalogVersion, instances, enabled}`；`instances` 为每个目录行保存一个 `PluginInstanceView`，并保留每次挂载或清理失败，每个视图都携带 `added`。
+`catalog()` 返回最后一次已提交的目录，不访问平台。`refresh()` 使用当前账号的令牌读取并验证目录，清理已缺失或发布版本已变化的决定，然后协调实例。两者都返回 `{plugins, catalogVersion, instances, enabled}`；`instances` 为每个目录行保存一个 `PluginInstanceView`，并保留每次挂载或清理失败，每个视图都携带 `added` 与 `authorized`。
 
 生命周期方法会在其他所有操作之后串行执行；当该行不在最后一次已提交的目录中时，以 `plugin-hub/unknown-plugin` 拒绝：
 
@@ -75,6 +75,8 @@ kind: "package-reference"
 | `enable(pluginId)` | 写入或替换当前发布版本并标记 `enabled: true` | 启动实例；挂载失败保留 `enabled: true` 并报告 `error` |
 | `disable(pluginId)` | 保留该行并标记 `enabled: false` | 将实例停止到静止；卸载失败保留可见错误 |
 | `removeInstance(pluginId)` | 删除该行 | 将实例停止到静止；卸载失败保留可见错误 |
+
+`authorized` 表示当前发布版本是否允许调用。`error` 且 `authorized: false` 表示需要清理；重试清理调用 `disable`，不会再次授予权限。
 
 重启只挂载发布版本仍匹配目录的 `enabled: true` 行。`added: true` 且状态为 `disabled` 表示已添加但已停止；`added: false` 且状态为 `disabled` 表示从未添加或已移除。
 
@@ -86,7 +88,7 @@ kind: "package-reference"
 
 `identity` 另外为该账号提供本地存储隔离；每条持久决定只保存其不透明作用域（issuer 与 subject 对的 SHA-256）。为其他身份写入的决定会在加载时被忽略，并在第一次成功刷新时从 Settings 中移除。该本地隔离不能替代平台的按用户授权；后端令牌仍是权威。启动器的身份绑定只读取继承的 `process` 层，因此 `.env` 文件无法替换账号。切换账号因此需要以新身份和新令牌启动新的 Host 进程；同一个 profile 绝不会继续提供上一个账号的目录或实例工具。
 
-V1 的每个 Host 只代表其所有者。所有 Remote 方法都拒绝非所有者 Peer。模型工具还要求 Agent 回合有所有者归属：非所有者输入会禁止整个回合，后续所有者补充不能放宽该回合，无法归属的 Agent 也会被拒绝。没有 Agent 的受信进程内调用仍可用于内部集成。
+V1 的每个 Host 只代表其所有者。所有 Remote 方法都拒绝非所有者 Peer。模型工具还要求 Agent 回合有所有者归属：非所有者输入会禁止整个回合，后续所有者补充不能放宽该回合，无法归属的 Agent 也会被拒绝。新建子代理从仍存活的创建者继承固定的授权上限；访客或未知归属的后代不能通过后续输入取得所有者权限。未观察到原始授权的历史子代理恢复后仍被拒绝。没有 Agent 的受信进程内调用仍可用于内部集成。
 
 平台地址、Authorization 头以及所有凭据值都留在 Host。跨越 Remote 边界的错误会被脱敏为失败类别；`plugin-hub/unavailable` 只报告 `network`、`timeout`、`http`、`unauthorized`、`invalid-response` 或 `too-large`，绝不携带地址或响应体。Host 会拒绝绝对地址、跨源地址或不属于该插件端点的 `mcpPath`，并且不跟随重定向，因此凭据不会被转发到其他源。
 
@@ -102,9 +104,9 @@ V1 的每个 Host 只代表其所有者。所有 Remote 方法都拒绝非所有
 
 退役命名空间会持续拒绝调用，直到替换实例成功启动。残留工具会阻止替换；挂载失败不会解除旧的拒绝规则。
 
-[守卫](src/guard.ts)注册在 `ctx.tools.guard` 上，因此在每个 `tools/pre-execute` 监听器之后、工具主体之前运行。它会拒绝命名空间已退役、活动发布版本不再被授权，或公开工具名不在冻结允许列表内的调用。插件中心 MCP 端点会对每个请求重新验证授权，因此该守卫是纵深防御，而不是唯一的强制点。
+[守卫](src/guard.ts)在每个 `tools/pre-execute` 监听器之后、工具主体之前运行。它由根工具注册表持有，直到所有插件中心工具撤回；插件卸载失败后也继续保留。它会拒绝命名空间已退役、活动发布版本不再被授权，或公开工具名不在冻结允许列表内的调用。插件中心 MCP 端点会对每个请求重新验证授权，因此该守卫是纵深防御，而不是唯一的强制点。
 
-[服务](src/index.ts)在一个队列上串行执行目录刷新、添加、启用、停用、removeInstance、恢复和释放。刷新失败不会改动上一次目录与已挂载实例。新的目录改变了或移除了某个发布版本时，会先撤回旧授权再卸载，因此排队中的调用无法针对过期的发布版本运行。释放会中止进行中的请求、排空排队工作，并等待每个子实例。
+[服务](src/index.ts)在一个队列上串行执行目录刷新、添加、启用、停用、removeInstance、恢复和释放。刷新失败不会改动上一次目录与已挂载实例。新的目录改变了或移除了某个发布版本时，会先撤回旧授权再卸载，因此排队中的调用无法针对过期的发布版本运行。释放会中止进行中的请求、排空排队工作，并等待每个子实例。清理失败会保留实例记录，因此重复停用会继续报告失败，直到其公开工具全部撤回。
 
 </details>
 
@@ -115,7 +117,7 @@ V1 的每个 Host 只代表其所有者。所有 Remote 方法都拒绝非所有
 - [MCP client](../mcp-client/README.zh.md) — 工具命名、模板解析与连接生命周期。
 - [Settings](../../settings/settings/README.zh.md) — 本包通过它持久保存 volatile 配置。
 - [Credentials](../../credentials/credentials/README.zh.md) — 引用解析与密钥存储。
-- [Remote 调用模型](../../../docs/api-gateway.zh.md) — `@Remote` 方法如何跨越 Gateway。
+- Remote 调用模型 — `@Remote` 方法如何跨越 Gateway。
 
 <a id="model-experience"></a>
 ## 模型体验

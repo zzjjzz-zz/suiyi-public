@@ -35,6 +35,10 @@ export class DesktopChannelSource {
   }
 
   private receive(state: DesktopChannelState): void {
+    if (state.unavailable) {
+      this.store.set({ state, failed: false })
+      return
+    }
     const previous = this.store.getSnapshot()
     const ownSaveFailure = previous.pending !== undefined || previous.notice?.outcome === 'uncertain'
     const notify = !ownSaveFailure && state.error !== undefined && state.error !== 'cleanup' && state.error !== previous.state?.error
@@ -51,6 +55,7 @@ export class DesktopChannelSource {
   async select(channel: DesktopUpdateChannel): Promise<void> {
     if (!this.isLive() || this.store.getSnapshot().pending !== undefined) return
     const state = this.store.getSnapshot().state
+    if (state?.unavailable) return
     if (state?.channel === channel && state.error === undefined && !state.changing) return
     const revision = this.revision
     const { notice: _notice, ...previous } = this.store.getSnapshot()
@@ -68,7 +73,7 @@ export class DesktopChannelSource {
     this.store.set({
       ...current,
       ...(accept && result !== undefined ? { state: result.state, failed: false } : {}),
-      ...(result?.kind === 'unchanged' ? {} : {
+      ...(current.state?.unavailable || result?.kind === 'unchanged' || result?.kind === 'unavailable' ? {} : {
         notice: { sequence: ++this.sequence, outcome: result?.kind === 'applied' ? 'applied' as const : result?.kind === 'failed' ? result.reason : 'save' as const },
       }),
     })

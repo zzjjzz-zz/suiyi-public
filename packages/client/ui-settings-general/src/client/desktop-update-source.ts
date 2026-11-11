@@ -18,7 +18,7 @@ export class DesktopUpdateSource {
       this.store.set({ ...this.store.getSnapshot(), presentation, failed: false })
     })
     void bridge?.status().then((presentation) => {
-      if (this.live && !this.received) this.store.set({ ...this.store.getSnapshot(), presentation })
+      if (this.live && !this.received) this.store.set({ ...this.store.getSnapshot(), presentation, failed: false })
     }, () => {
       if (this.live && !this.received) this.store.set({ ...this.store.getSnapshot(), failed: true })
     })
@@ -28,11 +28,11 @@ export class DesktopUpdateSource {
   open(): void {
     if (!this.live || this.bridge === undefined) return
     const state = this.store.getSnapshot()
-    if (state.opening || (state.presentation !== undefined && state.presentation.configurationError === undefined
+    if (state.presentation?.phase === 'unavailable' || state.opening || (state.presentation !== undefined && state.presentation.configurationError === undefined
       && ['checking', 'downloading', 'verifying', 'installing'].includes(state.presentation.phase))) return
     this.store.set({ ...state, opening: true })
     void this.bridge.open().catch(() => {
-      if (this.live) this.store.set({ ...this.store.getSnapshot(), failed: true })
+      if (this.live && this.store.getSnapshot().presentation?.phase !== 'unavailable') this.store.set({ ...this.store.getSnapshot(), failed: true })
     }).finally(() => {
       if (this.live) this.store.set({ ...this.store.getSnapshot(), opening: false })
     })

@@ -27,7 +27,7 @@ English | [中文](README.zh.md)
 
 `fs/delete-intent` requires the same present observation as `fs/edit-intent`: unseen sources fail with `FS_NOT_OBSERVED`, confirmed-absent sources fail with `FS_NOT_FOUND`, and present sources supply their observed version. Patches and move sources reuse `fs/edit-intent`; move destinations reuse `fs/write-intent`.
 
-Load this plugin alongside a `ctx.fs` backend and the `dsh-tool-fs` tools when a deployment wants the model to read a file before it can overwrite or edit it. The plugin needs no configuration and injects no service; it only listens for the `fs/*` events the tools dispatch. The shipped compositions leave it off: [`dsh-base`](../../bundle/base/cordis.patch.yml) lists its `fs-observation-policy` row `disabled: true`; set that row to `disabled: false` to restore the guard for every mutating tool. The [defaults Agent Note](../../../.agents/notes/implemented/feature/2026-10-29-shipped-fs-mutation-defaults.md) records why.
+Load this plugin alongside a `ctx.fs` backend and the `dsh-tool-fs` tools when a deployment wants the model to read a file before it can overwrite or edit it. The plugin needs no configuration and injects no service; it only listens for the `fs/*` events the tools dispatch. The shipped compositions leave it off: [`dsh-base`](../../bundle/base/cordis.patch.yml) lists its `fs-observation-policy` row `disabled: true`; set that row to `disabled: false` to restore the guard for every mutating tool. The defaults Agent Note records why.
 
 ### Minimal composition
 
@@ -92,7 +92,7 @@ Observed state is dropped on plugin disposal (HMR safety) and is never persisted
 
 Read these pages when the package-level contract is not enough. They move from the policy to the contract, tools, and backends it composes with.
 
-- [Filesystem subsystem](../../../docs/subsystems/filesystem.md) — exhaustive provider contract, policy events, and error taxonomy.
+- Filesystem subsystem — exhaustive provider contract, policy events, and error taxonomy.
 - [dsh-fs](../fs/README.md) — the `ctx.fs` contract and the `fs/*` event vocabulary.
 - [tool-fs](../tool-fs/README.md) — the model-facing tools that dispatch the `fs/*` events.
 - [fs-local](../fs-local/README.md) — the host-filesystem backend this policy guards.

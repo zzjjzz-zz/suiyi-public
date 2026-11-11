@@ -3,13 +3,14 @@ import { contextMenuHook } from '@deepseek-ai/dsh-client-test-runtime'
 import type { GlobalStandardProps } from '@deepseek-ai/dsh-client-ui-slots'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { allowAllAccess, bindSnapshotSelector, RemoteError } from '@deepseek-ai/dsh-client-test-runtime'
+import { allowAllAccess, bindSnapshotSelector, makeTranslate, RemoteError } from '@deepseek-ai/dsh-client-test-runtime'
 import type { GeneralSectionComponentProps } from '../src/client/GeneralSection.tsx'
 import { GeneralSection } from '../src/client/GeneralSection.tsx'
 import { CloseLabel, HeaderContent, TriggerContent } from '../src/client/chrome.tsx'
 import type { TriggerContentProps } from '../src/client/chrome.tsx'
 import { SettingsDocumentAction } from '../src/client/SettingsDocumentAction.tsx'
 import { DesktopChannelRow, DesktopChannelToast } from '../src/client/DesktopChannelRow.tsx'
+import { DesktopSection } from '../src/client/DesktopSection.tsx'
 import { DesktopChannelSource } from '../src/client/desktop-channel-source.ts'
 import type { DesktopChannelChangeResult, DesktopChannelState } from '../src/types.ts'
 import { DeveloperToolsRow } from '../src/client/DeveloperToolsRow.tsx'
@@ -51,6 +52,14 @@ const kit = {
 }
 
 describe('Desktop collapsed update badge', () => {
+  it('keeps unavailable updates free of retry badges even after a carrier failure', () => {
+    const state: DesktopUpdateView = { failed: true, opening: false, presentation: { phase: 'unavailable' } }
+    const props: Parameters<typeof DesktopUpdateBadge>[0] = { ...kit, t,
+      useDesktopUpdate: select => select(state), useConnectionState: select => select('connected') }
+    render(<DesktopUpdateBadge {...props} />)
+    expect(screen.queryByRole('img')).toBeNull()
+  })
+
   it('shows update and retry status and yields to connection feedback', () => {
     let state: DesktopUpdateView = { failed: false, opening: false }
     let connection: 'connected' | 'connecting' | 'disconnected' = 'connected'
@@ -359,6 +368,24 @@ describe('Host release change confirmation', () => {
   })
 })
 
+
+it.each([en, zh])('explains disabled updates without offering channel or update actions', (dictionary) => {
+  const translate = makeTranslate(dictionary)
+  const openUpdate = vi.fn()
+  const select = vi.fn(async () => {})
+  const view = render(<DesktopSection {...kit} t={translate} close={() => {}} openUpdate={openUpdate}
+    useDesktopUpdate={selector => selector({ failed: false, opening: false, presentation: { phase: 'unavailable' } })} />)
+  expect(screen.getByText(dictionary['desktop.disabled'])).toBeTruthy()
+  expect(screen.queryByRole('button')).toBeNull()
+  view.unmount()
+  render(<DesktopChannelRow {...kit} t={translate} select={select}
+    useChannel={selector => selector({ failed: false, state: { channel: null, packagedChannel: 'nightly', changing: false, unavailable: true } })} />)
+  expect(screen.getByText(dictionary['desktop.disabled'])).toBeTruthy()
+  expect(screen.queryByRole('button')).toBeNull()
+  expect(screen.queryByRole('alert')).toBeNull()
+  expect(openUpdate).not.toHaveBeenCalled()
+  expect(select).not.toHaveBeenCalled()
+})
 
 it('shows channel load errors and waits for an explicit selection to settle', async () => {
   let state: { state?: DesktopChannelState; failed: boolean; pending?: 'stable' } = { failed: false }

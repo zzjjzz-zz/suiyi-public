@@ -133,7 +133,7 @@ export class PluginHubController {
   private add(pluginId: string): void {
     const snapshot = this.state().snapshot
     if (snapshot === null || !snapshot.enabled || this.state().busy[pluginId] !== undefined) return
-    if (isAdded(snapshot, pluginId)) return
+    if (isAdded(snapshot, pluginId) || rowState(instanceOf(snapshot, pluginId)) === 'cleanup-error') return
     void this.act(pluginId, 'add')
   }
 
@@ -149,22 +149,26 @@ export class PluginHubController {
     if (snapshot === null || !snapshot.enabled || this.state().busy[pluginId] !== undefined) return
     if (!isAdded(snapshot, pluginId)) return
     const state = rowState(instanceOf(snapshot, pluginId))
-    if (state !== 'disabled') return
+    if (state !== 'disabled' && state !== 'error') return
     void this.act(pluginId, 'enable')
   }
 
   private disable(pluginId: string): void {
     const snapshot = this.state().snapshot
     if (snapshot === null || !snapshot.enabled || this.state().busy[pluginId] !== undefined) return
-    if (!isAdded(snapshot, pluginId)) return
     const state = rowState(instanceOf(snapshot, pluginId))
-    if (state !== 'enabled' && state !== 'connecting') return
+    if (!isAdded(snapshot, pluginId) && state !== 'cleanup-error') return
+    if (state !== 'enabled' && state !== 'connecting' && state !== 'error' && state !== 'cleanup-error') return
     void this.act(pluginId, 'disable')
   }
 
   private retry(pluginId: string): void {
     const snapshot = this.state().snapshot
     if (snapshot === null || !snapshot.enabled || this.state().busy[pluginId] !== undefined) return
+    if (rowState(instanceOf(snapshot, pluginId)) === 'cleanup-error') {
+      void this.act(pluginId, 'disable')
+      return
+    }
     const failure = this.state().actionFailures[pluginId]
     if (failure !== undefined) {
       void this.act(pluginId, failure.kind)

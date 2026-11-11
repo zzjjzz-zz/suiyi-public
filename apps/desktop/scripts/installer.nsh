@@ -166,6 +166,19 @@ ManifestDPIAware true
   Pop $0
 !macroend
 
+; Rechecks the exact installation executable until it exits or the bounded wait ends.
+!macro InstallerWaitForAppExit attempts
+  StrCpy $R1 0
+  ${DoWhile} $R0 == 0
+    Sleep 500
+    System::Call '$PLUGINSDIR\window-frame.dll::InstallerFindProcess(w "$INSTDIR\${APP_EXECUTABLE_FILENAME}") i.R0 ?c'
+    IntOp $R1 $R1 + 1
+    ${If} $R1 >= ${attempts}
+      ${ExitDo}
+    ${EndIf}
+  ${Loop}
+!macroend
+
 !macro customCheckAppRunning
   !ifdef BUILD_UNINSTALLER
     InitPluginsDir
@@ -173,22 +186,37 @@ ManifestDPIAware true
   !endif
   System::Call '$PLUGINSDIR\window-frame.dll::InstallerFindProcess(w "$INSTDIR\${APP_EXECUTABLE_FILENAME}") i.R0 ?c'
   ${If} $R0 == 0
-    ${If} ${isUpdated}
-      StrCpy $R1 0
-      ${DoWhile} $R0 == 0
-        Sleep 250
-        System::Call '$PLUGINSDIR\window-frame.dll::InstallerFindProcess(w "$INSTDIR\${APP_EXECUTABLE_FILENAME}") i.R0 ?c'
-        IntOp $R1 $R1 + 1
-        ${If} $R1 >= 40
-          ${ExitDo}
+    !ifdef BUILD_UNINSTALLER
+      ; Ask the exact installed application to run its normal quit path; the uninstaller never terminates it.
+      ; A bounded wait covers the application's own quit confirmation and its Electron helper processes.
+      ${IfNot} ${Silent}
+        Exec '"$INSTDIR\${APP_EXECUTABLE_FILENAME}" --suiyi-uninstall-quit'
+        !insertmacro InstallerWaitForAppExit 60
+        ${If} $R0 == 0
+          ${Do}
+            MessageBox MB_RETRYCANCEL|MB_ICONINFORMATION "$(INSTALLER_RUNNING)" /SD IDCANCEL IDRETRY InstallerUninstallRetry
+            ; Cancel stops before any file is removed and leaves the running application untouched.
+            SetErrorLevel 2
+            Quit
+            InstallerUninstallRetry:
+            !insertmacro InstallerWaitForAppExit 40
+          ${LoopUntil} $R0 != 0
         ${EndIf}
-      ${Loop}
-    ${EndIf}
-    ${If} $R0 == 0
-      MessageBox MB_OK|MB_ICONINFORMATION "$(INSTALLER_RUNNING)" /SD IDOK
-      SetErrorLevel 2
-      Quit
-    ${EndIf}
+      ${Else}
+        ; Silent uninstall never opens UI; leave a running application untouched.
+        SetErrorLevel 2
+        Quit
+      ${EndIf}
+    !else
+      ${If} ${isUpdated}
+        !insertmacro InstallerWaitForAppExit 20
+      ${EndIf}
+      ${If} $R0 == 0
+        MessageBox MB_OK|MB_ICONINFORMATION "$(INSTALLER_RUNNING)" /SD IDOK
+        SetErrorLevel 2
+        Quit
+      ${EndIf}
+    !endif
   ${EndIf}
   ${If} $R0 < 0
     MessageBox MB_OK|MB_ICONEXCLAMATION "$(INSTALLER_UI_ERROR)" /SD IDOK

@@ -104,3 +104,136 @@ describe('hub invocation ownership', () => {
     expect(owners.permits(undefined)).toBe(true)
   })
 })
+
+/** Child-to-parent edges; the absence of an entry means an independent Agent. */
+function lineage(edges: ReadonlyMap<object, object | undefined>): {
+  isChild: (agent: object) => boolean
+  parentOf: (agent: object) => object | undefined
+} {
+  return {
+    isChild: agent => edges.has(agent),
+    parentOf: agent => edges.get(agent),
+  }
+}
+
+describe('hub invocation ownership across subagent generations', () => {
+  it('tightens an admitted owner-child turn on later guest steering without an empty input clearing it', () => {
+    const parent = {}
+    const child = {}
+    const owners = new HubInvocationOwners(lineage(new Map([[child, parent]])))
+    owners.noteStep(parent, 1, [OWNER])
+    owners.adopt(child)
+    owners.noteStep(child, 1, [OWNER])
+    owners.noteStep(child, 1, [])
+    expect(owners.permits(child)).toBe(true)
+    owners.noteStep(child, 1, [GUEST])
+    expect(owners.permits(child)).toBe(false)
+    owners.noteStep(child, 1, [])
+    owners.noteStep(child, 1, [OWNER])
+    expect(owners.permits(child)).toBe(false)
+  })
+
+  it('refuses descendants of a live creator that has never admitted owner input', () => {
+    const parent = {}
+    const child = {}
+    const grandchild = {}
+    const owners = new HubInvocationOwners(lineage(new Map([[child, parent], [grandchild, child]])))
+    owners.adopt(child)
+    owners.noteStep(child, 1, [OWNER])
+    owners.adopt(grandchild)
+    owners.noteStep(grandchild, 1, [OWNER])
+    expect(owners.permits(child)).toBe(false)
+    expect(owners.permits(grandchild)).toBe(false)
+  })
+
+  it('lets an owner-attributed child of an owner parent call, including through a grandchild', () => {
+    const edges = new Map<object, object | undefined>()
+    const owners = new HubInvocationOwners(lineage(edges))
+    const parent = {}
+    const child = {}
+    const grandchild = {}
+    owners.noteStep(parent, 1, [OWNER])
+    edges.set(child, parent)
+    owners.adopt(child)
+    owners.noteStep(child, 1, [undefined])
+    edges.set(grandchild, child)
+    owners.adopt(grandchild)
+    owners.noteStep(grandchild, 1, [])
+    owners.noteStep(grandchild, 2, [])
+    expect(owners.permits(parent)).toBe(true)
+    expect(owners.permits(child)).toBe(true)
+    expect(owners.permits(grandchild)).toBe(true)
+  })
+
+  it('keeps a guest-born child and every later generation blocked after the parent becomes owner', () => {
+    const edges = new Map<object, object | undefined>()
+    const owners = new HubInvocationOwners(lineage(edges))
+    const parent = {}
+    const child = {}
+    const grandchild = {}
+    owners.noteStep(parent, 1, [GUEST])
+    edges.set(child, parent)
+    owners.adopt(child)
+    owners.noteStep(child, 1, [GUEST])
+    owners.noteStep(parent, 2, [OWNER])
+    owners.noteStep(child, 2, [OWNER])
+    edges.set(grandchild, child)
+    owners.adopt(grandchild)
+    owners.noteStep(grandchild, 1, [OWNER])
+    expect(owners.permits(parent)).toBe(true)
+    expect(owners.permits(child)).toBe(false)
+    expect(owners.permits(grandchild)).toBe(false)
+  })
+
+  it('freezes a guest ceiling when the parent is only guest-steered during the spawning turn', () => {
+    const edges = new Map<object, object | undefined>()
+    const owners = new HubInvocationOwners(lineage(edges))
+    const parent = {}
+    const child = {}
+    owners.noteStep(parent, 1, [OWNER])
+    owners.noteStep(parent, 1, [GUEST])
+    edges.set(child, parent)
+    owners.adopt(child)
+    owners.noteStep(child, 1, [OWNER])
+    expect(owners.permits(child)).toBe(false)
+  })
+
+  it('still refuses a child that was never adopted, such as a resumed historical child', () => {
+    const edges = new Map<object, object | undefined>()
+    const owners = new HubInvocationOwners(lineage(edges))
+    const parent = {}
+    const resumed = {}
+    owners.noteStep(parent, 1, [OWNER])
+    edges.set(resumed, parent)
+    owners.noteStep(resumed, 1, [OWNER])
+    expect(owners.permits(resumed)).toBe(false)
+  })
+
+  it('refuses a child whose creator is not live at adoption', () => {
+    const edges = new Map<object, object | undefined>()
+    const owners = new HubInvocationOwners(lineage(edges))
+    const orphan = {}
+    edges.set(orphan, undefined)
+    owners.adopt(orphan)
+    owners.noteStep(orphan, 1, [OWNER])
+    expect(owners.permits(orphan)).toBe(false)
+  })
+
+  it('blocks a guest input inside an owner child turn but restores on a later owner turn', () => {
+    const edges = new Map<object, object | undefined>()
+    const owners = new HubInvocationOwners(lineage(edges))
+    const parent = {}
+    const child = {}
+    owners.noteStep(parent, 1, [OWNER])
+    edges.set(child, parent)
+    owners.adopt(child)
+    owners.noteStep(child, 1, [GUEST])
+    expect(owners.permits(child)).toBe(false)
+    owners.noteStep(child, 1, [OWNER])
+    expect(owners.permits(child)).toBe(false)
+    owners.noteStep(child, 2, [])
+    expect(owners.permits(child)).toBe(false)
+    owners.noteStep(child, 3, [OWNER])
+    expect(owners.permits(child)).toBe(true)
+  })
+})

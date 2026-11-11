@@ -53,8 +53,8 @@ Each package provides one primitive or one data set; open a package page for how
 ## Related documentation
 
 - [Root package map](../README.md) — where `util/` sits among all package groups.
-- [Generated configuration catalog](../../docs/config-catalog.md) — the library-package index this group forms part of.
-- [Adding a package cookbook](../../docs/cookbook/adding-a-package.md) — how a new shared primitive lands in this group.
+- Generated configuration catalog — the library-package index this group forms part of.
+- Adding a package cookbook — how a new shared primitive lands in this group.
 
 <a id="dev-note"></a>
 ## Dev Note

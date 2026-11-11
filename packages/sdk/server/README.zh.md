@@ -65,7 +65,7 @@ Host 与桌面适配器共用 `dsh-commands/builtin` 的定义身份及中英文
 |---|---|---|
 | `maxTokensAsSuccess` | `false` | 把 max-token 轮次或 subagent 终止报告为成功的 SDK 结果 |
 
-profile 组合拥有每个根 agent 的工具。`input`、`output` 与 `exit` 是仅供测试的运行时传输钩子；生产环境使用进程 stdio 与 `process.exit`。生成的[配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-sdk-jsonrpc-server)是每个受支持字段的穷尽式真源。
+profile 组合拥有每个根 agent 的工具。`input`、`output` 与 `exit` 是仅供测试的运行时传输钩子；生产环境使用进程 stdio 与 `process.exit`。生成的配置目录是每个受支持字段的穷尽式真源。
 
 ### stdout 即协议
 
@@ -129,7 +129,7 @@ Stdout 只承载 JSON-RPC 帧，客户端可以逐字节解析；诊断信息应
 - [TypeScript SDK 客户端](../client/README.zh.md) — 驱动本插件的客户端。
 - [SDK 应用组合包](../../bundle/sdk-app/README.zh.md) — 启动本插件的 `dsh --profile sdk` 应用。
 - [Python SDK](../../../python/README.zh.md) — 驱动同一服务器的 Python 客户端。
-- [SDK 运行时分发决策](../../../.agents/notes/implemented/architecture/2026-07-10-single-file-executable-sdk-runtime-distribution.zh.md) — 打包运行时为何服务封闭插件树。
+- SDK 运行时分发决策 — 打包运行时为何服务封闭插件树。
 
 -----
 

@@ -3,8 +3,8 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write apps/plugin-market-generator/README.md
 /plugin-market-index-generator:
-  en: 531349889ccc3124
-  zh: 08769a2d9fc586fd
+  en: 7ce01da6185ca2a5
+  zh: 0d505532ef9e15e4
 /plugin-market-index-generator/usage:
   en: ed2a83d06f6789ef
   zh: e5c1e26486dfefb0

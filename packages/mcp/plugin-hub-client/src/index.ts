@@ -47,14 +47,14 @@ import {
 } from './identity.ts'
 import { guardInstanceCall, PluginInstances } from './instances.ts'
 import { PLUGIN_ID_PATTERN } from './names.ts'
-import { HubInvocationOwners } from './owner-guard.ts'
+import { HubInvocationOwners, type HubAgentLineage } from './owner-guard.ts'
 import type { CatalogPlugin, PluginHubCatalog, PluginInstanceView } from './types.ts'
 // Side-effect type imports: `ctx.tools`, `ctx.mcpManager`, `mcp-manager/status`, and `ctx.settings`.
 import type {} from '@deepseek-ai/dsh-tools'
 import type {} from '@deepseek-ai/dsh-mcp-manager'
 import type {} from '@deepseek-ai/dsh-settings'
 import type {} from '@deepseek-ai/cordis-plugin-loader'
-import type {} from '@deepseek-ai/dsh-agent'
+import type { Agent } from '@deepseek-ai/dsh-agent'
 
 export type * from './types.ts'
 
@@ -237,7 +237,9 @@ export default class PluginHub extends TypertRemoteService {
   private stopped = false
   private stopping: Promise<void> | undefined
   private readonly watchers = new Set<() => void>()
-  private readonly invocationOwners = new HubInvocationOwners()
+  private readonly invocationOwners: HubInvocationOwners
+  /** Removed after all hub tool registrations have been withdrawn. */
+  private removeGuard: (() => void) | undefined
 
   /**
    * Register the service and retain the configured platform and decisions.
@@ -266,6 +268,7 @@ export default class PluginHub extends TypertRemoteService {
       ctx.logger.warn(`plugin-hub-client: ignored ${String(stored.length - this.authorizations.length)} enablement decision(s) written for another account`)
     }
     this.authorized = this.activeApprovals()
+    this.invocationOwners = new HubInvocationOwners(this.agentLineage())
   }
 
   /**
@@ -276,12 +279,17 @@ export default class PluginHub extends TypertRemoteService {
   * [Service.init](): Generator<() => Promise<void> | void, void, void> {
     yield async () => { await this.stop() }
     this.validate()
-    this.ctx.tools.guard((execution) => {
+    this.removeGuard = this.ctx.root.tools.guard((execution) => {
+      if (!this.instances.ownsName(execution.name)) return undefined
+      if (this.stopped) return 'Plugin hub: the plugin hub is stopping.'
       const denied = guardInstanceCall(execution, this.instances, this.authorized)
-      if (denied !== undefined || !this.instances.ownsName(execution.name)) return denied
+      if (denied !== undefined) return denied
       return this.invocationOwners.permits(execution.agent)
         ? undefined
         : 'Plugin hub: this turn is not attributed to the Host owner.'
+    })
+    this.ctx.on('agent/created', ({ agent, source }) => {
+      if (source === 'startup') this.invocationOwners.adopt(agent)
     })
     this.ctx.on('agent/pre-step', async ({ agent, turn }, next) => {
       const decision = await next()
@@ -337,12 +345,14 @@ export default class PluginHub extends TypertRemoteService {
    * flag. This never contacts the platform; {@link PluginHub.refresh} does.
    * @returns the current client-visible state.
    */
+  // oxlint-disable typescript/require-await -- Ownership and credential failures must reject the returned Promise.
   @Remote
   async catalog(): Promise<PluginHubCatalog> {
     this.assertOwner()
     if (this.config.enabled && this.authorizationHeader() === undefined) throw this.accessFailure()
     return this.view()
   }
+  // oxlint-enable typescript/require-await
 
   /**
    * Stream the current catalog and live instance status until this subscription ends.
@@ -942,7 +952,7 @@ export default class PluginHub extends TypertRemoteService {
     const plugins = this.lastCatalog?.plugins.map(validated => validated.plugin) ?? []
     const approvals = this.approvals()
     const byId = new Map<string, PluginInstanceView>()
-    for (const view of this.instances.views()) byId.set(view.pluginId, view)
+    for (const view of this.instances.views(this.authorized)) byId.set(view.pluginId, view)
     const instances: PluginInstanceView[] = []
     const listed = new Set<string>()
     for (const plugin of plugins) {
@@ -953,6 +963,7 @@ export default class PluginHub extends TypertRemoteService {
         pluginId: plugin.pluginId,
         releaseVersion: plugin.releaseVersion,
         state: 'disabled',
+        authorized: this.authorized.get(plugin.pluginId) === plugin.releaseVersion,
         added,
       } : { ...live, added })
     }
@@ -1022,12 +1033,43 @@ export default class PluginHub extends TypertRemoteService {
     }
     this.stopping = (async () => {
       await this.tail
-      await this.instances.disposeAll()
-      this.lastCatalog = undefined
-      this.authorized.clear()
-      this.instances.clearFailures()
+      try {
+        await this.instances.disposeAll()
+        this.instances.clearFailures()
+      } finally {
+        this.lastCatalog = undefined
+        this.authorized.clear()
+        this.releaseGuard()
+      }
     })()
     return this.stopping
+  }
+
+  /**
+   * Remove the root-owned guard once no hub tool remains. A failed unmount
+   * retains it so surviving tools stay denied until the process ends.
+   */
+  private releaseGuard(): void {
+    if (this.removeGuard === undefined) return
+    const tools = this.ctx.get('tools')
+    const surviving = tools !== undefined
+      && tools.definitions().some(tool => this.instances.ownsName(tool.name))
+    if (surviving) return
+    const remove = this.removeGuard
+    this.removeGuard = undefined
+    remove()
+  }
+
+  /** Resolve Session lineage without assuming a private Agent layout beyond the documented header. */
+  private agentLineage(): HubAgentLineage {
+    return {
+      isChild: agent => (agent as Agent).session.header.parentSession !== undefined,
+      parentOf: (agent) => {
+        // adopt() calls this only after isChild() checks the immutable header.
+        const parentId = (agent as Agent).session.header.parentSession as Agent['id']
+        return this.ctx.get('agents')?.get(parentId)
+      },
+    }
   }
 
   /** Refuse a plugin id outside the frozen catalog grammar. */

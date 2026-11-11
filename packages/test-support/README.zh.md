@@ -38,7 +38,7 @@ test-support 组为仓库测试提供确定且无须密钥的真实产品测试�
 <a id="related-documentation"></a>
 ## 相关文档
 
-- [测试策略](../../docs/testing.zh.md)——这些 harness 所服务的无密钥快照层，以及何时必须使用该层。
+- 测试策略——这些 harness 所服务的无密钥快照层，以及何时必须使用该层。
 - [包组](../README.zh.md)——支持组与产品组的关系。
 
 -----

@@ -81,7 +81,7 @@ kind: "package-reference"
 
 - [`@deepseek-ai/dsh-client-ui-trajectory`](../../client/ui-trajectory/README.zh.md) —— 本页签的表格约定参考它。
 - [`@deepseek-ai/dsh-session-stats`](../../session/session-stats/README.zh.md) —— 列名口径与会话统计一致。
-- [`docs/subsystems/conversation.md`](../../../docs/subsystems/conversation.zh.md) —— 视图目标与 Definition 的装配方式。
+- `docs/subsystems/conversation.md` —— 视图目标与 Definition 的装配方式。
 
 -----
 

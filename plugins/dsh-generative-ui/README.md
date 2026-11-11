@@ -82,7 +82,7 @@ The model is taught in two layers, split by what each costs:
 - **`src/prompt.ts`** rides in every request, so it carries only the trigger, the fence syntax, the canvas path, and the colour tokens.
 - **`skill/SKILL.md`** is registered through `ctx.skills.register()` and loads only when the model reaches for it. It carries the UI and inline/canvas decisions, then points to topic-specific files in `skill/references/` for the authoring details.
 
-That split is measured, not assumed — see [CLAUDE.md](./CLAUDE.md) §4.5 for the 40-prompt evaluation behind it.
+That split is measured, not assumed — see CLAUDE.md §4.5 for the 40-prompt evaluation behind it.
 
 ## Development
 
@@ -91,7 +91,7 @@ bun install
 bun run check     # lint + typecheck + build + smoke
 ```
 
-`bun run build` bundles both halves with `Bun.build`. [CLAUDE.md](./CLAUDE.md) is the design document — it records the host constraints this plugin was built against, all of them found the hard way.
+`bun run build` bundles both halves with `Bun.build`. CLAUDE.md is the design document — it records the host constraints this plugin was built against, all of them found the hard way.
 
 ## License
 

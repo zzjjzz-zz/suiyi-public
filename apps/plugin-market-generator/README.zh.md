@@ -2,7 +2,7 @@
 
 [English](README.md) | 中文
 
-[插件市场索引](../../.agents/notes/implemented/feature/2026-10-02-plugin-market-index-format.zh.md)文件的参考生成器。它读取一份由 npm 包名和 Git 仓库 URL 组成的纯文本列表，写出一个 `index.json`，DSH 的 **发现** 页面无需额外请求即可展示该文件。它是独立的 Node 程序，不是 Cordis 应用，也从不安装或运行其所描述包的代码。
+插件市场索引文件的参考生成器。它读取一份由 npm 包名和 Git 仓库 URL 组成的纯文本列表，写出一个 `index.json`，DSH 的 **发现** 页面无需额外请求即可展示该文件。它是独立的 Node 程序，不是 Cordis 应用，也从不安装或运行其所描述包的代码。
 
 ## 用法
 

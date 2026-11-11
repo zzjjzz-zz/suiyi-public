@@ -1,5 +1,5 @@
 /** Built settings UI uses the shell file API; external edits wait for a new shell startup. */
-import { readFile, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright'
@@ -12,7 +12,8 @@ import { openSettings } from './support.ts'
 it('persists a Desktop channel from Settings and keeps external edits startup-only', async () => {
   const scaffold = await launchWebScaffold({})
   try {
-    const browser = await chromium.launch()
+    const executablePath = process.env.DSH_PLAYWRIGHT_EXECUTABLE_PATH
+    const browser = await chromium.launch(executablePath === undefined ? {} : { executablePath })
     try {
       const settings = new DesktopUpdateSettings(join(scaffold.harnessHome, 'shell'), 'nightly')
       await settings.save('nightly')
@@ -76,3 +77,58 @@ it('persists a Desktop channel from Settings and keeps external edits startup-on
     } finally { await browser.close() }
   } finally { await scaffold.close() }
 })
+
+// The full-page Desktop category is owned by the Suiyi client build.
+it.runIf(process.env.DSH_CLIENT_BUILD_PROFILE === 'suiyi').each(['en', 'zh'] as const)(
+  'Suiyi explains unavailable updates and exposes no update actions in %s', async (locale) => {
+    const scaffold = await launchWebScaffold({})
+    try {
+      const executablePath = process.env.DSH_PLAYWRIGHT_EXECUTABLE_PATH
+      const browser = await chromium.launch(executablePath === undefined ? {} : { executablePath })
+      try {
+        const page = await browser.newPage({ viewport: { width: 1100, height: 800 }, locale: locale === 'zh' ? 'zh-CN' : 'en-US' })
+        const tripwire = watchConsole(page)
+        let actions = 0
+        await page.exposeFunction('unexpectedUpdateAction', () => { actions++ })
+        await page.addInitScript(() => {
+          const bridge = globalThis as typeof globalThis & { unexpectedUpdateAction(): Promise<void> }
+          const state = { channel: null, packagedChannel: 'nightly', changing: false, unavailable: true }
+          Object.assign(globalThis, { dshDesktop: { protocolVersion: 1, updates: {
+            status: async () => ({ phase: 'unavailable' }), open: () => bridge.unexpectedUpdateAction(), subscribe: () => () => {},
+            channels: { get: async () => state, set: async () => {
+              await bridge.unexpectedUpdateAction()
+              return { kind: 'unavailable', state }
+            }, subscribe: () => () => {} },
+          } } })
+        })
+        await page.goto(scaffold.authenticatedUrl, { waitUntil: 'load' })
+        const retryLabel = locale === 'zh' ? '重试更新' : 'Retry update'
+        expect(await page.getByRole('button', { name: retryLabel, exact: true }).count()).toBe(0)
+        await page.getByRole('button', { name: locale === 'zh' ? '设置与偏好' : 'Settings and preferences', exact: true }).click()
+        await page.getByRole('button', { name: locale === 'zh' ? '运行与插件' : 'Runtime and plugins', exact: true }).click()
+        const row = page.getByRole('group', { name: locale === 'zh' ? '更新渠道' : 'Update channel', exact: true })
+        const description = locale === 'zh' ? '此版本未启用自动更新，请手动安装新版'
+          : 'Automatic updates are disabled in this build. Install a newer version manually.'
+        await row.getByText(description, { exact: true }).waitFor()
+        expect(await row.getByRole('button').count()).toBe(0)
+        expect(await row.getByRole('alert').count()).toBe(0)
+        await compareOrRefreshGolden(fileURLToPath(new URL(`./expected/desktop-channel/unavailable-${locale}.expected.md`, import.meta.url)),
+          await captureStableAria(page, '[role="group"][aria-label="' + (locale === 'zh' ? '更新渠道' : 'Update channel') + '"]', scaffold.workspaceCwd), webSnapshotMode())
+        const evidenceRoot = fileURLToPath(new URL('../../desktop/.desktop-build/qualification/', import.meta.url))
+        await mkdir(evidenceRoot, { recursive: true })
+        const evidence = await mkdtemp(join(evidenceRoot, `updates-unavailable-${locale}-`))
+        await row.scrollIntoViewIfNeeded()
+        await page.screenshot({ path: join(evidence, 'channel.png') })
+        const section = page.getByRole('button', { name: locale === 'zh' ? '桌面与更新' : 'Desktop and updates', exact: true })
+        await section.click()
+        await page.getByText(description, { exact: true }).waitFor()
+        expect(await page.getByRole('button', { name: locale === 'zh' ? '打开更新' : 'Open updates', exact: true }).count()).toBe(0)
+        await page.screenshot({ path: join(evidence, 'desktop.png') })
+        expect(actions).toBe(0)
+        expect(tripwire.pageErrors).toEqual([])
+        expect(tripwire.warnings).toEqual([])
+        console.log(`Unavailable update UI evidence: ${evidence}`)
+      } finally { await browser.close() }
+    } finally { await scaffold.close() }
+  },
+)

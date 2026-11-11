@@ -9,7 +9,7 @@ kind: "package-group"
 
 ## 概述
 
-实验性能力可按需安装和组合，但不提供产品支持承诺。包命名和发布遵循[实验包策略](../../scripts/experimental-package-policy.ts)。[可选组合规则](../../.agents/notes/implemented/architecture/2026-09-21-experimental-capabilities-as-optional-bundles.zh.md)决定哪些能力以默认关闭状态随安装提供，并在 GUI 插件管理器的官方分组显式启用；Liveshare owner bundle 及其共享协议包也在其中。[插件管理页](../client/ui-plugin-manager/README.zh.md#use-this-package)管理哪些组合包默认展示，以及如何启用隐藏项。
+实验性能力可按需安装和组合，但不提供产品支持承诺。包命名和发布遵循[实验包策略](../../scripts/experimental-package-policy.ts)。可选组合规则决定哪些能力以默认关闭状态随安装提供，并在 GUI 插件管理器的官方分组显式启用；Liveshare owner bundle 及其共享协议包也在其中。[插件管理页](../client/ui-plugin-manager/README.zh.md#use-this-package)管理哪些组合包默认展示，以及如何启用隐藏项。
 
 ## 目录
 
@@ -27,7 +27,7 @@ kind: "package-group"
 
 **可选**表示用户显式选择该能力。**官方**表示项目维护并在插件页列出该包。两者均不表示成熟度；发布、默认安装和界面可见性也不决定成熟度。组外产品包承担维护职责，其公开 API 仍遵循仓库的预稳定政策。
 
-晋升需要明确的产品职责、公开行为与限制、当前消费者、发布内容以及测试证据。晋升时将包移入对应产品组，并同时更新受影响的消费者。[子树规则](AGENTS.md)规定包命名、依赖隔离和发布要求。
+晋升需要明确的产品职责、公开行为与限制、当前消费者、发布内容以及测试证据。晋升时将包移入对应产品组，并同时更新受影响的消费者。子树规则规定包命名、依赖隔离和发布要求。
 
 -----
 
@@ -104,12 +104,12 @@ kind: "package-group"
 ## 相关文档
 
 - [实验包发布说明](../../scripts/experimental-package-policy.ts)——默认公开与私有例外。
-- [工作树](../../docs/subsystems/worktrees.zh.md)——显式创建分支与检出目录。
-- [Forges](../../docs/subsystems/forge.zh.md)——变更请求提供方、状态轮询、Session 绑定与面板。
-- [计算机操作](../../docs/subsystems/computer-use.zh.md)——桌面提供方选择。
-- [浏览器操作](../../docs/subsystems/browser-use.zh.md)——浏览器提供方选择与 Session 所有权。
-- [Agent Teams 子系统](../../docs/subsystems/agent-team.zh.md)——持久 Team 类型与 `ctx.agentTeams` 服务 API。
-- [实验子树规则](AGENTS.md)——实验状态放宽了什么、不放宽什么。
+- 工作树——显式创建分支与检出目录。
+- Forges——变更请求提供方、状态轮询、Session 绑定与面板。
+- 计算机操作——桌面提供方选择。
+- 浏览器操作——浏览器提供方选择与 Session 所有权。
+- Agent Teams 子系统——持久 Team 类型与 `ctx.agentTeams` 服务 API。
+- 实验子树规则——实验状态放宽了什么、不放宽什么。
 
 -----
 

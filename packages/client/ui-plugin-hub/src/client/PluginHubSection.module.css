@@ -350,6 +350,14 @@
   border-top: 0.5px solid var(--dsw-alias-border-l3);
 }
 
+.failureActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
 .permissionsLink {
   display: inline-flex;
   align-items: center;

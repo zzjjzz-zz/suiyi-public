@@ -115,7 +115,7 @@ root 作用域的 `sidebar.panellist.actions` list 有注册项时，导航区�
 - [ui-settings](../ui-settings/README.zh.md)——在 `sidebar.settings` 注册触发行与设置面板的设置领域底座。
 - [ui-layout](../ui-layout/README.zh.md)——折叠所使用轨道与栏状态的布局 owner。
 - [ui-theme](../ui-theme/README.zh.md)——外壳所重新绑定的滚动条 token 间接层。
-- [slot 系统标准](../../../.agents/notes/implemented/architecture/2026-07-22-slot-type-chain-implementation.zh.md)——席位背后的组合模型。
+- slot 系统标准——席位背后的组合模型。
 
 -----
 

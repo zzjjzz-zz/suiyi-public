@@ -31,7 +31,7 @@ Choose one provider and mount the shared registration service.
 <a id="related-documentation"></a>
 ## Related documentation
 
-- [Computer use](../../docs/subsystems/computer-use.md) — capability ownership and provider choices.
+- Computer use — capability ownership and provider choices.
 - [Computer Use bundle](../experimental/cua-bundle/README.md) — enable native CUA and access its permission controls.
 - [Experimental packages](../experimental/README.md) — native CUA packages and Cua Driver adapters.
 

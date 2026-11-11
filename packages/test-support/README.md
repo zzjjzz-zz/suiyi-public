@@ -38,7 +38,7 @@ The test-support group gives repository tests deterministic, keyless ways to exe
 <a id="related-documentation"></a>
 ## Related documentation
 
-- [Testing policy](../../docs/testing.md) — the keyless snapshot tier these harnesses serve and when it is required.
+- Testing policy — the keyless snapshot tier these harnesses serve and when it is required.
 - [Package groups](../README.md) — how support groups relate to the product groups.
 
 -----

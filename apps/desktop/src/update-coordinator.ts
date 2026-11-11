@@ -51,7 +51,7 @@ export class DesktopUpdateCoordinator {
    * @param publish - Receives observable states for every Desktop window.
    * @param beforeRestart - Completes task authorization, admission locking, and owned-process shutdown.
    * @param updater - Process-owned Electron updater, replaceable at the network/platform test boundary.
-   * @param enabled - Whether this process has a packaged update source.
+   * @param enabled - Installer-owned availability, captured at construction. Disabled instances own no updater effects.
    * @param currentVersion - Actual installed application version.
    * @param channel - Installed package channel; omitted test/local callers retain nightly.
    * @param discard - Clears settled library targets and platform resources before another channel is used.
@@ -61,12 +61,16 @@ export class DesktopUpdateCoordinator {
     private readonly publish: (state: DesktopUpdateState) => DesktopUpdateState,
     private readonly beforeRestart: () => Promise<boolean>,
     private readonly updater: AppUpdater = autoUpdater,
-    private readonly enabled: () => boolean = () => app.isPackaged && existsSync(join(process.resourcesPath, 'app-update.yml')),
+    enabled: () => boolean = () => app.isPackaged && existsSync(join(process.resourcesPath, 'app-update.yml')),
     private readonly currentVersion: () => string = () => app.getVersion(),
     private readonly downloadResult?: (success: boolean, reason?: string) => void,
     private channel: DesktopUpdateChannel = 'nightly',
     private readonly discard: (updater: AppUpdater) => Promise<void> = discardDesktopUpdate,
   ) {
+    if (!enabled()) {
+      this.current = { phase: 'unavailable' }
+      return
+    }
     if (updater === autoUpdater) {
       // electron-updater omits this internal transport property from its public declarations.
       // Real-Electron qualification exercises the pinned dependency integration.
@@ -87,6 +91,9 @@ export class DesktopUpdateCoordinator {
   /** Latest observable state; complete download identity remains main-process-owned. */
   get state(): DesktopUpdateState { return this.current }
 
+  /** Whether this instance can check, switch channels, download, or install. */
+  get available(): boolean { return this.current.phase !== 'unavailable' }
+
   /** Reason ordinary updates are suspended, independently of the last operation result. */
   get configurationFailure(): 'startup' | 'cleanup' | undefined { return this.configurationError }
 
@@ -102,6 +109,7 @@ export class DesktopUpdateCoordinator {
    * @param reason - Startup validation or retirement of a previous target.
    */
   suspendConfiguration(detail: string, reason: 'startup' | 'cleanup' = 'startup'): void {
+    if (!this.available) return
     this.configurationError = reason
     this.setState({ phase: 'error', failedOperation: 'configuration', message: detail })
   }
@@ -113,10 +121,11 @@ export class DesktopUpdateCoordinator {
    * suspends updates until another explicit switch successfully retires the target.
    * @param channel - Validated UI choice.
    * @param persist - Atomic settings save; rejects before a choice is applied on failure.
-   * @returns Whether the selection changed; healthy repeated choices preserve the current operation.
+   * @returns Whether the selection changed or updates are unavailable. Unavailable instances never persist a choice.
    */
-  switchChannel(channel: DesktopUpdateChannel, persist: () => Promise<void>): Promise<'applied' | 'unchanged'> {
+  switchChannel(channel: DesktopUpdateChannel, persist: () => Promise<void>): Promise<'applied' | 'unchanged' | 'unavailable'> {
     this.assertLive()
+    if (!this.available) return Promise.resolve('unavailable')
     if (this.installOperation !== undefined || this.current.phase === 'installing' || this.release.kind === 'handed-off') {
       return Promise.reject(new Error('desktop update: installation is in progress'))
     }
@@ -154,6 +163,7 @@ export class DesktopUpdateCoordinator {
    */
   async check(manual = false): Promise<DesktopUpdateState> {
     this.assertLive()
+    if (!this.available) return this.current
     if (this.configurationError !== undefined || this.switching > 0
       || this.downloadOperation !== undefined || this.installOperation !== undefined || this.downloaded) return this.current
     if (!manual && this.current.phase === 'error' && this.current.failedOperation === 'download') return this.current
@@ -171,6 +181,7 @@ export class DesktopUpdateCoordinator {
    */
   async download(version: string, revision = this.generation): Promise<DesktopUpdateState> {
     this.assertLive()
+    if (!this.available) return this.current
     if (revision !== this.generation || this.configurationError !== undefined || this.switching > 0) return this.current
     if (this.downloaded || this.installOperation !== undefined) return this.current
     const generation = this.generation
@@ -206,6 +217,7 @@ export class DesktopUpdateCoordinator {
    */
   async install(version: string, revision = this.generation): Promise<DesktopUpdateState> {
     this.assertLive()
+    if (!this.available) return this.current
     if (revision !== this.generation) return this.current
     if (this.configurationError !== undefined || this.switching > 0) throw new Error('desktop update: channel selection is not ready')
     if (!this.downloaded || this.downloadOperation !== undefined || version !== this.candidate) throw new Error('desktop update: confirmed target is not ready')
@@ -228,6 +240,7 @@ export class DesktopUpdateCoordinator {
   /** Remove owned listeners and prevent pending library operations from publishing into closed UI. */
   dispose(): void {
     this.disposed = true
+    if (!this.available) return
     this.updater.off('download-progress', this.onProgress)
     this.updater.off('update-downloaded', this.onDownloaded)
     // Pending updater promises can still emit EventEmitter errors during shutdown.
@@ -269,7 +282,6 @@ export class DesktopUpdateCoordinator {
     const generation = this.generation
     try {
       this.assertLive()
-      if (!this.enabled()) throw new Error('desktop update: this application has no packaged update source')
       const result = await this.updater.checkForUpdates()
       if (generation !== this.generation || this.disposed) return this.current
       if (result === null) throw new Error('desktop update: no check result was returned')

@@ -29,7 +29,7 @@ kind: "package-reference"
 
 源码 provider 的 `sourceSigning: { identity, keychain }` 选择已有证书及其钥匙串绝对路径。构建 CLI 使用 `--identity <证书名称或 SHA-1 指纹>` 和 `--keychain <绝对路径>`；正式打包也可省略 `--keychain`，使用用户搜索列表。构建不生成、解锁或移除签名身份；所选证书不可用时签名失败。
 
-仓库的[开发者签名 skill](../../../../.agents/skills/dsh-cua-macos-signing/SKILL.md)负责 Agent 操作流程：在 `~/.cua-macos-keys/` 生成独立身份，将指向它的配置写入 DSH home，并按需解锁或移除。私钥和密码由开发者单独维护，删除 DSH home 不会删除它们。同一用户的进程可以读取保存的密码并使用该身份签名。
+仓库的开发者签名 skill负责 Agent 操作流程：在 `~/.cua-macos-keys/` 生成独立身份，将指向它的配置写入 DSH home，并按需解锁或移除。私钥和密码由开发者单独维护，删除 DSH home 不会删除它们。同一用户的进程可以读取保存的密码并使用该身份签名。
 
 使用相同证书的构建共用包含 Bundle ID 和证书的指定要求。首次授权仍需在系统设置中完成；签名要求相同不代替授权后重建、跨 worktree 的实际权限验证。
 
@@ -37,9 +37,9 @@ kind: "package-reference"
 
 `native/.build/prepared/<arch>` 和 `native/bin/darwin-<arch>` 中的各代应用不会自动清理。正式打包时使用全新的 `--output-directory`，或确认没有客户端使用后清理打包输出再构建，避免旧应用进入 tarball。安全签名时间戳可能让相同源码生成不同代应用。
 
-手动工作流 **Package CUA helper · macOS** 的[配置](../../../../.github/workflows/cua-helper-package.yml)在 `dsh-mac-package-trial` 构建两种架构。手动启动时，在 **Use workflow from** 中选择可信的分支或 tag，再选择机器 `preset`。checkout 使用本次 Actions 运行记录的提交；由发布工作流调用时使用调用方本次运行的提交。手动运行始终构建新产物。发布复用使用 Node 原生 `fetch` 和工作流提供的 `GH_TOKEN` 查询 GitHub API。签名凭据沿用[macOS 打包配置](../../../../apps/desktop/packaging/README.zh.md#macos-actions)。打包无需 macOS 桌面登录或 Rosetta。在仓库根目录运行 `node --import tsx/esm scripts/cua-helper/package.ts --out <new-directory>` 可执行相同准备。完整应用签名、公证和贴票后才确定最终内容摘要，再从解包后的 `cua-helper.tgz` 验证架构、签名、票据、Gatekeeper 和文件完整性。打包不启动 helper。在已登录的桌面会话中单独运行 `python3 scripts/cua-helper/smoke.py <helper-executable>` 检查能力、helper 身份和退出清理；Apple Silicon 上执行 x64 版本需要 Rosetta。该检查不申请权限或观察应用。命令失败、超时或启动回复无法解析时，会输出捕获的 stdout 和 stderr；无效编码只在诊断文本中替换，协议解析仍严格校验。打包成功不代表运行验收通过。 helper 打包保留独立的[诊断记录](../../../../apps/desktop/packaging/README.zh.md#macos-release-signing)，包括桌面安装包开始构建前发生的失败。
+手动工作流 **Package CUA helper · macOS** 的配置在 `dsh-mac-package-trial` 构建两种架构。手动启动时，在 **Use workflow from** 中选择可信的分支或 tag，再选择机器 `preset`。checkout 使用本次 Actions 运行记录的提交；由发布工作流调用时使用调用方本次运行的提交。手动运行始终构建新产物。发布复用使用 Node 原生 `fetch` 和工作流提供的 `GH_TOKEN` 查询 GitHub API。签名凭据沿用[macOS 打包配置](../../../../apps/desktop/packaging/README.zh.md#macos-actions)。打包无需 macOS 桌面登录或 Rosetta。在仓库根目录运行 `node --import tsx/esm scripts/cua-helper/package.ts --out <new-directory>` 可执行相同准备。完整应用签名、公证和贴票后才确定最终内容摘要，再从解包后的 `cua-helper.tgz` 验证架构、签名、票据、Gatekeeper 和文件完整性。打包不启动 helper。在已登录的桌面会话中单独运行 `python3 scripts/cua-helper/smoke.py <helper-executable>` 检查能力、helper 身份和退出清理；Apple Silicon 上执行 x64 版本需要 Rosetta。该检查不申请权限或观察应用。命令失败、超时或启动回复无法解析时，会输出捕获的 stdout 和 stderr；无效编码只在诊断文本中替换，协议解析仍严格校验。打包成功不代表运行验收通过。 helper 打包保留独立的[诊断记录](../../../../apps/desktop/packaging/README.zh.md#macos-release-signing)，包括桌面安装包开始构建前发生的失败。
 
-工作流保留 `cua-helper.tgz` 和 `cua-helper.json`。清单记录原始构建的产品版本、commit、Team ID、两份应用摘要、源码摘要和构建摘要。[Release publish](../../../../.github/workflows/release-publish.yml)始终调用该工作流，再按返回的 run ID 和 artifact ID 下载所选产物，生成 provider 的 npm 包。准备步骤校验当前 helper 的源码摘要、选定的构建摘要、两种架构、应用目录、文件字节和执行权限。npm 发布在写入注册表前重新检查实际 provider tarball。无关 commit 或产品版本变化时，复用保留原始清单和已签名字节。普通 PR 发布检查不使用签名凭据。
+工作流保留 `cua-helper.tgz` 和 `cua-helper.json`。清单记录原始构建的产品版本、commit、Team ID、两份应用摘要、源码摘要和构建摘要。Release publish始终调用该工作流，再按返回的 run ID 和 artifact ID 下载所选产物，生成 provider 的 npm 包。准备步骤校验当前 helper 的源码摘要、选定的构建摘要、两种架构、应用目录、文件字节和执行权限。npm 发布在写入注册表前重新检查实际 provider tarball。无关 commit 或产品版本变化时，复用保留原始清单和已签名字节。普通 PR 发布检查不使用签名凭据。
 
 **Release publish (dsh)** 接受可选的 `cua_run_id`：填写构建运行页面 URL 中 `/actions/runs/` 后的数字，不填 job ID。发布工作流开启 `reuse`，并通过 helper 的 `workflow_call` 参数传入这个选择；这两个复用参数均不出现在 helper 的手动表单中。`cua_run_id` 留空时自动查找，查询这两个工作流最近 14 天创建且已结束的运行，选择未过期的匹配产物。选择在 Mac 上执行，早于 pnpm 准备和依赖安装。命中时跳过安装、编译、签名和公证，自动查找未命中时重新构建。手动指定 run ID 时先固定最新 attempt，再选取该 run 历史中最后一次实际执行的 helper job。仅重跑 pack/publish 时仍可使用原 helper 产物；若更新的 helper 执行失败，则不复用更早的成功产物。产物缺失或过期、输入不匹配时直接失败，不改选其他运行。后续 npm 失败不影响成功的 helper job。GitHub API 读取失败会停止选择。运行摘要链接实际构建者；只复用产物的运行不重新上传副本，手动选择时填写摘要所链接的构建 run ID。产物保留 14 天。选择后过期或被删除会使下载失败，不自动改选或构建不同字节；按下方重试说明处理。
 
@@ -131,7 +131,7 @@ AppKit 在主事件循环上运行。阻塞式 socket 接收与握手使用后�
 
 运行 `python3 packages/experimental/cua-macos/native/tests/startup_e2e.py`，通过 LaunchServices 检查启动即退出、原始错误传递、过期就绪记录拒绝，以及卡住的新实例退出。检查使用自建应用，不申请系统权限。发布单元测试模拟签名；`build:native` 调用真实的 `codesign --verify --strict`，`launcher_identity_e2e.py` 验证 LaunchServices 授权归属。
 
-使用 `python3 packages/experimental/cua-macos/native/tests/test_swift.py` 通过选定 Apple 工具链的 Swift Testing 框架和运行时路径执行离线单元检查；使用 `python3 packages/experimental/cua-macos/native/tests/protocol_e2e.py` 检查 JSONL 接纳、有序回复和 EOF 退出，不执行桌面操作。应用与协议端到端检查接受 `--helper` 以选择单独构建的对比二进制。 `python3 packages/experimental/cua-macos/native/tests/test_build_app.py` 验证应用发布、开发版构建、已签名目录复用、签名失败和损坏副本拒绝。开发者签名工具的单测由 `scripts/cua-macos-signing.spec.ts` 执行；真实签名验证命令见[开发者签名 skill](../../../../.agents/skills/dsh-cua-macos-signing/SKILL.md)。
+使用 `python3 packages/experimental/cua-macos/native/tests/test_swift.py` 通过选定 Apple 工具链的 Swift Testing 框架和运行时路径执行离线单元检查；使用 `python3 packages/experimental/cua-macos/native/tests/protocol_e2e.py` 检查 JSONL 接纳、有序回复和 EOF 退出，不执行桌面操作。应用与协议端到端检查接受 `--helper` 以选择单独构建的对比二进制。 `python3 packages/experimental/cua-macos/native/tests/test_build_app.py` 验证应用发布、开发版构建、已签名目录复用、签名失败和损坏副本拒绝。开发者签名工具的单测由 `scripts/cua-macos-signing.spec.ts` 执行；真实签名验证命令见开发者签名 skill。
 
 运行 `python3 packages/experimental/cua-macos/native/tests/shared_helper_e2e.py --helper /absolute/helper`，通过测试自建的 AppKit fixture 核实并发启动、共享服务 PID、独立句柄、同一应用交接、请求级截图期限、连接清理和信号退出。需要已经给所选的正式版或开发版 helper 授予辅助功能和屏幕录制权限。`--without-desktop` 将检查限定为协议与进程生命期。
 

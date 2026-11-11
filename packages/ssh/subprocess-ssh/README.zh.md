@@ -54,7 +54,7 @@ kind: "package-reference"
 <a id="further-exploration"></a>
 ## 进一步探索
 
-- [子进程子系统](../../../docs/subsystems/subprocess.zh.md) — spawn、输出收集、终端及生命周期 API。
+- 子进程子系统 — spawn、输出收集、终端及生命周期 API。
 - [SSH 沙箱提供方](../sandbox-ssh/README.zh.md) — 远端文件效果限制。
 
 -----

@@ -65,6 +65,8 @@ export interface PluginInstanceView {
   releaseVersion: string
   /** Current instance state. */
   state: 'disabled' | 'connecting' | 'enabled' | 'error'
+  /** Whether this Host currently permits calls for this release; false errors require cleanup. */
+  authorized: boolean
   /**
    * Whether this account has the plugin in its directory. A `disabled` view
    * with `added: true` was stopped but kept; `added: false` was never added or

@@ -58,7 +58,7 @@ Register the returned definition through the caller's tool registry. Use `execut
 ## Further Exploration
 
 - [Tools package](../../core/tools/README.md) — tool definitions, registry, and execution policy.
-- [Testing policy](../../../docs/testing.md) — choosing verification for production behavior.
+- Testing policy — choosing verification for production behavior.
 - [Test-support group map](../README.md) — sibling test utilities.
 
 -----

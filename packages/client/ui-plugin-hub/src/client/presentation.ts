@@ -8,7 +8,7 @@ export interface HubQuery {
 }
 
 /** The state a plugin row shows, after the catalog and its local instance are combined. */
-export type HubRowState = 'enabled' | 'connecting' | 'disabled' | 'error'
+export type HubRowState = 'enabled' | 'connecting' | 'disabled' | 'error' | 'cleanup-error'
 
 /**
  * The instance state of one plugin, if the Host runs or tracks one.
@@ -21,11 +21,12 @@ export function instanceOf(snapshot: PluginHubSnapshot, pluginId: string): Plugi
 }
 
 /**
- * A plugin without an instance entry is not enabled.
+ * An unauthorized error requires cleanup; an absent instance is not enabled.
  * @param instance - the instance view, when the Host published one.
  * @returns the state a row shows.
  */
 export function rowState(instance: PluginInstanceView | undefined): HubRowState {
+  if (instance?.state === 'error' && !instance.authorized) return 'cleanup-error'
   return instance?.state ?? 'disabled'
 }
 

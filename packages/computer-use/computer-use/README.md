@@ -52,7 +52,7 @@ One private name owns the slot. Cordis effects remove contributions when their p
 <a id="further-exploration"></a>
 ## Further Exploration
 
-- [Computer use](../../../docs/subsystems/computer-use.md) — provider selection and shared-desktop limits.
+- Computer use — provider selection and shared-desktop limits.
 - [Computer Use bundle](../../experimental/cua-bundle/README.md) — enable DSH's native CUA and permission controls.
 - [Shared CUA library](../../experimental/cua/README.md) — application/window objects, tool execution, and application consent.
 - [macOS CUA provider](../../experimental/cua-macos/README.md) — DSH's Swift implementation and native helper lifecycle.

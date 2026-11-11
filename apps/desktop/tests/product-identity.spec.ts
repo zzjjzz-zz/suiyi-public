@@ -10,11 +10,23 @@ import { expandMacro } from 'app-builder-lib/out/util/macroExpander.js'
 import { AppInfo, Packager } from 'app-builder-lib'
 import { directoryUninstaller } from '../scripts/windows-directory-installer.mjs'
 import { createElectronBuilderConfig } from '../scripts/electron-builder-config.mjs'
+import { desktopUpdatesEnabled } from '../src/update-capability.ts'
 
 const base = { DSH_DESKTOP_APP_ID: 'com.deepseek.harness', DSH_DESKTOP_UNSIGNED: '1',
   DSH_DESKTOP_AUTO_UPDATE_ENV: 'test', DSH_DESKTOP_MANDATORY_UPDATE_TEST_ORIGIN: 'https://policy.example.invalid',
   DSH_DESKTOP_MANDATORY_UPDATE_CONFIG: '{"allowedAuthOrigins":["https://login.example.invalid"]}' }
 const suiyi = { ...base, DSH_DESKTOP_FLAVOR: 'suiyi', DSH_DESKTOP_APP_ID: 'com.zzjjzz.suiyi' }
+
+it.each(['0', '1'])('keeps Suiyi updates disabled independently of unsigned=%s', (unsigned) => {
+  const config = createElectronBuilderConfig({ ...suiyi, DSH_DESKTOP_UNSIGNED: unsigned,
+    DSH_DESKTOP_MACOS_SIGNING_IDENTITY: 'Example Company (TEAMID1234)',
+    DSH_DESKTOP_MACOS_TEAM_ID: 'TEAMID1234', APPLE_KEYCHAIN_PROFILE: 'update-capability-test',
+  }, 'darwin', 'arm64')
+  expect(config.extraMetadata.dshDesktopUpdatesEnabled).toBe(false)
+  expect(config.extraMetadata.dshMandatoryUpdatePolicy).toBeUndefined()
+  expect(config.publish).toBeNull()
+  expect(desktopUpdatesEnabled(config.extraMetadata, true, false)).toBe(false)
+})
 
 it('generates distinct actual builder identities while unsigned official retains upstream identity', () => {
   const official = createElectronBuilderConfig(base, 'win32', 'x64')
@@ -42,6 +54,10 @@ it('generates distinct actual builder identities while unsigned official retains
   expect(fork.productName).toBe('Suiyi')
   expect(fork.protocols[0].schemes).toEqual(['suiyi'])
   expect(fork.publish).toBeNull()
+  for (const config of [official, fork]) {
+    expect(config.extraMetadata.dshDesktopUpdatesEnabled).toBe(false)
+    expect(desktopUpdatesEnabled(config.extraMetadata, true, false)).toBe(false)
+  }
   expect(fork.extraMetadata.dshMandatoryUpdatePolicy).toBeUndefined()
   expect(fork.extraMetadata.dshDesktopFlavor).toBe('suiyi')
   expect(fork.artifactName).toBe('suiyi-${version}-${os}-${arch}-unsigned.${ext}')
@@ -77,11 +93,11 @@ it('sets independent storage before lock acquisition and strips inherited Host c
     expect(host.PATH).toBe('existing path')
     expect(readFileSync(original, 'utf8')).toBe('original sessions')
     // Model Electron's documented userData-scoped lock and exercise our real ownership wrapper.
-    const locks = new Map<string, () => void>()
+    const locks = new Map<string, (event: unknown, argv: string[]) => void>()
     const focused: string[] = []
     const launch = (directory: string, name: string) => claimDesktopSingleInstance({
       requestSingleInstanceLock: () => {
-        if (locks.has(directory)) { locks.get(directory)?.(); return false }
+        if (locks.has(directory)) { locks.get(directory)?.(undefined, []); return false }
         return true
       }, quit: () => {}, on: (_event, focus) => { locks.set(directory, focus) },
     }, () => { focused.push(name) })
@@ -148,8 +164,9 @@ it('wires early storage, protocol, updater and CLI protection into the shipped e
   expect(main.indexOf('initializeSuiyiStorage(app')).toBeLessThan(main.indexOf('claimDesktopSingleInstance(app'))
   expect(main).toContain('setAsDefaultProtocolClient(desktopIdentity.scheme)')
   expect(main).not.toContain("setAsDefaultProtocolClient('dsh')")
-  expect(main).toContain('desktopIdentity.suiyi ? () => false : undefined')
-  expect(main).toContain('desktopIdentity.suiyi ? undefined : resolveDesktopPolicyConfig')
+  expect(main).toContain('desktopUpdatesEnabled(manifest, app.isPackaged,')
+  expect(main).toContain('undefined, () => updatesEnabled, undefined')
+  expect(main).toContain('updates.available ? resolveDesktopPolicyConfig')
   const command = readFileSync(new URL('../src/command-management.ts', import.meta.url), 'utf8')
   expect(command).toContain('if (desktopIdentity.suiyi) return Promise.resolve()')
   const cleanup = readFileSync(new URL('../installer/uninstall.nsh', import.meta.url), 'utf8')

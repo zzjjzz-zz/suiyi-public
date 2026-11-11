@@ -30,7 +30,7 @@ Team 包让同一子代理树中的智能体共享任务归属和依赖。服务
 <a id="related-documentation"></a>
 ## 相关文档
 
-- [Agent Teams 子系统](../../docs/subsystems/agent-team.zh.md) — 任务类型、事件与服务 API。
+- Agent Teams 子系统 — 任务类型、事件与服务 API。
 - [Subagent 包](../subagent/README.zh.md) — 委派、发现与通信。
 
 <a id="dev-note"></a>

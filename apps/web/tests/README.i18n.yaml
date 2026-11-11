@@ -3,11 +3,11 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write apps/web/tests/README.md
 /apps-web-browser-e2e:
-  en: 88e00180b920a42e
-  zh: 8ddba0f4bbb4f1f6
+  en: 3981c98fce78638f
+  zh: 00c7f41fe0210b1c
 /apps-web-browser-e2e/completion-observations:
-  en: 8c139966983959cc
-  zh: 54f09f9b7ac84cda
+  en: b9965f420d480d37
+  zh: d8239532ecc759f7
 /apps-web-browser-e2e/these-are-host-face-tests:
   en: 101d687b1d98c5b7
   zh: f8c31115e8a15be7

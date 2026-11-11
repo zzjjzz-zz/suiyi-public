@@ -19,7 +19,7 @@ export type DesktopUpdateFailureKind =
 
 /** Public semantic preload fields consumed by the settings row. */
 export interface DesktopUpdatePresentation {
-  readonly phase: 'idle' | 'checking' | 'available' | 'downloading' | 'verifying' | 'installing' | 'ready' | 'error'
+  readonly phase: 'unavailable' | 'idle' | 'checking' | 'available' | 'downloading' | 'verifying' | 'installing' | 'ready' | 'error'
   readonly version?: string
   readonly percent?: number
   readonly failure?: DesktopUpdateFailureKind
@@ -46,6 +46,8 @@ export type DesktopUpdateChannel = 'nightly' | 'stable'
 
 /** Current runtime selection and application status; failure never implies a successful switch. */
 export interface DesktopChannelState {
+  /** Updates are disabled for this application; channel changes have no effect. */
+  readonly unavailable?: true
   readonly channel: DesktopUpdateChannel | null
   readonly packagedChannel: DesktopUpdateChannel
   readonly changing: boolean
@@ -54,7 +56,7 @@ export interface DesktopChannelState {
 
 /** Outcome of one UI action; failures are not global updater state. */
 export type DesktopChannelChangeResult =
-  | { readonly kind: 'applied' | 'unchanged'; readonly state: DesktopChannelState }
+  | { readonly kind: 'applied' | 'unchanged' | 'unavailable'; readonly state: DesktopChannelState }
   | { readonly kind: 'failed'; readonly state: DesktopChannelState; readonly reason: 'save' | 'format' | 'permission' | 'apply' | 'uncertain' }
 
 /** UI choices persist in the shell configuration, independently of Host settings. */

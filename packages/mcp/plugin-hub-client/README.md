@@ -65,7 +65,7 @@ On the Suiyi desktop, leave `authorization` empty. Electron delivers the verifie
 
 ### Remote methods
 
-`catalog()` returns the last committed catalog without contacting the platform. `refresh()` fetches and validates the catalog with this account's token, prunes decisions for absent or changed releases, then reconciles instances. Both return `{plugins, catalogVersion, instances, enabled}`; `instances` holds one `PluginInstanceView` per catalog row plus every retained mount or cleanup failure, and every view carries `added`.
+`catalog()` returns the last committed catalog without contacting the platform. `refresh()` fetches and validates the catalog with this account's token, prunes decisions for absent or changed releases, then reconciles instances. Both return `{plugins, catalogVersion, instances, enabled}`; `instances` holds one `PluginInstanceView` per catalog row plus every retained mount or cleanup failure, and every view carries `added` and `authorized`.
 
 The lifecycle methods serialize behind every other operation and reject with `plugin-hub/unknown-plugin` when the row is absent from the last committed catalog:
 
@@ -75,6 +75,8 @@ The lifecycle methods serialize behind every other operation and reject with `pl
 | `enable(pluginId)` | writes or replaces the current release with `enabled: true` | starts the instance; mount failure keeps `enabled: true` and reports `error` |
 | `disable(pluginId)` | keeps the row and writes `enabled: false` | stops the instance to quiescence; a failed unmount keeps the visible error |
 | `removeInstance(pluginId)` | deletes the row | stops the instance to quiescence; a failed unmount keeps the visible error |
+
+`authorized` reports whether this release may currently make calls. An `error` with `authorized: false` requires cleanup; retrying that cleanup calls `disable` without granting authorization again.
 
 A restart mounts only `enabled: true` rows whose release still matches the catalog. `added: true` with state `disabled` is an added but stopped plugin; `added: false` with state `disabled` was never added or was removed.
 
@@ -86,7 +88,7 @@ A Host profile belongs to one verified account. The platform catalog, every MCP 
 
 `identity` additionally names the account for local storage isolation, and every durable decision stores only its opaque scope (a SHA-256 of the issuer and subject pair). A decision written for another identity is ignored at load and removed from Settings on the first successful refresh. This local scope is not a substitute for the platform's per-user authorization; the backend token remains the authority. The launcher identity binding reads only the inherited process layer, so `.env` files cannot substitute an account. Switching accounts therefore requires a new Host process with the new identity and token; a profile never serves the previous account's catalog or instance tools.
 
-V1 binds one Host to its owner. All Remote methods reject non-owner Peers. Model tools also require an owner-attributed Agent turn: admitted non-owner input blocks that whole turn, later owner steering cannot widen it, and an unattributed Agent is denied. Trusted in-process calls with no Agent remain available for internal integration.
+V1 binds one Host to its owner. All Remote methods reject non-owner Peers. Model tools also require an owner-attributed Agent turn: admitted non-owner input blocks that whole turn, later owner steering cannot widen it, and an unattributed Agent is denied. A newly created child inherits a fixed authority ceiling from its live creator; guest or unknown ancestry cannot gain owner authority from later input. Resumed children whose original authority was not observed remain denied. Trusted in-process calls with no Agent remain available for internal integration.
 
 The platform endpoint, the Authorization header, and every credential value stay on the Host. Errors crossing the Remote seam are sanitized to a failure class; `plugin-hub/unavailable` reports `network`, `timeout`, `http`, `unauthorized`, `invalid-response`, or `too-large`, never the URL or a response body. The Host refuses absolute, cross-origin, or off-endpoint `mcpPath` values, and follows no redirects, so a credential cannot be forwarded to another origin.
 
@@ -102,9 +104,9 @@ The [instance owner](src/instances.ts) mounts one fiber of the same native Cordi
 
 A retired namespace stays denied until a replacement starts successfully. Surviving tool registrations block replacement; a failed mount cannot remove the old denial.
 
-The [guard](src/guard.ts) is registered on `ctx.tools.guard`, so it runs after every `tools/pre-execute` listener and before the tool body. It denies a name whose live namespace is retired, whose live release is no longer authorized, or whose public name is outside the frozen allowed tools. The hub MCP endpoint revalidates authorization on every request, so this guard is defense in depth rather than the only enforcement.
+The [guard](src/guard.ts) remains registered on the root tools registry until every hub tool is withdrawn, including after a failed plugin unload, so it runs after every `tools/pre-execute` listener and before the tool body. It denies a name whose live namespace is retired, whose live release is no longer authorized, or whose public name is outside the frozen allowed tools. The hub MCP endpoint revalidates authorization on every request, so this guard is defense in depth rather than the only enforcement.
 
-The [service](src/index.ts) serializes catalog refresh, add, enable, disable, removeInstance, restore, and disposal on one queue. A failed refresh leaves the previous catalog and mounted instances untouched. A newer catalog that changed or dropped a release withdraws the old authorization before unmounting, so a queued call cannot run against a stale release. Disposal aborts the in-flight request, drains queued work, and awaits every child instance.
+The [service](src/index.ts) serializes catalog refresh, add, enable, disable, removeInstance, restore, and disposal on one queue. A failed refresh leaves the previous catalog and mounted instances untouched. A newer catalog that changed or dropped a release withdraws the old authorization before unmounting, so a queued call cannot run against a stale release. Disposal aborts the in-flight request, drains queued work, and awaits every child instance. Failed cleanup retains the instance record, so repeated disable attempts keep reporting failure until its public tools are withdrawn.
 
 </details>
 
@@ -115,7 +117,7 @@ The [service](src/index.ts) serializes catalog refresh, add, enable, disable, re
 - [MCP client](../mcp-client/README.md) — tool naming, template resolution, and connection lifecycle.
 - [Settings](../../settings/settings/README.md) — the volatile configuration writes this package persists through.
 - [Credentials](../../credentials/credentials/README.md) — reference resolution and secret storage.
-- [Remote call model](../../../docs/api-gateway.md) — how `@Remote` methods cross the Gateway.
+- Remote call model — how `@Remote` methods cross the Gateway.
 
 <a id="model-experience"></a>
 ## Model Experience

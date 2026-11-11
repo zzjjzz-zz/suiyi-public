@@ -15,14 +15,14 @@
   en: d152484eb41ac6b4
   zh: 09388d293f9be9cb
 /deepseek-ai-dsh-tool-executor-ptc/use-this-package:
-  en: 2db07bc05f05d202
-  zh: 4efdaab79fcc00af
+  en: c22e5163667d48f5
+  zh: 5a144f93d1e55730
 /deepseek-ai-dsh-tool-executor-ptc/understand-the-implementation:
   en: 78708b3779d999a9
   zh: ad6173f9f01630de
 /deepseek-ai-dsh-tool-executor-ptc/understand-the-implementation/ptc-mode:
-  en: 5623dd6cdd26bda2
-  zh: 0b93be49e84ef52c
+  en: 2c7b6c379d053ca8
+  zh: 8ce4f714e16e82f3
 /deepseek-ai-dsh-tool-executor-ptc/further-exploration:
   en: ee69078c38c655a9
   zh: fb0873407f23c8c5
@@ -33,8 +33,8 @@
   en: eaefd7303f22977d
   zh: 9c425f9501128224
 /deepseek-ai-dsh-tool-executor-ptc/model-experience/ptc-mode-schema-and-system-prompt/what-the-model-sees:
-  en: 3c4ee15c38a82543
-  zh: c032ede27425f917
+  en: 566b9063544271a9
+  zh: b6419de6abdd04fc
 /deepseek-ai-dsh-tool-executor-ptc/model-experience/ptc-mode-schema-and-system-prompt/what-the-model-sees/typescript-ptc-mode-sdk-instructions-with-bash:
   en: 3a8df15e4ae32f9e
   zh: fc4a800ba363e835

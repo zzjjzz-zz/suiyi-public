@@ -25,7 +25,7 @@ function plugin(id: string, fields: Partial<CatalogPlugin> = {}): CatalogPlugin 
 }
 
 const instance = (pluginId: string, state: PluginInstanceView['state'], releaseVersion = '1.0.0'): PluginInstanceView =>
-  ({ pluginId, releaseVersion, state, added: true })
+  ({ pluginId, releaseVersion, state, added: true, authorized: state !== 'disabled' })
 
 function catalog(fields: Partial<PluginHubSnapshot> = {}): PluginHubSnapshot {
   return { plugins: [plugin('alpha'), plugin('beta')], catalogVersion: 'catalog-7', instances: [], enabled: true, ...fields }
@@ -68,6 +68,42 @@ function setup(initial: PluginHubSnapshot = catalog()) {
 }
 
 describe('PluginHubController', () => {
+  it('can disable an added instance that failed while its release remains authorized', async () => {
+    const { face, hub, snapshot } = setup(catalog({ instances: [instance('alpha', 'error')] }))
+    face.ensure()
+    await vi.waitFor(() => { expect(snapshot().status).toBe('ready') })
+    face.disable('alpha')
+    await vi.waitFor(() => { expect(hub.disable).toHaveBeenCalledExactlyOnceWith('alpha') })
+    expect(hub.enable).not.toHaveBeenCalled()
+  })
+
+  it('retries cleanup after reload without authorizing or re-adding a removed plugin', async () => {
+    const { face, hub, snapshot } = setup(catalog({
+      instances: [{ ...instance('alpha', 'error'), authorized: false, added: false }],
+    }))
+    face.ensure()
+    await vi.waitFor(() => { expect(snapshot().status).toBe('ready') })
+    face.add('alpha')
+    face.enable('alpha')
+    face.retry('alpha')
+    await vi.waitFor(() => { expect(hub.disable).toHaveBeenCalledExactlyOnceWith('alpha') })
+    expect(hub.enable).not.toHaveBeenCalled()
+    expect(hub.add).not.toHaveBeenCalled()
+  })
+
+  it('uses the current withdrawn authorization instead of retrying an older failed enable', async () => {
+    const { face, hub, snapshot, controller } = setup(catalog({ instances: [instance('alpha', 'disabled')] }))
+    face.ensure()
+    await vi.waitFor(() => { expect(snapshot().status).toBe('ready') })
+    hub.enable.mockImplementationOnce(() => fail('enable failed'))
+    face.enable('alpha')
+    await vi.waitFor(() => { expect(snapshot().actionFailures.alpha?.kind).toBe('enable') })
+    controller.acceptSnapshot(catalog({ instances: [{ ...instance('alpha', 'error'), authorized: false }] }))
+    face.retry('alpha')
+    await vi.waitFor(() => { expect(hub.disable).toHaveBeenCalledExactlyOnceWith('alpha') })
+    expect(hub.enable).toHaveBeenCalledTimes(1)
+  })
+
   it('reads the catalog on first render, publishes it once, and keeps later renders off the wire', async () => {
     const { face, hub, snapshot } = setup()
     expect(snapshot().status).toBe('idle')
@@ -168,10 +204,10 @@ describe('PluginHubController', () => {
 
   it('uses the typed add, enable, disable, and remove Remote methods', async () => {
     const installedDisabled: PluginInstanceView = {
-      pluginId: 'alpha', releaseVersion: '1.0.0', state: 'disabled', added: true,
+      pluginId: 'alpha', releaseVersion: '1.0.0', state: 'disabled', authorized: false, added: true,
     }
     const installedEnabled: PluginInstanceView = {
-      pluginId: 'beta', releaseVersion: '1.0.0', state: 'enabled', added: true,
+      pluginId: 'beta', releaseVersion: '1.0.0', state: 'enabled', authorized: true, added: true,
     }
     const { face, hub, snapshot } = setup(catalog({ plugins: [plugin('alpha'), plugin('beta'), plugin('gamma')],
       instances: [installedDisabled, installedEnabled] }))
@@ -194,7 +230,7 @@ describe('PluginHubController', () => {
 
   it('keeps a failed removal on the installed row and retries the same operation', async () => {
     const installed: PluginInstanceView = {
-      pluginId: 'alpha', releaseVersion: '1.0.0', state: 'enabled', added: true,
+      pluginId: 'alpha', releaseVersion: '1.0.0', state: 'enabled', authorized: true, added: true,
     }
     const { face, hub, snapshot } = setup(catalog({ instances: [installed] }))
     face.ensure()
@@ -277,14 +313,13 @@ describe('PluginHubController', () => {
     expect(hub.disable).toHaveBeenCalledTimes(4)
   })
 
-  it('does not disable a plugin that is off, failed, already busy, or behind a disabled hub', async () => {
+  it('does not disable a plugin that is off, already busy, or behind a disabled hub', async () => {
     const states = setup(catalog({
       instances: [instance('alpha', 'disabled'), instance('beta', 'error'), instance('gamma', 'enabled')],
     }))
     states.face.ensure()
     await vi.waitFor(() => { expect(states.snapshot().status).toBe('ready') })
     states.face.disable('alpha')
-    states.face.disable('beta')
     expect(states.hub.disable).not.toHaveBeenCalled()
     const pending = deferred<Answer<void>>()
     states.hub.disable.mockImplementationOnce(() => pending.promise)

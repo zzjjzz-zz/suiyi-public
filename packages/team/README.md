@@ -30,7 +30,7 @@ The Team packages let agents in a subagent tree share task ownership and depende
 <a id="related-documentation"></a>
 ## Related documentation
 
-- [Agent Teams subsystem](../../docs/subsystems/agent-team.md) — task types, events, and the service API.
+- Agent Teams subsystem — task types, events, and the service API.
 - [Subagent packages](../subagent/README.md) — delegation, discovery, and communication.
 
 <a id="dev-note"></a>

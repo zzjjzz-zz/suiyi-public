@@ -184,13 +184,15 @@ describe('plugin instances', () => {
     const unregister = ctx.tools.register(staleTool())
     try {
       await expect(instances.unmount(PLUGIN_ID)).rejects.toBeInstanceOf(InstanceCleanupError)
+      await expect(instances.unmount(PLUGIN_ID)).rejects.toBeInstanceOf(InstanceCleanupError)
       expect(instances.revoked().get(NAMESPACE)).toBe(PLUGIN_ID)
       expect(guardInstanceCall({ name: TOOL }, instances, new Map([[PLUGIN_ID, '1.0.0']]))).toContain('disabled')
-      await expect(instances.mount(validated('2.0.0'), 'Bearer fixture')).rejects.toBeInstanceOf(InstanceCleanupError)
+      await expect(instances.mount(validated('2.0.0'), 'Bearer fixture')).rejects.toThrow('already mounted')
       expect(guardInstanceCall({ name: TOOL }, instances, new Map([[PLUGIN_ID, '2.0.0']]))).toContain('disabled')
     } finally {
       unregister()
     }
+    await instances.unmount(PLUGIN_ID)
     await instances.mount(validated('2.0.0'), 'Bearer fixture')
     expect(instances.revoked().has(NAMESPACE)).toBe(false)
     await instances.unmount(PLUGIN_ID)

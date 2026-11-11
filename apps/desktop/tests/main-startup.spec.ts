@@ -64,6 +64,7 @@ const harness = await vi.hoisted(async () => {
   let closingForQuit = false
   // The flavor the appPath manifest declares; Suiyi tests set 'suiyi' before import.
   let desktopFlavor: 'official' | 'suiyi' = 'official'
+  let updatesEnabled = true
   let updateState: DesktopUpdateState = { phase: 'idle' }
   let platformDisposeDeferred: ReturnType<typeof deferred> | undefined
   // The native Platform view owns persistent browser storage; Desktop startup tests replace it so
@@ -305,6 +306,8 @@ const harness = await vi.hoisted(async () => {
     set embeddedPolicy(value: unknown) { embeddedPolicy = value },
     get desktopFlavor() { return desktopFlavor },
     set desktopFlavor(value: 'official' | 'suiyi') { desktopFlavor = value },
+    get updatesEnabled() { return updatesEnabled },
+    set updatesEnabled(value: boolean) { updatesEnabled = value },
     nextNavigation() { navigated = deferred(); return navigated.promise },
     nextHostStart() { hostStarted = deferred(); return hostStarted.promise },
     deferPlatformDispose() { platformDisposeDeferred = deferred(); return platformDisposeDeferred },
@@ -321,6 +324,7 @@ const harness = await vi.hoisted(async () => {
       shellDialog.isOpen = false
       powerMonitor.removeAllListeners()
       app.isPackaged = true
+      updatesEnabled = true
       windowFailure = undefined
       pluginsEnabled = false
       closeWindowsOnQuit = false
@@ -407,8 +411,10 @@ vi.mock('node:fs/promises', async (importOriginal) => {
       return Promise.reject(Object.assign(new Error('no override'), { code: 'ENOENT' }))
     }
     // The real appPath package.json exists on disk; add the test policy the manifest read expects.
-    if (typeof path === 'string' && path.endsWith(join('package.json')) && path.includes('dsh-main-app-path')) {
-      return Promise.resolve(JSON.stringify({ dshDesktopAppId: 'com.deepseek.dsh', dshDesktopFlavor: harness.desktopFlavor, dshMandatoryUpdatePolicy: harness.embeddedPolicy }))
+    if (typeof path === 'string' && path === join(harness.app.getAppPath(), 'package.json')) {
+      return Promise.resolve(JSON.stringify({ dshDesktopAppId: 'com.deepseek.dsh', dshDesktopFlavor: harness.desktopFlavor,
+        dshDesktopUpdatesEnabled: harness.desktopFlavor !== 'suiyi' && harness.updatesEnabled,
+        dshMandatoryUpdatePolicy: harness.embeddedPolicy }))
     }
     return encoding === undefined ? original.readFile(path) : original.readFile(path, encoding)
   }) }
@@ -474,8 +480,9 @@ vi.mock('../src/update-coordinator.ts', () => ({ DesktopUpdateCoordinator: class
   revision = 0
   configurationFailure: 'startup' | 'cleanup' | undefined
   constructor(publish: (state: DesktopUpdateState) => DesktopUpdateState, beforeRestart: () => Promise<boolean>,
-    _updater: unknown, _enabled: unknown, _version: unknown, _downloadResult: unknown, channel: 'nightly' | 'stable') {
+    _updater: unknown, enabled: () => boolean, _version: unknown, _downloadResult: unknown, channel: 'nightly' | 'stable') {
     this.selectedChannel = channel
+    if (!enabled()) harness.updateState = { phase: 'unavailable' }
     harness.prepareUpdate = beforeRestart
     harness.publishUpdate = publish
   }
@@ -493,6 +500,7 @@ vi.mock('../src/update-coordinator.ts', () => ({ DesktopUpdateCoordinator: class
     harness.publishUpdate(harness.updateState)
   }
   get state() { return harness.updateState }
+  get available() { return this.state.phase !== 'unavailable' }
   readonly check = harness.updateCheck
   readonly download = harness.updateDownload
   readonly install = harness.updateInstall
@@ -564,7 +572,10 @@ beforeEach(() => {
   harness.appPath = appPathDir
   onTestFinished(() => { rmSync(appPathDir, { recursive: true, force: true }) })
   // The default manifest is official; Suiyi tests add dshDesktopFlavor on top.
-  writeFileSync(join(appPathDir, 'package.json'), JSON.stringify({ dshDesktopAppId: 'com.deepseek.dsh', dshDesktopFlavor: harness.desktopFlavor }))
+  writeFileSync(join(appPathDir, 'package.json'), JSON.stringify({ dshDesktopAppId: 'com.deepseek.dsh',
+    dshDesktopFlavor: harness.desktopFlavor, dshDesktopUpdatesEnabled: true }))
+  mkdirSync(join(appPathDir, 'resources'))
+  writeFileSync(join(appPathDir, 'resources', 'app-update.yml'), 'provider: generic\nurl: https://updates.example.invalid/\n')
   harness.app.getPath.mockImplementation(name => name === 'userData' ? userData : join(userData, `desktop-test-${name}`))
   vi.mocked(writeCrashReport).mockResolvedValue(join(harness.app.getPath('logs'), 'crash-test.log'))
   harness.dialog.showMessageBox.mockImplementation((options: { title?: string }) => {
@@ -578,7 +589,7 @@ beforeEach(() => {
   vi.stubEnv('DSH_DESKTOP_PNPM_ENTRY', 'test-pnpm')
   vi.stubEnv('DSH_DESKTOP_DSH_DIR', 'test-runtime')
   vi.stubEnv('DSH_DESKTOP_PRIMARY_RUNTIME_DIR', 'test-primary-runtime')
-  vi.stubGlobal('process', { ...process, platform: 'win32', arch: 'x64', resourcesPath: 'desktop-test-resources' })
+  vi.stubGlobal('process', { ...process, platform: 'win32', arch: 'x64', resourcesPath: join(harness.appPath, 'resources') })
   vi.stubEnv('DSH_DESKTOP_HOST_INSPECT_PORT', undefined)
   vi.stubEnv('DSH_DESKTOP_DEV_PROJECT_DIR', undefined)
   vi.stubEnv('DSH_DESKTOP_MANDATORY_UPDATE_CONFIG', undefined)
@@ -603,18 +614,46 @@ afterEach(async () => {
 })
 
 describe('desktop main startup', () => {
+  it.each([true, false])('keeps disabled update entry points inert without reading corrupt settings (packaged=%s)', async (packaged) => {
+    harness.app.isPackaged = packaged
+    harness.updatesEnabled = false
+    harness.embeddedPolicy = { invalid: 'unused disabled policy' }
+    configureTestAuthPopup(true)
+    const path = join(harness.app.getPath('userData'), 'desktop', 'settings.json')
+    writeFileSync(path, '{corrupt settings')
+    const { DesktopUpdateCoordinator } = await import('../src/update-coordinator.ts')
+    const switchChannel = vi.spyOn(DesktopUpdateCoordinator.prototype, 'switchChannel')
+    await readyForUpdate()
+    expect(await invoke(DESKTOP_IPC.updatesStatus, 'app')).toEqual({ phase: 'unavailable' })
+    const state = { unavailable: true, channel: null, packagedChannel: 'nightly', changing: false }
+    expect(await invoke(DESKTOP_IPC.updatesChannelGet, 'app')).toEqual(state)
+    expect(await invoke(DESKTOP_IPC.updatesChannelSet, 'app', 'stable')).toEqual({ kind: 'unavailable', state })
+    await invoke(DESKTOP_IPC.updatesOpen, 'app')
+    harness.windows[0]!.emit('focus')
+    harness.powerMonitor.emit('resume')
+    await vi.advanceTimersByTimeAsync(600_000)
+    expect(harness.powerMonitor.listenerCount('resume')).toBe(0)
+    expect(applicationMenuItems().some(item => item.label === en.checkUpdatesMenu)).toBe(false)
+    expect(switchChannel).not.toHaveBeenCalled()
+    expect(harness.updateCheck).not.toHaveBeenCalled()
+    expect(harness.updateDownload).not.toHaveBeenCalled()
+    expect(harness.updateInstall).not.toHaveBeenCalled()
+    expect(readFileSync(path, 'utf8')).toBe('{corrupt settings')
+    expect(harness.dialog.showMessageBox).not.toHaveBeenCalled()
+  })
+
   it.each([true, false])('selects the package manager before Host startup (packaged=%s)', async (packaged) => {
     harness.app.isPackaged = packaged
     await readyForUpdate()
     const host = harness.hosts[0]!
     expect(host.node).toBe(process.execPath)
     expect(host.primaryRuntime).toBe(packaged
-      ? join('desktop-test-resources', 'runtime', 'primary-runtime') : 'test-primary-runtime')
+      ? join(harness.appPath, 'resources', 'runtime', 'primary-runtime') : 'test-primary-runtime')
     expect(host.packageManager).toMatchObject({
       pnpm: packaged
-        ? join('desktop-test-resources', 'runtime', 'primary-runtime', 'dependencies', 'pnpm', 'bin', 'pnpm.mjs')
+        ? join(harness.appPath, 'resources', 'runtime', 'primary-runtime', 'dependencies', 'pnpm', 'bin', 'pnpm.mjs')
         : 'test-pnpm',
-      nodeBin: packaged ? join('desktop-test-resources', 'runtime', 'bin') : join(harness.appPath, 'scripts', 'node-bin'),
+      nodeBin: packaged ? join(harness.appPath, 'resources', 'runtime', 'bin') : join(harness.appPath, 'scripts', 'node-bin'),
     })
   })
 
@@ -907,7 +946,9 @@ describe('desktop main startup', () => {
     const menu = applicationMenuItems()
     const visible = menu.filter(item => item.visible !== false)
     expect(visible.map(item => item.role === 'quit' ? 'quit' : item.label ?? item.type)).toEqual([
-      messages.aboutMenu, 'separator', messages.checkUpdatesMenu,
+      messages.aboutMenu,
+      ...packaged || platform !== 'linux' ? ['separator'] : [],
+      ...packaged ? [messages.checkUpdatesMenu] : [],
       ...platform === 'linux' ? [] : [messages.cliCommandMenu],
       'separator', ...packaged ? [] : [messages.reloadPageMenu, messages.restartAppHostMenu],
       messages.toggleDevToolsMenu, 'separator',
@@ -959,7 +1000,7 @@ describe('desktop main startup', () => {
     const [about, separator] = submenu
     expect({ menu: [{ label: about!.label, role: about!.role }, separator], options: { ...options, iconPath: '<app icon>' } })
       .toEqual(expected[`${platform}:${locale}`])
-    expect(options.iconPath).toBe(packaged ? join('desktop-test-resources', 'icon.png')
+    expect(options.iconPath).toBe(packaged ? join(harness.appPath, 'resources', 'icon.png')
       : join(harness.appPath, 'resources', 'icon-windows.png'))
     if (platform !== 'win32') { expect(about!.click).toBeUndefined(); return }
     // Windows reuses the dimmed update dialog because Electron's fallback is a bare message box.
@@ -1673,7 +1714,7 @@ describe('desktop main startup', () => {
       expect(harness.app.quit).toHaveBeenCalledOnce()
       return
     }
-    harness.app.emit('second-instance')
+    harness.app.emit('second-instance', undefined, ['desktop'])
     const replacement = harness.windows[1]!
     await replacement.shown.promise
     expect(replacement.show).toHaveBeenCalledOnce()
@@ -1714,7 +1755,7 @@ describe('desktop main startup', () => {
     expect(harness.dialog.showMessageBox).not.toHaveBeenCalled()
     expect(window.hide).toHaveBeenCalledOnce()
     await host.stopping.promise
-    harness.app.emit('second-instance')
+    harness.app.emit('second-instance', undefined, ['desktop'])
     expect(window.show).not.toHaveBeenCalled()
     expect(window.focus).not.toHaveBeenCalled()
     host.exited.resolve()
@@ -1726,7 +1767,7 @@ describe('desktop main startup', () => {
     const host = await readyWorkspace()
     const window = harness.windows[0]!
     expect(harness.trays).toHaveLength(1)
-    expect(harness.trays[0]!.image).toEqual({ path: join('desktop-test-resources', 'tray.ico') })
+    expect(harness.trays[0]!.image).toEqual({ path: join(harness.appPath, 'resources', 'tray.ico') })
     expect(harness.backgroundNotice.markerPath).toBe(join(harness.app.getPath('userData'), 'background-close-confirmed'))
     window.show.mockClear()
     window.close()
@@ -1738,7 +1779,7 @@ describe('desktop main startup', () => {
     harness.trays[0]!.emit('click')
     expect(window.show).toHaveBeenCalledOnce()
     expect(window.focus).toHaveBeenCalled()
-    harness.app.emit('second-instance')
+    harness.app.emit('second-instance', undefined, ['desktop'])
     expect(window.show).toHaveBeenCalledTimes(2)
     // Locale changes relabel the tray together with the application menu.
     const relabels = harness.trays[0]!.setContextMenu.mock.calls.length
@@ -1791,7 +1832,7 @@ describe('desktop main startup', () => {
   })
 
   it('leaves macOS fullscreen before hiding on close and reopens the hidden window on activate', async () => {
-    vi.stubGlobal('process', { ...process, platform: 'darwin', arch: 'arm64', resourcesPath: 'desktop-test-resources' })
+    vi.stubGlobal('process', { ...process, platform: 'darwin', arch: 'arm64', resourcesPath: join(harness.appPath, 'resources') })
     await readyWorkspace()
     const window = harness.windows[0]!
     expect(harness.trays).toHaveLength(0)
@@ -1808,7 +1849,7 @@ describe('desktop main startup', () => {
   })
 
   it('skips the confirmation during a macOS shutdown but asks again once a cancelled shutdown returns focus', async () => {
-    vi.stubGlobal('process', { ...process, platform: 'darwin', arch: 'arm64', resourcesPath: 'desktop-test-resources' })
+    vi.stubGlobal('process', { ...process, platform: 'darwin', arch: 'arm64', resourcesPath: join(harness.appPath, 'resources') })
     const host = await readyWorkspace()
     const window = harness.windows[0]!
     host.inspectQuit.mockResolvedValue({ activeTasks: true, scheduledTasks: false })
@@ -1847,6 +1888,44 @@ describe('desktop main startup', () => {
     await host.stopping.promise
     host.exited.resolve()
     await harness.quitCompleted.promise
+  })
+
+  it('exits an uninstaller probe before creating a window or Host when no owner is running', async () => {
+    vi.stubGlobal('process', { ...process, argv: [process.execPath, '--suiyi-uninstall-quit'] })
+    await import('../src/main.ts')
+    await vi.advanceTimersByTimeAsync(0)
+    expect(harness.app.exit).toHaveBeenCalledExactlyOnceWith(0)
+    expect(harness.windows).toEqual([])
+    expect(harness.hosts).toEqual([])
+  })
+
+  it('lets an uninstaller quit request use the ordinary task confirmation and respect cancellation', async () => {
+    const host = await readyWorkspace()
+    host.inspectQuit.mockResolvedValue({ activeTasks: true, scheduledTasks: false })
+    harness.dialog.showMessageBox.mockResolvedValue({ response: 1, checkboxChecked: false })
+    try {
+      harness.app.emit('second-instance', undefined, [process.execPath, '--suiyi-uninstall-quit'])
+      await vi.advanceTimersByTimeAsync(0)
+      expect(harness.dialog.showMessageBox).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+        message: en.quitTitle, buttons: [en.quit, en.cancel],
+      }))
+      expect(host.stop).not.toHaveBeenCalled()
+      expect(harness.app.exit).not.toHaveBeenCalled()
+      expect(harness.windows[0]!.isDestroyed()).toBe(false)
+    } finally {
+      host.inspectQuit.mockResolvedValue({ activeTasks: false, scheduledTasks: false })
+      harness.dialog.showMessageBox.mockResolvedValue({ response: 0, checkboxChecked: false })
+    }
+  })
+
+  it('ignores an uninstall quit request from another installation', async () => {
+    const host = await readyWorkspace()
+    host.inspectQuit.mockClear()
+    harness.app.emit('second-instance', undefined, ['D:/Other/Suiyi.exe', '--suiyi-uninstall-quit'])
+    await vi.advanceTimersByTimeAsync(0)
+    expect(host.inspectQuit).not.toHaveBeenCalled()
+    expect(harness.app.exit).not.toHaveBeenCalled()
+    expect(harness.windows[0]!.isDestroyed()).toBe(false)
   })
 
   it('asks before quitting when the Host reports interruptible work and cancels without stopping anything', async () => {
@@ -2954,7 +3033,7 @@ describe('desktop main startup', () => {
     expect(harness.hosts[0]).toMatchObject({
       node: process.execPath,
       runtime: join(harness.app.getAppPath(), 'dsh'),
-      primaryRuntime: join('desktop-test-resources', 'runtime', 'primary-runtime'),
+      primaryRuntime: join(harness.appPath, 'resources', 'runtime', 'primary-runtime'),
       profile: 'desktop-test-profile',
     })
     expect(harness.hosts[0]!.environment).not.toBe(process.env)
@@ -3245,10 +3324,10 @@ describe('Suiyi main lifecycle', () => {
     harness.prepared.resolve()
     await vi.waitFor(() => { expect(harness.hosts).toHaveLength(1) })
     await harness.hostStarted.promise
-    expect(harness.trays[0]!.image).toEqual({ path: packaged ? join('desktop-test-resources', 'tray.ico')
+    expect(harness.trays[0]!.image).toEqual({ path: packaged ? join(harness.appPath, 'resources', 'tray.ico')
       : join(harness.appPath, 'resources', 'suiyi', 'tray-windows.ico') })
     expect(harness.app.setAboutPanelOptions.mock.lastCall![0].iconPath).toBe(packaged
-      ? join('desktop-test-resources', 'icon.png') : join(harness.appPath, 'resources', 'suiyi', 'icon-windows.png'))
+      ? join(harness.appPath, 'resources', 'icon.png') : join(harness.appPath, 'resources', 'suiyi', 'icon-windows.png'))
     const workspace = harness.windows.find(window => !window.destroyed)!
     expect(workspace.options).toMatchObject({ titleBarOverlay: { color: '#00000000', height: 62 } })
   })
@@ -3268,6 +3347,8 @@ describe('Suiyi main lifecycle', () => {
     const template = harness.menu.buildFromTemplate.mock.lastCall![0]
     const labels = template.map(item => item.label ?? item.type)
     expect(labels[0]).toBe('关于 遂意 Suiyi')
+    expect(labels).not.toContain(zh.checkUpdatesMenu)
+    expect(template.some((item, index) => item.type === 'separator' && template[index - 1]?.type === 'separator')).toBe(false)
     expect(labels).not.toContain('管理 dsh 命令…')
     expect(labels.indexOf('复制')).toBeGreaterThan(labels.indexOf('退出'))
     expect(labels).toEqual(expect.arrayContaining(['撤销', '重做', '剪切', '复制', '粘贴', '删除', '全选']))

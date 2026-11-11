@@ -47,6 +47,8 @@ Settings visibility and section selection live in the shell owner store. The she
 
 ### The General section
 
+When Desktop reports updates unavailable, the channel row and Desktop settings explain that a newer version requires manual installation. They offer no update actions, and both sidebar update indicators stay absent. Unavailable is separate from a failed check and from confirmation that the installed version is current.
+
 Completion reminders default off. Enabling requests this browser’s notification permission from the toggle gesture, then saves intent in `ui-settings-general.turnCompleteNotification`. Only live successful turns produce a notification containing the Session title; historical replay, cancellation and errors do not. Permission revocation or delivery failure shows an inactive state without erasing saved intent; the row can clear that intent. Disconnect, Host reset and disposal close notifications and invalidate pending permission requests.
 
 Suiyi returns from full-page Settings through shared navigation and the Settings shortcut. The account row uses the prototype user and chevron outlines; the chevron keeps its subdued theme color and inline alignment. Cards use 20 px spacing, 44 px headings, and rows at least 77 px tall (73 px below 768 px). Status and error text can grow a row without clipping its controls.
@@ -120,7 +122,7 @@ These pages cover the settings surface family and the composition model.
 - [ui-sidebar](../ui-sidebar/README.md) — the sidebar shell hosting the `sidebar.settings` seat.
 - [ui-settings-models](../ui-settings-models/README.md) — the feature package contributing the DeepSeek onboarding step.
 - [settings](../../settings/README.md) — the durable user-settings seam and its file provider.
-- [Slot system standard](../../../.agents/notes/implemented/architecture/2026-07-22-slot-type-chain-implementation.md) — the composition model behind the ledgers.
+- Slot system standard — the composition model behind the ledgers.
 
 -----
 

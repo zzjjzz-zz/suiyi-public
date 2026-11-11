@@ -93,12 +93,12 @@ The package declares four events shared by consumers and observation policy. Int
 
 Read these pages when the package-level contract is not enough. They move from the exhaustive contract to the backends and consumers built on it.
 
-- [Filesystem subsystem](../../../docs/subsystems/filesystem.md) — exhaustive provider contract, policy events, and error taxonomy.
+- Filesystem subsystem — exhaustive provider contract, policy events, and error taxonomy.
 - [fs-local](../fs-local/README.md) — the host-filesystem backend implementing this contract.
 - [fs-sandbox](../fs-sandbox/README.md) — the sandbox-enforcing backend implementing this contract.
 - [tool-fs](../tool-fs/README.md) — the model-facing tools that consume `ctx.fs`.
 - [fs-observation-policy](../fs-observation-policy/README.md) — the policy plugin that guards mutations through the `fs/*` events.
-- [Capability seams note](../../../.agents/notes/implemented/architecture/2026-06-13-capability-seams.md) — why the filesystem stack splits into contract, provider, policy, and tools.
+- Capability seams note — why the filesystem stack splits into contract, provider, policy, and tools.
 
 -----
 

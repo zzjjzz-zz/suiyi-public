@@ -157,7 +157,7 @@ test('registers into the sidebar', async ({ remote, start }) => {
 - [ui-session](../../client/ui-session/README.zh.md)——从控制器替身派生标准 Slot 数据源的生产适配器。
 - [UI slots 包](../../client/ui-slots/README.zh.md)——测试台挂载的 `SlotRegistry` 约定。
 - [UI renderer 包](../../client/ui-renderer/README.zh.md)——测试台安装的渲染器。
-- [测试策略](../../../docs/testing.zh.md)——覆盖层级与浏览器快照流水线。
+- 测试策略——覆盖层级与浏览器快照流水线。
 - [test-support 组地图](../README.zh.md)——兄弟 harness 与支持包。
 
 -----

@@ -88,7 +88,7 @@ kind: "package-reference"
 
 对于 Claude，请在 `launchArgs` 中显式选择原生权限模式，并保留 `--permission-prompts none` 以便无人值守运行。Claude 实例如果不提供权限模式参数，会继承 OAR 默认的权限绕过。替换示例的参数数组也会替换其中显式设置的权限。
 
-[配置目录](../../../docs/config-catalog.zh.md#deepseek-aidsh-experimental-subagent-oar)定义接受的字段和校验规则。如果子进程需要环境变量中的 API 凭据，必须通过 `env` 提供；原生账户文件仍可通过原生运行时设置访问。
+配置目录定义接受的字段和校验规则。如果子进程需要环境变量中的 API 凭据，必须通过 `env` 提供；原生账户文件仍可通过原生运行时设置访问。
 
 固定版本的 OAR 默认注册表包含 `antigravity`、`claude`、`codex`、`grok`、`kimi`、`opencode` 和 `pi`。提供方配置接受每个已注册的运行时 id。Codex 和 Claude 有原生 e2e 覆盖。其他运行时需要显式添加提供方和工具映射，且仍未经验证。
 
@@ -116,8 +116,8 @@ kind: "package-reference"
 - [实验性包](../README.zh.md) — 实验性状态与可选交付。
 - [子智能体服务](../../subagent/subagent/README.zh.md) — 提供方生命周期和最终结果。
 - [OAR 子智能体工具](../tool-subagent-oar/README.zh.md) — 运行时选择和父智能体可见行为。
-- [子智能体子系统](../../../docs/subsystems/subagent.zh.md) — 父智能体调度和完成通知。
-- [架构](../../../docs/architecture.zh.md) — Profile 层组合。
+- 子智能体子系统 — 父智能体调度和完成通知。
+- 架构 — Profile 层组合。
 
 -----
 

@@ -5,6 +5,44 @@ import type { DesktopChannelState, DesktopChannelChangeResult } from '../src/typ
 const nightly: DesktopChannelState = { channel: 'nightly', packagedChannel: 'nightly', changing: false }
 const stable: DesktopChannelState = { ...nightly, channel: 'stable' }
 
+it('clears configuration warnings and refuses channel mutations for unavailable updates', async () => {
+  const f = fixture()
+  try {
+    f.emit({ ...nightly, error: 'format' })
+    expect(f.source.store.getSnapshot().notice?.outcome).toBe('configuration')
+    const state: DesktopChannelState = { ...nightly, channel: null, unavailable: true }
+    f.emit(state)
+    await f.source.select('stable')
+    expect(f.select).not.toHaveBeenCalled()
+    expect(f.source.store.getSnapshot()).toEqual({ state, failed: false })
+  } finally { f.get.resolve(nightly); f.source.dispose() }
+})
+
+it('accepts an unavailable channel result without reporting a save failure', async () => {
+  const f = fixture()
+  try {
+    f.emit(nightly)
+    const changing = f.source.select('stable')
+    const state: DesktopChannelState = { ...nightly, channel: null, unavailable: true }
+    f.set.resolve({ kind: 'unavailable', state })
+    await changing
+    expect(f.source.store.getSnapshot()).toEqual({ state, failed: false })
+  } finally { f.get.resolve(nightly); f.source.dispose() }
+})
+
+it('ignores a late save failure after unavailable state supersedes the selection', async () => {
+  const f = fixture()
+  try {
+    f.emit(nightly)
+    const changing = f.source.select('stable')
+    const state: DesktopChannelState = { ...nightly, channel: null, unavailable: true }
+    f.emit(state)
+    f.set.reject(new Error('superseded save'))
+    await changing
+    expect(f.source.store.getSnapshot()).toEqual({ state, failed: false })
+  } finally { f.get.resolve(nightly); f.source.dispose() }
+})
+
 function fixture() {
   const get = Promise.withResolvers<DesktopChannelState>()
   const set = Promise.withResolvers<DesktopChannelChangeResult>()
